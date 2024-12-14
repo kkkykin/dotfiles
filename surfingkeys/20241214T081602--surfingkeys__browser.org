@@ -1,0 +1,90 @@
+#+title:      surfingkeys
+#+date:       [2024-12-14 Sat 08:16]
+#+filetags:   :browser:
+#+identifier: 20241214T081602
+#+property: header-args:js :eval no
+
+* tangle
+#+begin_src elisp
+(org-decrypt-entries)
+(make-directory "_tangle" t)
+(let (org-babel-pre-tangle-hook)
+  (org-babel-tangle nil "_tangle/default.js" "^js$"))
+(save-buffer)
+#+end_src
+
+* source
+** apis
+https://github.com/brookhong/Surfingkeys/blob/master/src/content_scripts/common/api.js
+https://github.com/brookhong/Surfingkeys/blob/master/src/content_scripts/common/default.js
+#+begin_src js
+const {
+  mapkey,
+  Hints,
+} = api;
+#+end_src
+
+** internal
+#+begin_src js :var authKey=(auth-source-pick-first-password :host "mpv.nginx.localhost")
+function callInternal(app, headers){
+  const response = fetch('http://127.0.0.1/lua/' + app, {
+    method: 'POST',
+    headers: {
+      ...headers,
+      authorization: authKey
+    }
+  });
+}
+#+end_src
+
+*** mpv
+
+#+begin_src js
+function callMpv(url, args){
+  const you = /^https:\/\/www.youtube.com\/@[^/]+$/
+  if (you.test(url)) {
+    url += '/videos'
+  }
+  callInternal('mpv', {
+    url,
+    args: (args === undefined) ? '' : args
+  })
+}
+#+end_src
+
+#+begin_src js
+const mpvPipArg = '--profile=mini'
+#+end_src
+
+#+begin_src js
+mapkey(',f', 'Open link with mpv', () => {
+  Hints.create('*[href]', function(el) {
+    callMpv(el.href)
+  });
+});
+#+end_src
+
+#+begin_src js
+mapkey(',m', 'Play with mpv', () => {
+  callMpv(window.location.href)
+});
+#+end_src
+
+#+begin_src js
+mapkey(',F', 'Open link with mpv(pip)', () => {
+  Hints.create('*[href]', function(el) {
+    callMpv(el.href, mpvPipArg)
+  });
+});
+#+end_src
+
+#+begin_src js
+mapkey(',M', 'Play with mpv(pip)', () => {
+  callMpv(window.location.href, mpvPipArg)
+});
+#+end_src
+
+* local variables
+# Local Variables:
+# buffer-auto-save-file-name: nil
+# End:

@@ -1,0 +1,272 @@
+#+title:      openresty
+#+date:       [2024-12-12 Thu 20:09]
+#+filetags:   :server:
+#+identifier: 20241212T200954
+
+* manager
+:PROPERTIES:
+:header-args: :var prefix=(expand-file-name "scoop/apps/openresty/current" (getenv "USERPROFILE"))
+:END:
+
+#+begin_src elisp
+(org-decrypt-entries)
+(let (org-confirm-babel-evaluate
+      org-babel-pre-tangle-hook
+      (exe (executable-find "openresty")))
+  (my/org-babel-execute-named-src-block
+   "expand-serve-files" '((:noweb . "no") (:results . "value replace raw")))
+  (dolist (f (org-babel-tangle))
+    (let* ((r (file-relative-name f "_tangle"))
+           (l (expand-file-name r prefix)))
+      (unless (file-symlink-p l)
+        (make-directory (file-name-directory l) t)
+        (make-symbolic-link f l t))))
+  (org-babel-remove-result-one-or-many '(4))
+  (save-buffer)
+  (when (zerop (call-process exe nil nil nil "-p" prefix "-t"))
+    (call-process exe nil nil nil "-p" prefix "-s" "reload")))
+#+end_src
+
+#+name: expand-serve-files
+#+begin_src elisp :noweb no :results value replace raw
+(format
+ "#+begin_src conf :tangle \"_tangle/conf/sites-enabled/serve-files.conf.3\" :mkdirp t\n%s\n#+end_src"
+ (mapconcat
+  (lambda (s)
+    (when-let* ((d (expand-file-name (caddr s)))
+                (file-exists-p d))
+      (format "<<serve-files(location=\"%s\",alias=\"%s\")>>"
+              (cadr s) d)))
+  (org-babel-ref-resolve "s-files") "\n"))
+#+end_src
+
+* conf
+** main
+#+header: :var listen=(my/org-table-select "%d,1" "secrets" ",0" "http listen")
+#+begin_src conf :tangle "_tangle/conf/nginx.conf" :mkdirp yes
+worker_processes  1;
+
+events {
+    worker_connections  1024;
+}
+
+stream {
+    include sites-enabled/*.conf.1;
+}
+
+http {
+    include       mime.types;
+    default_type  application/octet-stream;
+
+    sendfile        on;
+    tcp_nopush     on;
+
+    keepalive_timeout  65;
+
+    include sites-enabled/*.conf.2;
+    lua_package_path "$prefix/lua-scripts/?.lua;;";
+
+    server {
+        listen $listen;
+        # listen       80;
+        # server_name  localhost;
+
+        include sites-enabled/*.conf.3;
+
+        location / {
+            root   html;
+            index  index.html index.htm;
+        }
+        error_page   500 502 503 504  /50x.html;
+        location = /50x.html {
+            root   html;
+        }
+    }
+}
+#+end_src
+
+** server
+
+*** pac file
+#+header: :var location=(my/org-table-select "%d,1" "secrets" ",0" "pac file") alias=(expand-file-name (my/org-table-select "%d,2" "secrets" ",0" "pac file"))
+#+begin_src conf :tangle "_tangle/conf/sites-enabled/pac.conf.3" :mkdirp t
+location $location {
+    alias $alias;
+
+    sub_filter ' 127.0.0.1:' " ${host}:";
+    sub_filter_once off;
+    sub_filter_last_modified on;
+    sub_filter_types *;
+
+    default_type application/x-ns-proxy-autoconfig;
+}
+#+end_src
+
+*** lua
+#+begin_src conf :tangle "_tangle/conf/sites-enabled/lua.conf.3"
+location ~ /lua/(.+) {
+  allow 127.0.0.1;
+  deny all;
+  content_by_lua_file lua-scripts/$1.lua;
+}
+#+end_src
+
+#+name: expand-lua-table
+#+begin_src elisp
+(mapconcat (lambda (s) (format "'%s'" s))
+           (cl-remove-if #'string-empty-p value) ", ")
+#+end_src
+
+#+begin_src lua :tangle "_tangle/lua-scripts/libs/utils.lua" :mkdirp t
+module(..., package.seeall)
+
+function find_in_array(array, item)
+    for index, value in ipairs(array) do
+        if value == item then
+            return index
+        end
+    end
+    return false
+end
+
+function is_valid_url(url)
+    if url and url:match("^https?://[%w-_%.%?%.:/@%+=&]+$") then
+        return true
+    end
+    ngx.status = ngx.HTTP_BAD_REQUEST
+    ngx.say("Invalid URL format")
+    return false
+end
+
+function is_valid_args(s)
+    if s and string.find(s, '["^&;|]') == nil then
+        return true
+    end
+    ngx.status = ngx.HTTP_BAD_REQUEST
+    ngx.say("Invalid ARGS format")
+    return false
+end
+#+end_src
+
+#+begin_src lua :tangle "_tangle/lua-scripts/libs/cors.lua"
+module(..., package.seeall)
+
+local utils = require('libs.utils')
+
+function check_auth(right_key)
+    local api_key = ngx.req.get_headers()['Authorization']
+    if api_key and api_key == right_key then
+        return true
+    end
+
+    ngx.status = ngx.HTTP_FORBIDDEN
+    ngx.say('Forbidden: Invalid API Key')
+    return false
+end
+
+function set_cors(allowd, headers)
+
+    local origin = ngx.req.get_headers()['Origin']
+
+    if origin and utils.find_in_array(allowd, origin) then
+        ngx.header['Access-Control-Allow-Origin'] = origin
+        ngx.header['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+        ngx.header['Access-Control-Allow-Headers'] = headers
+        ngx.header['Access-Control-Allow-Private-Network'] = 'true'
+        return true
+    end
+
+    ngx.status = ngx.HTTP_FORBIDDEN
+    ngx.say('Forbidden: Invalid Origin')
+    return false
+    
+end
+#+end_src
+
+#+name: check-auth-and-origin
+#+begin_src lua
+local cors = require('libs.cors')
+
+if not cors.set_cors(allowd_origin, allowd_headers) then
+    return
+end
+
+if ngx.req.get_method() == 'OPTIONS' then
+    ngx.status = 204
+    ngx.header['Content-Length'] = 0
+    return
+end
+
+if not cors.check_auth(auth_key) then
+    return
+end
+#+end_src
+
+**** mpv
+:PROPERTIES:
+:header-args:lua: :tangle "_tangle/lua-scripts/mpv.lua" :mkdirp t
+:END:
+
+#+header: :var auth_key=(auth-source-pick-first-password :host "mpv.nginx.localhost") allowd_headers="url, args, authorization"
+#+begin_src lua
+local allowd_origin = {<<expand-lua-table(value=(my/org-table-select "%d,1:-1" "s-cors" ",0" "mpv"))>>}
+<<check-auth-and-origin>>
+
+local url = ngx.req.get_headers()['url']
+local args = ngx.req.get_headers()['args']
+
+local utils = require('libs.utils')
+
+if not utils.is_valid_url(url) or not utils.is_valid_args(args) then
+    return
+end
+
+local mpv_command = 'wt.exe -w _quake nt -p "Command Prompt" mpv "'
+if args then
+    mpv_command = mpv_command .. args .. '" "' .. url .. '"'
+else
+    mpv_command = mpv_command .. url .. '"'
+end
+
+local handle = io.popen(mpv_command)
+if handle then
+    handle:close()
+    ngx.status = ngx.HTTP_OK
+    ngx.say('Playback started successfully!')
+else
+    ngx.status = ngx.HTTP_INTERNAL_SERVER_ERROR
+    ngx.say('Failed to start playback process.')
+end
+#+end_src
+
+*** serve files
+#+name: serve-files
+#+begin_src conf
+location $location {
+  alias $alias;
+  autoindex on;
+  tcp_nopush on;
+  tcp_nodelay on;
+}
+#+end_src
+
+* secrets                                                             :crypt:
+-----BEGIN PGP MESSAGE-----
+
+hF4DhteJcpg+xyQSAQdArCCmRb+O0mTvNdQdwSI8ViZSrcuM9arD08eKvuopkT8w
+nO1525j+G2PmVNSpemFb/j0axnfXEAxyhgBvNshBvTKnL0b6z2VNOXzafR33tWmx
+1MByAQkCEJaJYbnYMGISUbZfFLmxfRTTe91Wk7QwmysxWjZ8TqoIFKFurukMXnTT
+Bmirx6mpb7kIRhwg6xaehAXMk/3JNzyioz2WNCIkmc2JmN2xDKCvflPzDKis1tC0
+SH06l2T9xKweVmleXVU7GJC4pqGaqn61FKJKOlwiWvLiIu54TqHVjZCrYRUzUwaw
+FE6TR2s+OOcepoGJJ9P4EYUOvdX4Tokdss1oT1h3Mgq2g8NKAR/vhEqhdjFQd4Tp
+Tk6b5Xh2XCo+EcRy4fven7hCK2BMtzwL5aY/MEqQtj1feNIB6mUsGpnCek8IjSNA
+I3/S6xUHl+Id1BPzuTsAXLf0dKvSPRYFlYjACnb8ucrORKrEzPRT7iVXy6wz/O9d
+I1a78YJvP4KsgC9h0pINow0qsj1R
+=HTmb
+-----END PGP MESSAGE-----
+
+* local-variables
+# Local Variables:
+# buffer-auto-save-file-name: nil
+# devdocs-current-docs: ("nginx" "nginx_lua_module")
+# End:

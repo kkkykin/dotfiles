@@ -1,0 +1,6 @@
+[submodule "ahk/lib/HotGestures"]
+	path = ahk/lib/HotGestures
+	url = https://github.com/Tebayaki/HotGestures.git
+[submodule "ahk/lib/acc"]
+	path = ahk/lib/acc
+	url = https://github.com/Descolada/Acc-v2.git

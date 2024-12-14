@@ -1,0 +1,12 @@
+__pycache__
+
+clangd/index/
+
+mitmproxy/*
+!mitmproxy/config.yaml
+!mitmproxy/scripts
+.dir-locals-2.el
+
+
+_tangle/
+TAGS
