@@ -21,19 +21,28 @@ https://github.com/brookhong/Surfingkeys/blob/master/src/content_scripts/common/
 const {
   mapkey,
   Hints,
+  Front,
 } = api;
 #+end_src
 
 ** internal
 #+begin_src js :var authKey=(auth-source-pick-first-password :host "mpv.nginx.localhost")
-function callInternal(app, headers){
-  const response = fetch('http://127.0.0.1/lua/' + app, {
-    method: 'POST',
-    headers: {
-      ...headers,
-      authorization: authKey
+async function callInternal(app, headers){
+  try {
+    const res = await fetch('http://127.0.0.1/lua/' + app, {
+      method: 'POST',
+      headers: {
+        ...headers,
+        authorization: authKey
+      }
+    });
+    if (!res.ok) {
+      throw new Error(`Response status: ${res.status}`)
     }
-  });
+    Front.showBanner(await res.text());
+  } catch(e) {
+    console.error(e);
+  }
 }
 #+end_src
 
