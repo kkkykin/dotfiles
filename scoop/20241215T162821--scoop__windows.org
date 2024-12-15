@@ -1,0 +1,20 @@
+#+title:      scoop
+#+date:       [2024-12-15 Sun 16:28]
+#+filetags:   :windows:
+#+identifier: 20241215T162821
+#+property: header-args :var scoop-home=(expand-file-name "scoop" (getenv "USERPROFILE"))
+
+* Cli symlink
+#+begin_src elisp :var tbl=symlink-table[]
+(dolist (l tbl)
+  (let ((target (file-name-concat scoop-home "apps" (car l) "current" (cadr l)))
+        (link (file-name-concat scoop-home "shims" (caddr l))))
+    (when (and (file-exists-p target)
+               (not (file-exists-p link)))
+      (make-symbolic-link target link))))
+#+end_src
+
+#+name: symlink-table
+| package | target        | link        |
+|---------+---------------+-------------|
+| tcpview | tcpvcon64.exe | tcpvcon.exe |
