@@ -3,6 +3,7 @@
 #+filetags:   :browser:
 #+identifier: 20241214T081602
 #+property: header-args:js :eval no
+#+property: header-args:elisp :var js-blk-tempo="#+begin_src js\n%s\n#+end_src" map-tempo="mapkey(',m%s','%s',()=>{%s});" hint-create-tempo="Hints.create('*[href]',el=>{%s})"
 
 * tangle
 #+begin_src elisp
@@ -11,8 +12,12 @@
       org-confirm-babel-evaluate
       (dir "_tangle"))
   (make-directory dir t)  
+  (dolist (b '("expand-mpv-binding"))
+    (my/org-babel-execute-named-src-block
+     b '((:results . "raw replace value"))))
   (org-babel-tangle nil (expand-file-name "default.js" dir) "^js$")
   (org-babel-tangle))
+(org-babel-remove-result-one-or-many '(4))
 (save-buffer)
 #+end_src
 
@@ -104,36 +109,28 @@ function callMpv(url, args){
 }
 #+end_src
 
-#+begin_src js
-const mpvPipArg = '--profile=mini'
-#+end_src
+**** binding
+#+name: mpv-key-binding
+| key | info  | arg                |
+|-----+-------+--------------------|
+| m   |       |                    |
+| p   | pip   | --profile=mini     |
+| h   | left  | --video-rotate=270 |
+| l   | right | --video-rotate=90  |
 
-#+begin_src js
-mapkey(',f', 'Open link with mpv', () => {
-  Hints.create('*[href]', function(el) {
-    callMpv(el.href)
-  });
-});
-#+end_src
-
-#+begin_src js
-mapkey(',m', 'Play with mpv', () => {
-  callMpv(window.location.href)
-});
-#+end_src
-
-#+begin_src js
-mapkey(',F', 'Open link with mpv(pip)', () => {
-  Hints.create('*[href]', function(el) {
-    callMpv(el.href, mpvPipArg)
-  });
-});
-#+end_src
-
-#+begin_src js
-mapkey(',M', 'Play with mpv(pip)', () => {
-  callMpv(window.location.href, mpvPipArg)
-});
+#+name: expand-mpv-binding
+#+begin_src elisp :results raw replace value :var map=mpv-key-binding[]
+(format
+ js-blk-tempo
+ (let* ((call-tempo "callMpv(%s)")
+        (hint-tempo (format hint-create-tempo call-tempo)))
+   (mapconcat
+    (lambda (k)
+      (format
+       "%s\n%s"
+       (format (format map-tempo (car k) (format "Play with mpv(%s)" (cadr k)) (format call-tempo (format "window.location.href, '%s'" (caddr k)))))
+       (format (format map-tempo (upcase (car k)) (format "Open link with mpv(%s)" (cadr k)) (format hint-tempo (format "el.href, '%s'" (caddr k)))))))
+    map "\n")))
 #+end_src
 
 ** inline query
