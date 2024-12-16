@@ -73,6 +73,16 @@ function extractDomainFromUrl(url) {
 }
 #+end_src
 
+#+begin_src js
+function callEmacs(fn, args){
+  const orgProtocolURL = `org-protocol://${fn}?${new URLSearchParams(args)}`;
+  const link = document.createElement('a');
+  link.href = orgProtocolURL;
+  link.click();
+  link.remove();
+}
+#+end_src
+
 ** internal
 #+begin_src js :var myLocalAuthKey=(auth-source-pick-first-password :host "mpv.nginx.localhost")
 async function callInternal(app, headers){
