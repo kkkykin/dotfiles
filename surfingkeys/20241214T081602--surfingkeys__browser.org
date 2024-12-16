@@ -3,7 +3,7 @@
 #+filetags:   :browser:
 #+identifier: 20241214T081602
 #+property: header-args:js :eval no
-#+property: header-args:elisp :var js-blk-tempo="#+begin_src js\n%s\n#+end_src" map-tempo="mapkey(',m%s','%s',()=>{%s});" hint-create-tempo="Hints.create('*[href]',el=>{%s})"
+#+property: header-args:elisp :var js-blk-tempo="#+begin_src js\n%s\n#+end_src" map-tempo="mapkey('%s','%s',()=>{%s});" hint-create-tempo="Hints.create('*[href]',el=>{%s})"
 
 * tangle
 #+begin_src elisp
@@ -133,13 +133,14 @@ function callMpv(url, args){
 (format
  js-blk-tempo
  (let* ((call-tempo "callMpv(%s)")
+        (mpv-map-tempo (format map-tempo ",m%s" "%s" "%s"))
         (hint-tempo (format hint-create-tempo call-tempo)))
    (mapconcat
     (lambda (k)
       (format
        "%s\n%s"
-       (format (format map-tempo (car k) (format "Play with mpv(%s)" (cadr k)) (format call-tempo (format "window.location.href, '%s'" (caddr k)))))
-       (format (format map-tempo (upcase (car k)) (format "Open link with mpv(%s)" (cadr k)) (format hint-tempo (format "el.href, '%s'" (caddr k)))))))
+       (format (format mpv-map-tempo (car k) (format "Play with mpv(%s)" (cadr k)) (format call-tempo (format "window.location.href, '%s'" (caddr k)))))
+       (format (format mpv-map-tempo (upcase (car k)) (format "Open link with mpv(%s)" (cadr k)) (format hint-tempo (format "el.href, '%s'" (caddr k)))))))
     map "\n")))
 #+end_src
 
