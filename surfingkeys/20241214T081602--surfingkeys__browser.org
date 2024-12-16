@@ -19,6 +19,7 @@ https://github.com/brookhong/Surfingkeys/blob/master/src/content_scripts/common/
 https://github.com/brookhong/Surfingkeys/blob/master/src/content_scripts/common/default.js
 #+begin_src js
 const {
+  addSearchAlias,
   mapkey,
   Hints,
   Front,
@@ -26,14 +27,14 @@ const {
 #+end_src
 
 ** internal
-#+begin_src js :var authKey=(auth-source-pick-first-password :host "mpv.nginx.localhost")
+#+begin_src js :var myLocalAuthKey=(auth-source-pick-first-password :host "mpv.nginx.localhost")
 async function callInternal(app, headers){
   try {
     const res = await fetch('http://127.0.0.1/lua/' + app, {
       method: 'POST',
       headers: {
         ...headers,
-        authorization: authKey
+        authorization: myLocalAuthKey
       }
     });
     if (!res.ok) {
@@ -172,6 +173,22 @@ Front.registerInlineQuery({
             return exp;
         }    }
 });
+#+end_src
+
+** search engine
+#+name: search-engine-table
+| alias | name           | engine                                                                               |
+|-------+----------------+--------------------------------------------------------------------------------------|
+| a     | EmacsWiki      | https://www.baidu.com/s?wd=site%3Aemacswiki.org%20                                   |
+| c     | Swisscows      | https://swisscows.com/en/web?region=iv&query=                                        |
+| n     | NixHomeManager | https://mipmip.github.io/home-manager-option-search/?query=                          |
+| N     | NixPackages    | https://search.nixos.org/packages?from=0&size=50&sort=relevance&type=packages&query= |
+| j     | Mojeek         | https://www.mojeek.com/search?q=                                                     |
+
+#+begin_src js :var mySearchAlias=search-engine-table[]
+for (const alias of mySearchAlias) {
+  addSearchAlias(alias[0], alias[1], alias[2]);
+}
 #+end_src
 
 * local variables
