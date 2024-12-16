@@ -288,25 +288,8 @@ mapkey(';pl', 'toggle proxy current site', () => {
 
 #+begin_src javascript :tangle "_tangle/pac.js"
 var pacGlobal = <<json-file-to-js-obj(file="pac.json.gpg")>>
-// 把带通配符的规则单独存储
-var wildcard_rules = [];
-for (var i = 0; i < pacGlobal.autoproxy_hosts.length; i++) {
-  var rules = [];
-  for (var j = 0; j < pacGlobal.autoproxy_hosts[i].length; j++) {
-    if (pacGlobal.autoproxy_hosts[i][j].indexOf('*') !== -1) {
-      rules.push(pacGlobal.autoproxy_hosts[i][j]);
-    }
-  }
-  wildcard_rules.push(rules);
-}
 
 function matchHost(host, rule_list) {
-  // 精确匹配
-  if (rule_list.indexOf(host) !== -1) {
-    return true;
-  }
-    
-  // 通配符匹配
   for (var i = 0; i < rule_list.length; i++) {
     if (shExpMatch(host, rule_list[i])) {
       return true;
