@@ -7,23 +7,65 @@
 * tangle
 #+begin_src elisp
 (org-decrypt-entries)
-(make-directory "_tangle" t)
-(let (org-babel-pre-tangle-hook)
-  (org-babel-tangle nil "_tangle/default.js" "^js$"))
+(let (org-babel-pre-tangle-hook
+      org-confirm-babel-evaluate
+      (dir "_tangle"))
+  (make-directory dir t)  
+  (org-babel-tangle nil (expand-file-name "default.js" dir) "^js$")
+  (org-babel-tangle))
 (save-buffer)
 #+end_src
 
 * source
 ** apis
+https://github.com/brookhong/Surfingkeys/blob/master/docs/API.md
 https://github.com/brookhong/Surfingkeys/blob/master/src/content_scripts/common/api.js
 https://github.com/brookhong/Surfingkeys/blob/master/src/content_scripts/common/default.js
+https://github.com/brookhong/Surfingkeys/blob/master/src/background/start.js
 #+begin_src js
 const {
+  RUNTIME,
   addSearchAlias,
+  getBrowserName,
   mapkey,
   Hints,
   Front,
 } = api;
+#+end_src
+** utils
+#+begin_src js
+function extractDomainFromHost(hostname) {
+  try {
+    if (hostname.startsWith('[') && hostname.endsWith(']')) {
+      // IPv6
+      return hostname;
+    } else if (/^(\d{1,3}\.){3}\d{1,3}$/.test(hostname)) {
+      // IPv4
+      return hostname;
+    }
+    
+    // Domain
+    const parts = hostname.split('.');
+    if (parts.length <= 2) {
+      return hostname;
+    }
+    return parts.slice(-2).join('.');
+  } catch (error) {
+    return '';
+  }
+}
+#+end_src
+
+#+begin_src js
+function extractDomainFromUrl(url) {
+  try {
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname;
+    return extractDomainFromHost(hostname);
+  } catch (error) {
+    return '';
+  }
+}
 #+end_src
 
 ** internal
@@ -188,6 +230,135 @@ Front.registerInlineQuery({
 #+begin_src js :var mySearchAlias=search-engine-table[]
 for (const alias of mySearchAlias) {
   addSearchAlias(alias[0], alias[1], alias[2]);
+}
+#+end_src
+
+** chrome
+
+#+begin_src js
+if (getBrowserName() === 'Chrome') {
+#+end_src
+
+*** proxy
+https://github.com/brookhong/Surfingkeys/blob/master/src/background/chrome.js
+
+#+begin_src js
+function toggleHostProxy(host){
+  return new Promise((resolve, reject) => {
+    if (host && host.length) {
+      RUNTIME('updateProxy', {
+        host: host,
+        operation: 'toggle'
+      }, res => {
+        resolve(res);
+      });
+    } else {
+      reject();
+    };
+  });
+}
+#+end_src
+
+#+begin_src js
+mapkey(';pf', 'toggle proxy for link', () => {
+  Hints.create('*[href]', el => {
+    toggleHostProxy(extractDomainFromUrl(el.href));
+  });
+});
+#+end_src
+
+#+begin_src js
+mapkey(';pl', 'toggle proxy current site', () => {
+  toggleHostProxy(extractDomainFromHost(window.location.hostname));
+});
+#+end_src
+
+**** pac
+#+name: json-file-to-js-obj
+#+begin_src elisp
+(if (file-exists-p file)
+    (with-temp-buffer
+      (insert-file-contents-literally file)
+      (when (string-suffix-p ".gpg" file)
+        (let ((epa-replace-original-text t))
+          (epa-decrypt-region (point-min) (point-max))))
+      (string-clean-whitespace (buffer-string)))
+  "{}")
+#+end_src
+
+#+begin_src javascript :tangle "_tangle/pac.js"
+var pacGlobal = <<json-file-to-js-obj(file="pac.json.gpg")>>
+// 把带通配符的规则单独存储
+var wildcard_rules = [];
+for (var i = 0; i < pacGlobal.autoproxy_hosts.length; i++) {
+  var rules = [];
+  for (var j = 0; j < pacGlobal.autoproxy_hosts[i].length; j++) {
+    if (pacGlobal.autoproxy_hosts[i][j].indexOf('*') !== -1) {
+      rules.push(pacGlobal.autoproxy_hosts[i][j]);
+    }
+  }
+  wildcard_rules.push(rules);
+}
+
+function matchHost(host, rule_list) {
+  // 精确匹配
+  if (rule_list.indexOf(host) !== -1) {
+    return true;
+  }
+    
+  // 通配符匹配
+  for (var i = 0; i < rule_list.length; i++) {
+    if (shExpMatch(host, rule_list[i])) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function FindProxyForHost(host) {
+  var lastPos;
+  
+  if (pacGlobal.proxyMode === 'always') {
+    return pacGlobal.proxy[0];
+  } 
+  
+  else if (pacGlobal.proxyMode === 'bypass') {
+    do {
+      if (matchHost(host, pacGlobal.autoproxy_hosts[0])) {
+        return 'DIRECT';
+      }
+      lastPos = host.indexOf('.') + 1;
+      host = host.slice(lastPos);
+    } while (lastPos >= 1);
+    return pacGlobal.proxy[0];
+  } 
+  
+  else {  // byhost mode
+    for (var i = 0; i < pacGlobal.proxy.length; i++) {
+      var ahost = host;
+      do {
+        if (matchHost(ahost, pacGlobal.autoproxy_hosts[i])) {
+          return pacGlobal.proxy[i];
+        }
+        lastPos = ahost.indexOf('.') + 1;
+        ahost = ahost.slice(lastPos);
+      } while (lastPos >= 1);
+    }
+    return 'DIRECT';
+  }
+}
+
+function FindProxyForURL(url, host) {
+  try {
+    return FindProxyForHost(host);
+  } catch (e) {
+    return 'DIRECT';  // 出错时直连
+  }
+}
+#+end_src
+
+*** end
+#+begin_src js
 }
 #+end_src
 
