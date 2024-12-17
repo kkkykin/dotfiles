@@ -285,16 +285,12 @@ mapkey(';pl', 'toggle proxy current site', () => {
 #+name: json-file-to-js-obj
 #+begin_src elisp
 (if (file-exists-p file)
-    (with-temp-buffer
-      (insert-file-contents-literally file)
-      (when (string-suffix-p ".gpg" file)
-        (let ((epa-replace-original-text t))
-          (epa-decrypt-region (point-min) (point-max))))
-      (string-clean-whitespace (buffer-string)))
+    (with-current-buffer (find-file-noselect file)
+      (buffer-string))
   "{}")
 #+end_src
 
-#+begin_src javascript :tangle "_tangle/pac.js"
+#+begin_src javascript :tangle "_tangle/pac.js" :noweb-prefix no
 var pacGlobal = <<json-file-to-js-obj(file="pac.json.gpg")>>
 
 function matchHost(host, rule_list) {
