@@ -36,6 +36,12 @@ const {
   Front,
 } = api;
 #+end_src
+*** settings
+#+begin_src js
+settings.clickablePat = /(https?:\/\/|thunder:\/\/|magnet:)\S+/ig;
+settings.interceptedErrors = ["*"];
+#+end_src
+
 ** utils
 #+begin_src js
 function extractDomainFromHost(hostname) {
@@ -81,7 +87,14 @@ function callEmacs(fn, args){
   link.remove();
 }
 #+end_src
-
+** misc
+#+begin_src js :tangle no
+mapkey(',o', 'Open detected links from text in new tab', () => {
+  Hints.create(settings.clickablePat, el => {
+    window.location.assign(element[2]);
+  }, {statusLine: "Open detected links from text in new tab"});
+});
+#+end_src
 ** internal
 #+begin_src js :var myLocalAuthKey=(auth-source-pick-first-password :host "mpv.nginx.localhost")
 async function callInternal(app, headers){
