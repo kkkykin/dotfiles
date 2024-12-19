@@ -3,7 +3,6 @@
 #+filetags:   :browser:
 #+identifier: 20241214T081602
 #+property: header-args:js :eval no
-#+property: header-args:elisp :var js-blk-tempo="#+begin_src js\n%s\n#+end_src" map-tempo="mapkey('%s','%s',()=>{%s});" hint-create-tempo="Hints.create('*[href]',el=>{%s})"
 
 * tangle
 #+begin_src elisp
@@ -12,7 +11,7 @@
       org-confirm-babel-evaluate
       (dir "_tangle"))
   (make-directory dir t)  
-  (dolist (b '("expand-mpv-binding"))
+  (dolist (b '())
     (my/org-babel-execute-named-src-block
      b '((:results . "raw replace value"))))
   (org-babel-tangle nil (expand-file-name "default.js" dir) "^js$")
@@ -128,20 +127,16 @@ function callMpv(url, args){
 | h   | left  | --video-rotate=270 |
 | l   | right | --video-rotate=90  |
 
-#+name: expand-mpv-binding
-#+begin_src elisp :results raw replace value :var map=mpv-key-binding[]
-(format
- js-blk-tempo
- (let* ((call-tempo "callMpv(%s)")
-        (mpv-map-tempo (format map-tempo ",m%s" "%s" "%s"))
-        (hint-tempo (format hint-create-tempo call-tempo)))
-   (mapconcat
-    (lambda (k)
-      (format
-       "%s\n%s"
-       (format (format mpv-map-tempo (car k) (format "Play with mpv(%s)" (cadr k)) (format call-tempo (format "window.location.href, '%s'" (caddr k)))))
-       (format (format mpv-map-tempo (upcase (car k)) (format "Open link with mpv(%s)" (cadr k)) (format hint-tempo (format "el.href, '%s'" (caddr k)))))))
-    map "\n")))
+#+begin_src js :var mpvKeyBindings=mpv-key-binding[]
+for (k of mpvKeyBindings) {
+  const mpvLeaderKey = ',m';
+  mapkey(`${mpvLeaderKey}${k[0].toUpperCase()}`, `Play with mpv(${k[1]})` ,() => {
+    callMpv(window.location.href, k[2]);
+  });
+  mapkey(`${mpvLeaderKey}${k[0]}`, `Open link with mpv(${k[1]})`, () => {
+    Hints.create('*[href]', el => { callMpv(el.href, k[2]); });
+  });
+}
 #+end_src
 
 ** inline query
