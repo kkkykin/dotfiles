@@ -141,8 +141,8 @@ function callMpv(url, args){
 | l   | right | --video-rotate=90  |
 
 #+begin_src js :var mpvKeyBindings=mpv-key-binding[]
-for (k of mpvKeyBindings) {
-  const mpvLeaderKey = ',m';
+const mpvLeaderKey = ',m';
+for (const k of mpvKeyBindings) {
   mapkey(`${mpvLeaderKey}${k[0].toUpperCase()}`, `Play with mpv(${k[1]})` ,() => {
     callMpv(window.location.href, k[2]);
   });
