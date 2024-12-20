@@ -12,7 +12,7 @@
 
 (let ((lua-dir (pcase system-type
                  ('gnu/linux (expand-file-name "~/.local/lib/wireshark/plugins/"))
-                 ('windows-nt (expand-file-name "Wireshark/plugins/" (getenv "APPDATA"))))))
+                 ('windows-nt (expand-file-name "plugins/" (getenv "WIRESHARK_DATA_DIR"))))))
   (dolist (f (directory-files "_tangle/lua-plugins" t "^[^.]" t))
     (make-symbolic-link f lua-dir t)))
 
