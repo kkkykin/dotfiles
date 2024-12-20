@@ -1,0 +1,300 @@
+#+title:      wireshark
+#+date:       [2024-12-20 Fri 16:28]
+#+filetags:   :network:
+#+identifier: 20241220T162826
+
+* tangle
+#+begin_src elisp
+(org-decrypt-entries)
+(let (org-babel-pre-tangle-hook
+      org-confirm-babel-evaluate)
+  (org-babel-tangle))
+
+(let ((lua-dir (pcase system-type
+                 ('gnu/linux (expand-file-name "~/.local/lib/wireshark/plugins/"))
+                 ('windows-nt (expand-file-name "Wireshark/plugins/" (getenv "APPDATA"))))))
+  (dolist (f (directory-files "_tangle/lua-plugins" t "^[^.]" t))
+    (make-symbolic-link f lua-dir t)))
+
+(org-babel-remove-result-one-or-many '(4))
+(save-buffer)
+#+end_src
+
+* plugins
+** socks5 proxy
+Check which domains pass through the proxy port.
+#+name: define-lua-variable
+#+begin_src elisp
+value
+#+end_src
+
+#+begin_src lua :tangle "_tangle/lua-plugins/socks5.lua" :mkdirp t
+local proxy_port = <<define-lua-variable(value=(my/org-table-select "%d,1" "key-value-pair" ",0" "proxy-port"))>>
+local socks5 = Proto("socks5", "SOCKS5")
+
+local f_socks5_domain_name = ProtoField.string("socks5.domain_name", "SOCKS5 Domain Name")
+
+socks5.fields = {f_socks5_domain_name}
+
+function socks5.dissector(buffer, pinfo, tree)
+    if buffer:len() == 0 then return end
+
+    if buffer(0, 4):uint() == 0x05010003 then
+        local domain_len = buffer(4, 1):uint()
+        if buffer:len() >= 5 + domain_len then
+            local domain_name = buffer(5, domain_len):string()
+
+            local subtree = tree:add(socks5, buffer(), "SOCKS5 Proxy Protocol")
+            subtree:add(f_socks5_domain_name, buffer(5, domain_len))
+
+            pinfo.cols.protocol = "SOCKS5"
+            pinfo.cols.info:set("SOCKS5 CONNECT to " .. domain_name)
+        end
+    else
+        Dissector.get("http"):call(buffer, pinfo, tree)
+    end
+end
+
+local tcp_port = DissectorTable.get("tcp.port")
+tcp_port:add(proxy_port, socks5)
+#+end_src
+** port query
+#+begin_src lua :tangle "_tangle/lua-plugins/port-query.lua"
+local port_query_proto = Proto('port_query', 'Port Query Plugin')
+
+-- 全局变量存储窗口实例
+local result_window = nil
+
+-- 追加文本到窗口
+local function append_to_window(text)
+    if not gui_enabled() then 
+        print(text)
+        return
+    end
+
+    if result_window == nil or not result_window.window then
+        result_window = {
+            window = TextWindow.new('Port Query Result'),
+            text = ''
+        }
+        -- 添加关闭回调
+        result_window.window:set_atclose(function()
+            result_window = nil
+        end)
+    end
+    
+    result_window.text = result_window.text .. text .. '\n'
+    result_window.window:set(result_window.text)
+end
+
+-- 检查 IP 是否为本地 IP
+local function check_local_ips(ip1, ip2)
+    local local_ips = {}
+    local is_ip1_local = false
+    local is_ip2_local = false
+
+    -- 获取本地 IP
+    if os.getenv('OS') == 'Windows_NT' then
+        local process = io.popen('ipconfig')
+        table.insert(local_ips, Address.ip('127.0.0.1'))
+        for line in process:lines() do
+            -- IPv4 地址
+            local ipv4 = line:match('IPv4 Address.*: ([%d%.]+)')
+            if ipv4 then 
+                table.insert(local_ips, Address.ip(ipv4)) 
+            end
+            -- IPv6 地址
+            local ipv6 = line:match('IPv6 Address.*: ([%x:]+)$')
+            if ipv6 then
+                table.insert(local_ips, Address.ipv6(ipv6))
+            end
+        end
+        process:close()
+    else
+        local process = io.popen('ip --br a show up')
+        for line in process:lines() do
+            -- IPv4 地址
+            for ip in line:gmatch('[%d%.]+/[%d]+') do
+                local base_ip = ip:match('([%d%.][%d%.]+)/')
+                if base_ip then table.insert(local_ips, Address.ip(base_ip)) end
+            end
+            -- IPv6 地址
+            for ip in line:gmatch('[%a%d:]+/[%d]+') do
+                local base_ip = ip:match('([%a%d:]+)/')
+                if base_ip and base_ip:match(':') then
+                    table.insert(local_ips, Address.ipv6(base_ip))
+                end
+            end
+        end
+        process:close()
+    end
+
+    for _, local_ip in ipairs(local_ips) do
+        if ip1 == local_ip then is_ip1_local = true end
+        if ip2 == local_ip then is_ip2_local = true end
+    end
+
+    return is_ip1_local, is_ip2_local
+end
+
+-- 检测IP包的起始位置
+local function get_ip_offset(finfo)
+    -- 检查 0x04 位置（Windows Loopback 情况）
+    local version = finfo.range(0x04, 1):bitfield(0, 4)
+    if finfo.range(0,4):uint() == 0x02000000 and (version == 4 or version == 6) then
+        return 0x04, version
+    end
+
+    -- 检查 0x0E 位置的版本号
+    version = finfo.range(0x0e, 1):bitfield(0, 4)
+    if version == 4 or version == 6 then
+        return 0x0e, version
+    end
+end
+
+-- 获取下一个头部和其偏移量
+local function get_next_header(finfo, offset, current_header)
+    local next_header = finfo.range(offset, 1):uint()
+    local header_len = 0
+    
+    if current_header == 6 then  -- IPv6
+        -- IPv6 扩展头部的长度计算
+        if next_header == 0 then  -- Hop-by-hop Options
+            header_len = (finfo.range(offset + 1, 1):uint() + 1) * 8
+        elseif next_header == 43 then  -- Routing
+            header_len = (finfo.range(offset + 1, 1):uint() + 1) * 8
+        elseif next_header == 44 then  -- Fragment
+            header_len = 8
+        elseif next_header == 50 then  -- ESP
+            header_len = 8
+        elseif next_header == 51 then  -- AH
+            header_len = (finfo.range(offset + 1, 1):uint() + 2) * 4
+        elseif next_header == 60 then  -- Destination Options
+            header_len = (finfo.range(offset + 1, 1):uint() + 1) * 8
+        end
+    else  -- IPv4
+        -- IPv4 可选字段长度计算
+        header_len = (finfo.range(offset, 1):bitfield(4, 4) * 4) - 20
+    end
+    
+    return next_header, header_len
+end
+
+local function get_packet_info(finfo)
+    local base_offset, version = get_ip_offset(finfo)
+    local is_ipv6 = (version == 6)
+    local protocol, src_ip, dst_ip, src_port, dst_port
+    local offset = base_offset
+    
+    if is_ipv6 then
+        -- IPv6 数据包
+        offset = base_offset + 6  -- 协议字段的相对偏移量
+        protocol = finfo.range(offset, 1):uint()
+        src_ip = finfo.range(base_offset + 8, 16):ipv6()
+        dst_ip = finfo.range(base_offset + 24, 16):ipv6()
+        
+        -- 处理扩展头部
+        local header = protocol
+        local total_ext_len = 0
+        while header == 0 or header == 43 or header == 44 or header == 50 or 
+              header == 51 or header == 60 do
+            local next_header, header_len = get_next_header(finfo, offset, 6)
+            total_ext_len = total_ext_len + header_len
+            offset = offset + header_len
+            header = next_header
+        end
+        protocol = header
+        
+        -- 计算传输层头部的偏移量
+        local transport_offset = base_offset + 40 + total_ext_len  -- 40是IPv6固定头部长度
+        src_port = finfo.range(transport_offset, 2):uint()
+        dst_port = finfo.range(transport_offset + 2, 2):uint()
+    else
+        -- IPv4 数据包
+        local header_len = finfo.range(base_offset, 1):bitfield(4, 4) * 4
+        protocol = finfo.range(base_offset + 9, 1):uint()  -- 协议字段的相对偏移量
+        src_ip = finfo.range(base_offset + 12, 4):ipv4()
+        dst_ip = finfo.range(base_offset + 16, 4):ipv4()
+        
+        -- 计算传输层头部的偏移量，考虑可选字段
+        local transport_offset = base_offset + header_len
+        src_port = finfo.range(transport_offset, 2):uint()
+        dst_port = finfo.range(transport_offset + 2, 2):uint()
+    end
+
+    return {
+        src_ip = src_ip,
+        dst_ip = dst_ip,
+        src_port = src_port,
+        dst_port = dst_port,
+        protocol = (protocol == 6 and 'TCP') or (protocol == 17 and 'UDP') or nil,
+        is_ipv6 = is_ipv6
+    }
+end
+
+-- 执行查询并处理输出
+local function query_port_program_1(port, protocol, description, ip)
+    local cmd
+    local is_windows = os.getenv('OS') == 'Windows_NT'
+    if is_windows then
+        -- Windows 命令
+        local resolve_ip_opt = 'nameres.network_name'
+        if get_preference(resolve_ip_opt) then
+            append_to_window(string.format('\nWarn: Filter port only cause `%s` enabled.', resolve_ip_opt))
+            ip = ''
+        end
+        cmd = string.format('FOR /F "usebackq tokens=5 delims= " %%i IN (`netstat -anop %s ^|findstr "%s:%s "`) DO @tasklist /svc /fi "pid eq %%i" | find "%%i"', protocol, ip, port)
+    else
+        -- Linux 命令
+        cmd = string.format('lsof -i %s@%s:%d', protocol, ip, port)
+    end
+    
+    local process = io.popen(cmd)
+    local result = process:read('*a')
+    process:close()
+    
+    local header = string.format('=== Query Result for %s %s (%s port %d) ===\n', 
+                               description, ip, protocol, port)
+    
+    append_to_window(header .. result)
+end
+
+local function query_port_program(finfo)
+    local frame = get_packet_info(finfo)
+    if not frame or not frame.protocol then
+        append_to_window('\nError: Invalid packet selection')
+        return
+    end
+
+    local is_src_local, is_dst_local = check_local_ips(frame.src_ip, frame.dst_ip)
+
+    if is_src_local and is_dst_local then
+        query_port_program_1(frame.src_port, frame.protocol, 'Source', frame.src_ip)
+        query_port_program_1(frame.dst_port, frame.protocol, 'Destination', frame.dst_ip)
+    elseif is_src_local then
+        query_port_program_1(frame.src_port, frame.protocol, 'Source', frame.src_ip)
+    elseif is_dst_local then
+        query_port_program_1(frame.dst_port, frame.protocol, 'Destination', frame.dst_ip)
+    else
+        append_to_window('\nError: No local IP found!')
+    end
+end
+
+register_packet_menu('Query Port Program', query_port_program)
+#+end_src
+* secrets                                                             :crypt:
+-----BEGIN PGP MESSAGE-----
+
+hF4DhteJcpg+xyQSAQdAVpsv4pZS4Yh+vsnzL3D+8oFRTBoR4mQ7SUeiMQASu18w
+vYUy/yzRLZkSrfXRTLptRSwAaSiGK9e6RRfjkCUv6IPoZqpB8fni0jOvsyrQ73F8
+1IUBCQIQPFjK1kwURVZJeYIaI5fpec6z4aAiT1/Es4znsOKRvv6fUDfwjX/1U0di
+b1FVb4cubtB4a2y5qNuXOjf0jvUa5Ii5bqzCu8K6du60MAYAsUjz0JKpMPB8E8fs
+Ffp0eoVAmEstibR009UvUQXX/2x8hvGb95zmFY3x/EeDx7dMsDa+
+=Zntk
+-----END PGP MESSAGE-----
+
+* local variables
+
+# Local Variables:
+# buffer-auto-save-file-name: nil
+# End:
