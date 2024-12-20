@@ -23,13 +23,7 @@
 * plugins
 ** socks5 proxy
 Check which domains pass through the proxy port.
-#+name: define-lua-variable
-#+begin_src elisp
-value
-#+end_src
-
-#+begin_src lua :tangle "_tangle/lua-plugins/socks5.lua" :mkdirp t
-local proxy_port = <<define-lua-variable(value=(my/org-table-select "%d,1" "key-value-pair" ",0" "proxy-port"))>>
+#+begin_src lua :tangle "_tangle/lua-plugins/socks5.lua" :mkdirp t :var proxy_port=(my/org-table-select "%d,1" "key-value-pair" ",0" "proxy-port")
 local socks5 = Proto("socks5", "SOCKS5")
 
 local f_socks5_domain_name = ProtoField.string("socks5.domain_name", "SOCKS5 Domain Name")
