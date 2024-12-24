@@ -29,11 +29,11 @@
 *** capture
 https://wiki.wireshark.org/CaptureFilters
 #+name: capture-filters
-| name         | filter                                                                                                                                                                           | arg                                                            |
-|--------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------|
-| proxies      | port %s && (tcp[(((tcp[12:1] & 0xf0) >> 2)) + 0:4] = 0x05010003) or (tcp[(((tcp[12:1] & 0xf0) >> 2)) + 0:4] = 0x434f4e4e && tcp[(((tcp[12:1] & 0xf0) >> 2)) + 4:4] = 0x45435420) | (my/org-table-select "%d,1" "key-value-pair" ",0" "proxy-port") |
-| socks5-proxy | port %s && (tcp[(((tcp[12:1] & 0xf0) >> 2)) + 0:4] = 0x05010003)                                                                                                                 | (my/org-table-select "%d,1" "key-value-pair" ",0" "proxy-port") |
-| http-proxy   | port %s && (tcp[(((tcp[12:1] & 0xf0) >> 2)) + 0:4] = 0x434f4e4e && tcp[(((tcp[12:1] & 0xf0) >> 2)) + 4:4] = 0x45435420)                                                          | (my/org-table-select "%d,1" "key-value-pair" ",0" "proxy-port") |
+| name         | filter                                                                                                                                                                               | arg                                                             |
+|--------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------|
+| proxies      | dst port %s && (tcp[(((tcp[12:1] & 0xf0) >> 2)) + 0:4] = 0x05010003) or (tcp[(((tcp[12:1] & 0xf0) >> 2)) + 0:4] = 0x434f4e4e && tcp[(((tcp[12:1] & 0xf0) >> 2)) + 4:4] = 0x45435420) | (my/org-table-select "%d,1" "key-value-pair" ",0" "proxy-port") |
+| socks5-proxy | dst port %s && (tcp[(((tcp[12:1] & 0xf0) >> 2)) + 0:4] = 0x05010003)                                                                                                                 | (my/org-table-select "%d,1" "key-value-pair" ",0" "proxy-port") |
+| http-proxy   | dst port %s && (tcp[(((tcp[12:1] & 0xf0) >> 2)) + 0:4] = 0x434f4e4e && tcp[(((tcp[12:1] & 0xf0) >> 2)) + 4:4] = 0x45435420)                                                          | (my/org-table-select "%d,1" "key-value-pair" ",0" "proxy-port") |
 
 *** display
 https://wiki.wireshark.org/DisplayFilters
