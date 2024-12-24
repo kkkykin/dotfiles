@@ -14,15 +14,17 @@
                  ('gnu/linux (expand-file-name "~/.local/lib/wireshark/plugins/"))
                  ('windows-nt (expand-file-name "plugins/" (getenv "WIRESHARK_DATA_DIR"))))))
   (dolist (f (directory-files "_tangle/lua-plugins" t "^[^.]" t))
-    (make-symbolic-link f lua-dir t)))
+    (unless (file-symlink-p
+             (expand-file-name (file-name-nondirectory f) lua-dir))
+      (make-symbolic-link f lua-dir t))))
 
 (org-babel-remove-result-one-or-many '(4))
 (save-buffer)
 #+end_src
 
 * launcher
-** proxies
-#+call: wireshark-launcher[](name="proxies", interface=(if (eq system-type 'gnu/linux) "lo" "\\Device\\NPF_Loopback"), cfilter=(list "proxies"))[]
+#+name: cap-proxy
+#+call: wireshark-launcher[](name="proxies", interface=(if (eq system-type 'gnu/linux) "lo" "\\Device\\NPF_Loopback"), cfilter='("proxies"), pref=proxy-pref[], args='("-SX" "lua_script:_tangle/lua-scripts/socks5.lua" "-t" "a" "-N" ""))[]
 
 ** filters
 
@@ -53,6 +55,13 @@ https://unit42.paloaltonetworks.com/using-wireshark-display-filter-expressions/
 | gui.column.hidden | %s,%uS                                                                                                                                                   |
 | gui.column.format | "Time","%t","Source","%s","Sport","%uS","Destination","%d","Dport","%uD","Host","%Cus:http.host or tls.handshake.extensions_server_name:0:R","Info","%i" |
 
+#+name: proxy-pref
+| gui.column.format       | "No.","%m","Time","%t","Source","%uS","Protocol","%p","Host","%Cus:http.host or socks5.domain_name:0:R" |
+| gui.toolbar_main_show   | false                                                                                                   |
+| gui.filter_toolbar_show | false                                                                                                   |
+| gui.tree_view_show      | false                                                                                                   |
+| gui.statusbar_show      | false                                                                                                   |
+
 ** code
 https://www.wireshark.org/docs/wsug_html_chunked/ChCustCommandLine.html
 #+name: wireshark-launcher
@@ -77,7 +86,7 @@ https://www.wireshark.org/docs/wsug_html_chunked/ChCustCommandLine.html
 * plugins
 ** socks5 proxy
 Check which domains pass through the proxy port.
-#+begin_src lua :tangle "_tangle/lua-plugins/socks5.lua" :mkdirp t :var proxy_port=(my/org-table-select "%d,1" "key-value-pair" ",0" "proxy-port")
+#+begin_src lua :tangle "_tangle/lua-scripts/socks5.lua" :mkdirp t :var proxy_port=(my/org-table-select "%d,1" "key-value-pair" ",0" "proxy-port")
 local socks5 = Proto("socks5", "SOCKS5")
 
 local f_socks5_domain_name = ProtoField.string("socks5.domain_name", "SOCKS5 Domain Name")
@@ -107,7 +116,7 @@ local tcp_port = DissectorTable.get("tcp.port")
 tcp_port:add(proxy_port, socks5)
 #+end_src
 ** port query
-#+begin_src lua :tangle "_tangle/lua-plugins/port-query.lua"
+#+begin_src lua :tangle "_tangle/lua-plugins/port-query.lua" :mkdirp t
 local port_query_proto = Proto('port_query', 'Port Query Plugin')
 
 -- 全局变量存储窗口实例
