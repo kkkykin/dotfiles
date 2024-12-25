@@ -8,5 +8,5 @@ mitmproxy/*
 .dir-locals-2.el
 
 
-_tangle/
+**/_*
 TAGS
