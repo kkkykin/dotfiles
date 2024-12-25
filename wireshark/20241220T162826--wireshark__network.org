@@ -10,6 +10,8 @@
       org-confirm-babel-evaluate)
   (org-babel-tangle))
 
+(mkdir "_prefs" t)
+
 (let ((lua-dir (pcase system-type
                  ('gnu/linux (expand-file-name "~/.local/lib/wireshark/plugins/"))
                  ('windows-nt (expand-file-name "plugins/" (getenv "WIRESHARK_DATA_DIR"))))))
@@ -86,7 +88,7 @@ https://www.wireshark.org/docs/wsug_html_chunked/ChCustCommandLine.html
   (let ((pref (mapcan (lambda (o) (list "-o" (format "%s:%s" (car o) (cadr o)))) pref))
         (cfilter (build-filter cfilter "capture-filters[]"))
         (dfilter (build-filter dfilter "display-filters[]")))
-    (apply #'start-process (concat "wireshark-" name) nil (executable-find "wireshark") "-ki" interface "-f" cfilter "-Y" dfilter (append pref args))))
+    (apply #'start-process (concat "wireshark-" name) nil (executable-find "wireshark") "-P" "persconf:_prefs" "-ki" interface "-f" cfilter "-Y" dfilter (append pref args))))
 #+end_src
 
 * plugins
