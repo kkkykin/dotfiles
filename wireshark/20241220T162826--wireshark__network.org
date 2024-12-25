@@ -24,7 +24,11 @@
 
 * launcher
 #+name: cap-proxy
-#+call: wireshark-launcher[](name="proxies", interface=(if (eq system-type 'gnu/linux) "lo" "\\Device\\NPF_Loopback"), cfilter='("proxies"), pref=proxy-pref[], args='("-SX" "lua_script:_tangle/lua-scripts/socks5.lua" "-t" "a" "-N" ""))[]
+#+call: wireshark-launcher[](name="proxies", interface=(if (eq system-type 'gnu/linux) "lo" "\\Device\\NPF_Loopback"), cfilter='("proxies"), pref=proxy-pref[], args='("-SX" "lua_script:_tangle/lua-scripts/socks5.lua" "-t" "a" "-n" "--only-protocols" "frame,eth,ip,tcp,http,socks5"))[]
+
+** arguments
+*** only-protocols
+双击 frame 后在弹窗的各层协议右键，移动鼠标到 "apply as filter" 查看各层协议名。
 
 ** filters
 
@@ -57,8 +61,10 @@ https://unit42.paloaltonetworks.com/using-wireshark-display-filter-expressions/
 
 #+name: proxy-pref
 | gui.column.format       | "No.","%m","Time","%t","Source","%uS","Protocol","%p","Host","%Cus:http.host or socks5.domain_name:0:R" |
+| gui.packet_list_show    | true                                                                                                    |
 | gui.toolbar_main_show   | false                                                                                                   |
 | gui.filter_toolbar_show | false                                                                                                   |
+| gui.byte_view_show      | false                                                                                                   |
 | gui.tree_view_show      | false                                                                                                   |
 | gui.statusbar_show      | false                                                                                                   |
 
