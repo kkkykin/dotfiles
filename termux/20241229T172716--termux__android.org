@@ -1,0 +1,29 @@
+#+title:      termux
+#+date:       [2024-12-29 Sun 17:27]
+#+filetags:   :android:
+#+identifier: 20241229T172716
+
+* permissions
+
+** normal
+#+begin_src sh
+termux-setup-storage
+#+end_src
+
+** adb
+#+begin_src sh
+pm grant com.termux android.permission.DUMP
+#+end_src
+
+* cli
+:PROPERTIES:
+:header-args:sh: :shebang "#!/data/data/com.termux/files/usr/bin/env bash"
+:END:
+
+** screen-on-p
+https://www.reddit.com/r/termux/comments/11e2s3j/check_if_display_is_on_or_off/
+
+Check by exit code.
+#+begin_src sh :tangle "_tangle/screen-on-p.sh" :mkdirp t
+/system/bin/dumpsys deviceidle | grep -q "^  mScreenOn=true$"
+#+end_src
