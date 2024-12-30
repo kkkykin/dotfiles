@@ -3,6 +3,31 @@
 #+filetags:   :android:
 #+identifier: 20241229T172716
 
+* tangle
+#+begin_src elisp
+(org-babel-tangle)
+
+(dolist (bin (directory-files "_tangle/bin" t "^[^.]" t))
+  (make-symbolic-link
+   bin
+   (file-name-concat my/termux-root-directory
+                     "usr/bin"
+                     (file-name-nondirectory bin))
+   t))
+
+(let ((conf (expand-file-name "home/.termux/termux.properties"
+                              my/termux-root-directory)))
+  (rename-file (expand-file-name "_tangle/termux.properties") conf t))
+
+;; setup emacsclient
+(make-symbolic-link
+ (expand-file-name emacsclient-program-name
+                   "/data/data/org.gnu.emacs/lib")
+ (expand-file-name "usr/bin/emacsclient"
+                   my/termux-root-directory)
+ t)
+#+end_src
+
 * permissions
 
 ** normal
@@ -15,15 +40,22 @@ termux-setup-storage
 pm grant com.termux android.permission.DUMP
 #+end_src
 
+* properties
+#+begin_src conf :tangle (my/org-by-tangle-dir "termux.properties")
+allow-external-apps = true
+extra-keys = [[ESC, CTRL, ALT, LEFT, DOWN, UP, RIGHT, ENTER]]
+#+end_src
+
 * cli
 :PROPERTIES:
-:header-args:sh: :shebang "#!/data/data/com.termux/files/usr/bin/env bash"
+:header-args:sh: :shebang "#!/data/data/com.termux/files/usr/bin/env bash" :mkdirp t
+:tangle-dir: _tangle/bin
 :END:
 
 ** screen-on-p
 https://www.reddit.com/r/termux/comments/11e2s3j/check_if_display_is_on_or_off/
 
 Check by exit code.
-#+begin_src sh :tangle "_tangle/screen-on-p.sh" :mkdirp t
+#+begin_src sh :tangle (my/org-by-tangle-dir "screen-on-p")
 /system/bin/dumpsys deviceidle | grep -q "^  mScreenOn=true$"
 #+end_src
