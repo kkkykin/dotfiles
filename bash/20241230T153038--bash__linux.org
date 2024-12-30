@@ -82,7 +82,7 @@ check_home_network() {
 *** retroarch
 #+begin_src sh
 retroarch_sync_pc() {
-  if check_home_network && check_smb_connection; then
+  if check_home_network && check_smb_connection 'smb://192.168.0.110/retroarch-sync/1.txt'; then
     for dir in saves states; do
       local remote="retroarch-sync:retroarch-sync/${dir}"
       rclone_sync_dir "/storage/emulated/0/RetroArch" "$dir" "$remote"
