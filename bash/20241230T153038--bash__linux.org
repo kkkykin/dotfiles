@@ -1,0 +1,95 @@
+#+title:      bash
+#+date:       [2024-12-30 Mon 15:30]
+#+filetags:   :linux:
+#+identifier: 20241230T153038
+#+property: header-args :mkdirp t
+
+* tangle
+#+begin_src elisp
+(org-babel-tangle)
+
+(let ((rc (expand-file-name "home/.bashrc" my/termux-root-directory)))
+  (unless (file-symlink-p rc)
+    (rename-file rc (concat rc ".bak")))
+  (make-symbolic-link (expand-file-name "_tangle/rc/general") rc t))
+#+end_src
+
+* rc
+** general
+:PROPERTIES:
+:header-args:sh: :tangle "_tangle/rc/general"
+:END:
+
+*** gpg
+#+begin_src sh
+SSH_AUTH_SOCK="$(gpgconf --list-dirs agent-ssh-socket)"
+GPG_TTY="$(tty)"
+
+export SSH_AUTH_SOCK GPG_TTY
+
+gpg-connect-agent updatestartuptty /bye > /dev/null
+#+end_src
+
+*** smb
+#+begin_src sh
+check_smb_connection() {
+  local uri=$1
+  curl "$uri" -m1 >/dev/null 2>&1
+  [ $? -eq 67 ]
+}
+#+end_src
+
+*** rclone
+#+begin_src sh
+rclone_sync_dir() {
+  local parent=$1
+  local file=$2
+  local remote=$3
+  env -C "$parent" rclone bisync \
+    --remove-empty-dir \
+    --conflict-resolve newer \
+    "$file" "$remote"
+}
+#+end_src
+
+*** by-device
+#+begin_src sh :var device_rc_file=(pcase system-type ('android (expand-file-name "_tangle/rc/termux")) (_ "/dev/null"))
+. "$device_rc_file"
+#+end_src
+
+** termux
+:PROPERTIES:
+:header-args:sh: :tangle "_tangle/rc/termux"
+:END:
+
+*** splash-screen
+#+begin_src sh
+ifconfig 2>/dev/null | grep 255.255.255.0
+#+end_src
+
+*** emacs
+#+begin_src sh :var EMACS_SOCKET_NAME=(format "/data/data/org.gnu.emacs/cache/emacs10%s/server" (substring user-login-name -3))
+export EMACS_SOCKET_NAME
+#+end_src
+
+*** network
+#+begin_src sh
+check_home_network() {
+  termux-wifi-connectioninfo  | grep -q '\(pppoppt\|ppptppo\)'
+}
+#+end_src
+
+*** retroarch
+#+begin_src sh
+retroarch_sync_pc() {
+  if check_home_network && check_smb_connection; then
+    for dir in saves states; do
+      local remote="retroarch-sync:retroarch-sync/${dir}"
+      rclone_sync_dir "/storage/emulated/0/RetroArch" "$dir" "$remote"
+    done
+  fi
+}
+
+retroarch_sync_pc
+#+end_src
+
