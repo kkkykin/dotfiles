@@ -46,7 +46,7 @@ rclone_sync_dir() {
   local file=$2
   local remote=$3
   env -C "$parent" rclone bisync \
-    --remove-empty-dir \
+    --remove-empty-dirs \
     --conflict-resolve newer \
     "$file" "$remote"
 }
