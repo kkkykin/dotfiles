@@ -1,0 +1,35 @@
+#+title:      git
+#+date:       [2024-12-31 Tue 15:15]
+#+filetags:   :base:
+#+identifier: 20241231T151517
+
+* tangle
+#+begin_src elisp
+(setq-local my/local-plstore (plstore-open "git.pls"))
+
+(org-babel-tangle)
+
+(let ((conf (expand-file-name "~/.gitconfig")))
+  (unless (file-symlink-p conf)
+    (rename-file conf (concat conf ".bak"))
+    (make-symbolic-link (expand-file-name "_tangle/gitconfig") conf)))
+
+(plstore-close my/local-plstore)
+#+end_src
+
+* config
+#+begin_src conf :tangle (my/org-by-tangle-dir "gitconfig") :mkdirp t :var proxy=(plist-get (cdr (plstore-get my/local-plstore "proxy")) :proxy) host=(plist-get (cdr (plstore-get my/local-plstore "proxy")) :host)
+[user]
+    email = kkkykin@foxmail.com
+    name = kkky
+[init]
+    defaultBranch = main
+[diff "gpg"]
+    textconv = gpg -d -q
+[merge]
+    tool = vimdiff
+[pull]
+	ff = only
+[http "https://$host"]
+	proxy = $proxy
+#+end_src
