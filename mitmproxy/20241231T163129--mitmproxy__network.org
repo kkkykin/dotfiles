@@ -1,0 +1,79 @@
+#+title:      mitmproxy
+#+date:       [2024-12-31 Tue 16:31]
+#+filetags:   :network:
+#+identifier: 20241231T163129
+
+* tangle
+#+begin_src elisp
+(org-babel-tangle)
+
+(make-symbolic-link
+ (expand-file-name "_tangle/scripts")
+ (expand-file-name "~/.mitmproxy/scripts")
+ t)
+#+end_src
+
+* plugins
+
+** scripts
+:PROPERTIES:
+:tangle-dir: _tangle/scripts
+:END:
+
+*** hosts-mapper
+#+begin_src python :tangle (my/org-by-tangle-dir "hosts-mapper.py") :mkdirp t
+from mitmproxy import ctx
+import json
+import os
+
+class HostsMapper:
+    def __init__(self):
+        self.hosts_map = {}
+        self.load_hosts_config()
+
+    def load_hosts_config(self):
+        """Load hosts mapping from hosts.json file"""
+        config_path = os.path.join(os.path.dirname(__file__), 'opts', 'hosts.json')
+        try:
+            with open(config_path, 'r') as f:
+                self.hosts_map = json.load(f)
+            ctx.log.info(f"Loaded {len(self.hosts_map)} host mappings")
+        except FileNotFoundError:
+            ctx.log.warn('hosts.json not found, creating example config')
+            example_config = {
+                'example.com': '93.184.216.34',
+                'test.local': '127.0.0.1'
+            }
+            with open(config_path, 'w') as f:
+                json.dump(example_config, f, indent=2)
+            self.hosts_map = example_config
+
+    def running(self):
+        """Called after the script is loaded"""
+        ctx.options.ssl_insecure = True
+        ctx.log.info('SSL verification disabled')
+
+    def request(self, flow):
+        """Process each request and modify host if needed"""
+        host = flow.request.pretty_host
+        if host in self.hosts_map:
+            original_host = flow.request.host
+            mapped_ip = self.hosts_map[host]
+            flow.request.host = mapped_ip
+            flow.request.headers['Host'] = original_host
+            ctx.log.info(f"Mapping {original_host} to {mapped_ip}")
+
+addons = [HostsMapper()]
+#+end_src
+
+** opts 
+:PROPERTIES:
+:tangle-dir: _tangle/scripts/opts
+:END:
+
+*** hosts
+#+begin_src json :tangle (my/org-by-tangle-dir "hosts.json") :mkdirp t
+{
+  "baidu.com": "110.242.68.66"
+}
+#+end_src
