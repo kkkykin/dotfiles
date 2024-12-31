@@ -15,22 +15,23 @@
 #+end_src
 
 * rc
+:PROPERTIES:
+:tangle-dir: _tangle/rc
+:END:
 ** general
 :PROPERTIES:
-:header-args:sh: :tangle "_tangle/rc/general"
+:header-args:sh: :tangle (my/org-by-tangle-dir "general")
 :END:
 
-*** gpg
+*** non-interactive
+
+**** gpg
 #+begin_src sh
 SSH_AUTH_SOCK="$(gpgconf --list-dirs agent-ssh-socket)"
-GPG_TTY="$(tty)"
-
-export SSH_AUTH_SOCK GPG_TTY
-
-gpg-connect-agent updatestartuptty /bye > /dev/null
+export SSH_AUTH_SOCK
 #+end_src
 
-*** smb
+**** smb
 #+begin_src sh
 check_smb_connection() {
   local uri=$1
@@ -39,7 +40,7 @@ check_smb_connection() {
 }
 #+end_src
 
-*** rclone
+**** rclone
 #+begin_src sh
 rclone_sync_dir() {
   local parent=$1
@@ -52,35 +53,50 @@ rclone_sync_dir() {
 }
 #+end_src
 
-*** by-device
-#+begin_src sh :var device_rc_file=(pcase system-type ('android (expand-file-name "_tangle/rc/termux")) (_ "/dev/null"))
+**** by-device
+#+begin_src sh :var device_rc_file=(expand-file-name (pcase system-type ('android "termux") (_ "/dev/null")) "_tangle/rc")
 . "$device_rc_file"
 #+end_src
 
+*** interactive
+
+#+begin_src sh
+[[ $- == *i* ]] || return
+#+end_src
+
+**** gpg
+#+begin_src sh
+GPG_TTY="$(tty)"
+export GPG_TTY
+gpg-connect-agent updatestartuptty /bye > /dev/null
+#+end_src
+
+**** by-device
+#+begin_src sh
+. "${device_rc_file}_i"
+#+end_src
+
 ** termux
-:PROPERTIES:
-:header-args:sh: :tangle "_tangle/rc/termux"
-:END:
 
 *** splash-screen
-#+begin_src sh
+#+begin_src sh :tangle (my/org-by-tangle-dir "termux_i")
 ifconfig 2>/dev/null | grep 255.255.255.0
 #+end_src
 
 *** emacs
-#+begin_src sh :var EMACS_SOCKET_NAME=(format "/data/data/org.gnu.emacs/cache/emacs10%s/server" (substring user-login-name -3))
+#+begin_src sh :tangle (my/org-by-tangle-dir "termux") :var EMACS_SOCKET_NAME=(format "/data/data/org.gnu.emacs/cache/emacs10%s/server" (substring user-login-name -3))
 export EMACS_SOCKET_NAME
 #+end_src
 
 *** network
-#+begin_src sh
+#+begin_src sh :tangle (my/org-by-tangle-dir "termux") 
 check_home_network() {
   termux-wifi-connectioninfo  | grep -q '\(pppoppt\|ppptppo\)'
 }
 #+end_src
 
 *** retroarch
-#+begin_src sh
+#+begin_src sh :tangle (my/org-by-tangle-dir "termux")
 retroarch_sync_pc() {
   if check_home_network && check_smb_connection 'smb://192.168.0.110/retroarch-sync/1.txt'; then
     for dir in saves states; do
@@ -89,7 +105,9 @@ retroarch_sync_pc() {
     done
   fi
 }
+#+end_src
 
+#+begin_src sh :tangle (my/org-by-tangle-dir "termux_i")
 retroarch_sync_pc
 #+end_src
 
