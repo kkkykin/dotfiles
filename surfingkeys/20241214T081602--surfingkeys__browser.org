@@ -239,6 +239,7 @@ Front.registerInlineQuery({
 |-------+----------------+--------------------------------------------------------------------------------------|
 | a     | EmacsWiki      | https://www.baidu.com/s?wd=site%3Aemacswiki.org%20                                   |
 | c     | Swisscows      | https://swisscows.com/en/web?region=iv&query=                                        |
+| l     | Bilibili       | https://search.bilibili.com/all?keyword=                                             |
 | n     | NixHomeManager | https://mipmip.github.io/home-manager-option-search/?query=                          |
 | N     | NixPackages    | https://search.nixos.org/packages?from=0&size=50&sort=relevance&type=packages&query= |
 | j     | Mojeek         | https://www.mojeek.com/search?q=                                                     |
