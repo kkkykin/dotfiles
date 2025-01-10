@@ -8,7 +8,7 @@
 #+begin_src elisp
 (org-babel-tangle)
 
-(let ((rc (expand-file-name "home/.bashrc" my/termux-root-directory)))
+(let ((rc (expand-file-name "home/.bashrc" zr-termux-root-directory)))
   (unless (file-symlink-p rc)
     (rename-file rc (concat rc ".bak")))
   (make-symbolic-link (expand-file-name "_tangle/rc/general") rc t))
@@ -20,7 +20,7 @@
 :END:
 ** general
 :PROPERTIES:
-:header-args:sh: :tangle (my/org-by-tangle-dir "general")
+:header-args:sh: :tangle (zr-org-by-tangle-dir "general")
 :END:
 
 *** non-interactive
@@ -79,24 +79,24 @@ gpg-connect-agent updatestartuptty /bye > /dev/null
 ** termux
 
 *** splash-screen
-#+begin_src sh :tangle (my/org-by-tangle-dir "termux_i")
+#+begin_src sh :tangle (zr-org-by-tangle-dir "termux_i")
 ifconfig 2>/dev/null | grep 255.255.255.0
 #+end_src
 
 *** emacs
-#+begin_src sh :tangle (my/org-by-tangle-dir "termux") :var EMACS_SOCKET_NAME=(format "/data/data/org.gnu.emacs/cache/emacs10%s/server" (substring user-login-name -3))
+#+begin_src sh :tangle (zr-org-by-tangle-dir "termux") :var EMACS_SOCKET_NAME=(format "/data/data/org.gnu.emacs/cache/emacs10%s/server" (substring user-login-name -3))
 export EMACS_SOCKET_NAME
 #+end_src
 
 *** network
-#+begin_src sh :tangle (my/org-by-tangle-dir "termux") 
+#+begin_src sh :tangle (zr-org-by-tangle-dir "termux") 
 check_home_network() {
   termux-wifi-connectioninfo  | grep -q '\(pppoppt\|ppptppo\)'
 }
 #+end_src
 
 *** retroarch
-#+begin_src sh :tangle (my/org-by-tangle-dir "termux")
+#+begin_src sh :tangle (zr-org-by-tangle-dir "termux")
 retroarch_sync_pc() {
   if check_home_network && check_smb_connection 'smb://192.168.0.110/retroarch-sync/1.txt'; then
     for dir in saves states; do
@@ -107,7 +107,7 @@ retroarch_sync_pc() {
 }
 #+end_src
 
-#+begin_src sh :tangle (my/org-by-tangle-dir "termux_i")
+#+begin_src sh :tangle (zr-org-by-tangle-dir "termux_i")
 retroarch_sync_pc
 #+end_src
 

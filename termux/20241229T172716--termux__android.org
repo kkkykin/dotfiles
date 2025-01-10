@@ -10,13 +10,13 @@
 (dolist (bin (directory-files "_tangle/bin" t "^[^.]" t))
   (make-symbolic-link
    bin
-   (file-name-concat my/termux-root-directory
+   (file-name-concat zr-termux-root-directory
                      "usr/bin"
                      (file-name-nondirectory bin))
    t))
 
 (let ((conf (expand-file-name "home/.termux/termux.properties"
-                              my/termux-root-directory)))
+                              zr-termux-root-directory)))
   (rename-file (expand-file-name "_tangle/termux.properties") conf t))
 
 ;; setup emacsclient
@@ -24,7 +24,7 @@
  (expand-file-name emacsclient-program-name
                    "/data/data/org.gnu.emacs/lib")
  (expand-file-name "usr/bin/emacsclient"
-                   my/termux-root-directory)
+                   zr-termux-root-directory)
  t)
 #+end_src
 
@@ -41,7 +41,7 @@ pm grant com.termux android.permission.DUMP
 #+end_src
 
 * properties
-#+begin_src conf :tangle (my/org-by-tangle-dir "termux.properties")
+#+begin_src conf :tangle (zr-org-by-tangle-dir "termux.properties")
 allow-external-apps = true
 extra-keys = [[ESC, CTRL, ALT, LEFT, DOWN, UP, RIGHT, ENTER]]
 #+end_src
@@ -56,6 +56,6 @@ extra-keys = [[ESC, CTRL, ALT, LEFT, DOWN, UP, RIGHT, ENTER]]
 https://www.reddit.com/r/termux/comments/11e2s3j/check_if_display_is_on_or_off/
 
 Check by exit code.
-#+begin_src sh :tangle (my/org-by-tangle-dir "screen-on-p")
+#+begin_src sh :tangle (zr-org-by-tangle-dir "screen-on-p")
 /system/bin/dumpsys deviceidle | grep -q "^  mScreenOn=true$"
 #+end_src

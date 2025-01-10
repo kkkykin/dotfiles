@@ -39,9 +39,9 @@ https://wiki.wireshark.org/CaptureFilters
 #+name: capture-filters
 | name         | filter                                                                                                                                                                               | arg                                                             |
 |--------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------|
-| proxies      | dst port %s && (tcp[(((tcp[12:1] & 0xf0) >> 2)) + 0:4] = 0x05010003) or (tcp[(((tcp[12:1] & 0xf0) >> 2)) + 0:4] = 0x434f4e4e && tcp[(((tcp[12:1] & 0xf0) >> 2)) + 4:4] = 0x45435420) | (my/org-table-select "%d,1" "key-value-pair" ",0" "proxy-port") |
-| socks5-proxy | dst port %s && (tcp[(((tcp[12:1] & 0xf0) >> 2)) + 0:4] = 0x05010003)                                                                                                                 | (my/org-table-select "%d,1" "key-value-pair" ",0" "proxy-port") |
-| http-proxy   | dst port %s && (tcp[(((tcp[12:1] & 0xf0) >> 2)) + 0:4] = 0x434f4e4e && tcp[(((tcp[12:1] & 0xf0) >> 2)) + 4:4] = 0x45435420)                                                          | (my/org-table-select "%d,1" "key-value-pair" ",0" "proxy-port") |
+| proxies      | dst port %s && (tcp[(((tcp[12:1] & 0xf0) >> 2)) + 0:4] = 0x05010003) or (tcp[(((tcp[12:1] & 0xf0) >> 2)) + 0:4] = 0x434f4e4e && tcp[(((tcp[12:1] & 0xf0) >> 2)) + 4:4] = 0x45435420) | (zr-org-table-select "%d,1" "key-value-pair" ",0" "proxy-port") |
+| socks5-proxy | dst port %s && (tcp[(((tcp[12:1] & 0xf0) >> 2)) + 0:4] = 0x05010003)                                                                                                                 | (zr-org-table-select "%d,1" "key-value-pair" ",0" "proxy-port") |
+| http-proxy   | dst port %s && (tcp[(((tcp[12:1] & 0xf0) >> 2)) + 0:4] = 0x434f4e4e && tcp[(((tcp[12:1] & 0xf0) >> 2)) + 4:4] = 0x45435420)                                                          | (zr-org-table-select "%d,1" "key-value-pair" ",0" "proxy-port") |
 
 *** display
 https://wiki.wireshark.org/DisplayFilters
@@ -94,7 +94,7 @@ https://www.wireshark.org/docs/wsug_html_chunked/ChCustCommandLine.html
 * plugins
 ** socks5 proxy
 Check which domains pass through the proxy port.
-#+begin_src lua :tangle "_tangle/lua-scripts/socks5.lua" :mkdirp t :var proxy_port=(my/org-table-select "%d,1" "key-value-pair" ",0" "proxy-port")
+#+begin_src lua :tangle "_tangle/lua-scripts/socks5.lua" :mkdirp t :var proxy_port=(zr-org-table-select "%d,1" "key-value-pair" ",0" "proxy-port")
 local socks5 = Proto("socks5", "SOCKS5")
 
 local f_socks5_domain_name = ProtoField.string("socks5.domain_name", "SOCKS5 Domain Name")

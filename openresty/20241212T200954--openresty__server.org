@@ -13,7 +13,7 @@
 (let (org-confirm-babel-evaluate
       org-babel-pre-tangle-hook
       (exe (executable-find "openresty")))
-  (my/org-babel-execute-named-src-block
+  (zr-org-babel-execute-named-src-block
    "expand-serve-files" '((:noweb . "no") (:results . "value replace raw")))
   (dolist (f (org-babel-tangle))
     (let* ((r (file-relative-name f "_tangle"))
@@ -42,7 +42,7 @@
 
 * conf
 ** main
-#+header: :var listen=(my/org-table-select "%d,1" "secrets" ",0" "http listen")
+#+header: :var listen=(zr-org-table-select "%d,1" "secrets" ",0" "http listen")
 #+begin_src conf :tangle "_tangle/conf/nginx.conf" :mkdirp yes
 worker_processes  1;
 
@@ -88,7 +88,7 @@ http {
 ** server
 
 *** pac file
-#+header: :var location=(my/org-table-select "%d,1" "secrets" ",0" "pac file") alias=(expand-file-name (my/org-table-select "%d,2" "secrets" ",0" "pac file"))
+#+header: :var location=(zr-org-table-select "%d,1" "secrets" ",0" "pac file") alias=(expand-file-name (zr-org-table-select "%d,2" "secrets" ",0" "pac file"))
 #+begin_src conf :tangle "_tangle/conf/sites-enabled/pac.conf.3" :mkdirp t
 location $location {
     alias $alias;
@@ -209,7 +209,7 @@ end
 
 #+header: :var auth_key=(auth-source-pick-first-password :host "mpv.nginx.localhost") allowd_headers="url, args, authorization"
 #+begin_src lua
-local allowd_origin = {<<expand-lua-table(value=(my/org-table-select "%d,1:-1" "s-cors" ",0" "mpv"))>>}
+local allowd_origin = {<<expand-lua-table(value=(zr-org-table-select "%d,1:-1" "s-cors" ",0" "mpv"))>>}
 <<check-auth-and-origin>>
 
 local url = ngx.req.get_headers()['url']

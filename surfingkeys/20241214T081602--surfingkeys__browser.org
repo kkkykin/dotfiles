@@ -12,7 +12,7 @@
       (dir "_tangle"))
   (make-directory dir t)  
   (dolist (b '())
-    (my/org-babel-execute-named-src-block
+    (zr-org-babel-execute-named-src-block
      b '((:results . "raw replace value"))))
   (org-babel-tangle nil (expand-file-name "default.js" dir) "^js$")
   (org-babel-tangle))

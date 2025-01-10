@@ -21,7 +21,7 @@
 :END:
 
 *** hosts-mapper
-#+begin_src python :tangle (my/org-by-tangle-dir "hosts-mapper.py") :mkdirp t
+#+begin_src python :tangle (zr-org-by-tangle-dir "hosts-mapper.py") :mkdirp t
 from mitmproxy import ctx
 import json
 import os
@@ -72,7 +72,7 @@ addons = [HostsMapper()]
 :END:
 
 *** hosts
-#+begin_src json :tangle (my/org-by-tangle-dir "hosts.json") :mkdirp t
+#+begin_src json :tangle (zr-org-by-tangle-dir "hosts.json") :mkdirp t
 {
   "baidu.com": "110.242.68.66"
 }

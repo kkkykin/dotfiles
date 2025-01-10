@@ -5,7 +5,7 @@
 
 * tangle
 #+begin_src elisp
-(setq-local my/local-plstore (plstore-open "git.pls"))
+(setq-local zr-local-plstore (plstore-open "git.pls"))
 
 (org-babel-tangle)
 
@@ -14,11 +14,11 @@
     (rename-file conf (concat conf ".bak"))
     (make-symbolic-link (expand-file-name "_tangle/gitconfig") conf)))
 
-(plstore-close my/local-plstore)
+(plstore-close zr-local-plstore)
 #+end_src
 
 * config
-#+begin_src conf :tangle (my/org-by-tangle-dir "gitconfig") :mkdirp t :var proxy=(plist-get (cdr (plstore-get my/local-plstore "proxy")) :proxy) host=(plist-get (cdr (plstore-get my/local-plstore "proxy")) :host)
+#+begin_src conf :tangle (zr-org-by-tangle-dir "gitconfig") :mkdirp t :var proxy=(plist-get (cdr (plstore-get zr-local-plstore "proxy")) :proxy) host=(plist-get (cdr (plstore-get zr-local-plstore "proxy")) :host)
 [user]
     email = kkkykin@foxmail.com
     name = kkky
