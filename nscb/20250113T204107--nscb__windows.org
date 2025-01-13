@@ -1,0 +1,26 @@
+#+title:      nscb
+#+date:       [2025-01-13 Mon 20:41]
+#+filetags:   :windows:
+#+identifier: 20250113T204107
+#+property: header-args :var scoop-dir=(substitute-in-file-name "$USERPROFILE/scoop/apps")
+
+* tangle
+#+begin_src elisp
+(let* ((nscb-dir (expand-file-name "nscb/current" scoop-dir))
+       (conf (expand-file-name "zconfig/NSCB_options.cmd" nscb-dir))
+       (tg-f (car (org-babel-tangle)))
+       (key (expand-file-name "ztools/keys.txt" nscb-dir)))
+  (unless (file-newer-than-file-p conf (expand-file-name "NSCB.bat" nscb-dir))
+    (write-region (format "\ncall \"%s\"" tg-f) nil conf t))
+  (unless (file-symlink-p key)
+    (make-symbolic-link (expand-file-name "ryujinx/current/portable/system/prod.keys" scoop-dir)
+                        key t)))
+#+end_src
+
+* config
+#+attr_babel: :id 6537b2e6-41e0-4d4a-a716-ece4e7f837be
+#+begin_src bat :tangle (zr-org-by-tangle-dir "config.cmd") :mkdirp t
+set "vrepack=xci"
+set "va_exit=true"
+set "fold_output=%cd%"
+#+end_src
