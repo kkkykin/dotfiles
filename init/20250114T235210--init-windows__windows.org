@@ -1,0 +1,16 @@
+#+title:      init-windows
+#+date:       [2025-01-14 Tue 23:52]
+#+filetags:   :windows:
+#+identifier: 20250114T235210
+
+* Service
+
+** emacs
+#+begin_src org :eval no :var emacs=(concat (getenv "userprofile") "\\scoop\\shims\\runemacs.exe") initd=(expand-file-name "../../.emacs.d") user=(concat user-login-name)
+schtasks /create /ru $user /it /sc onlogon /tn "$user\emacs" /tr "'$emacs' '--daemon' '--init-directory=$initd'" /rl highest
+#+end_src
+
+** ahk
+#+begin_src org :eval no :var ahk=(concat (getenv "userprofile") "\\scoop\\shims\\autohotkey.exe") script=(expand-file-name "../ahk/default.ahk") user=(concat user-login-name)
+schtasks /create /ru $user /it /sc onlogon /tn "$user\ahk" /tr "'$ahk' /script '$script'" /rl highest
+#+end_src
