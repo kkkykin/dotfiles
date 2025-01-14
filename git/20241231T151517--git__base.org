@@ -11,13 +11,15 @@
 
 (let ((conf (expand-file-name "~/.gitconfig")))
   (unless (file-symlink-p conf)
-    (rename-file conf (concat conf ".bak"))
+    (when (file-exists-p conf)
+      (rename-file conf (concat conf ".bak")))
     (make-symbolic-link (expand-file-name "_tangle/gitconfig") conf)))
 
 (plstore-close zr-local-plstore)
 #+end_src
 
 * config
+#+attr_babel: :id 854459db-7348-41a9-ac8c-d6a2388f759f
 #+begin_src conf :tangle (zr-org-by-tangle-dir "gitconfig") :mkdirp t :var proxy=(plist-get (cdr (plstore-get zr-local-plstore "proxy")) :proxy) host=(plist-get (cdr (plstore-get zr-local-plstore "proxy")) :host)
 [user]
     email = kkkykin@foxmail.com
