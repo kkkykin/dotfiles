@@ -4,13 +4,32 @@
 #+identifier: 20250114T235210
 
 * Service
+#+name: services
+| name  | prog           | args                                                                            | task-args |
+|-------+----------------+---------------------------------------------------------------------------------+-----------|
+| emacs | runemacs.exe   | (format "'--daemon' '--init-directory=%s'" (expand-file-name "../../.emacs.d")) |           |
+| ahk   | autohotkey.exe | (format "'/script' '%s'" (expand-file-name "../ahk/default.ahk"))               |           |
 
-** emacs
-#+begin_src org :eval no :var emacs=(concat (getenv "userprofile") "\\scoop\\shims\\runemacs.exe") initd=(expand-file-name "../../.emacs.d") user=(concat user-login-name)
-schtasks /create /ru $user /it /sc onlogon /tn "$user\emacs" /tr "'$emacs' '--daemon' '--init-directory=$initd'" /rl highest
+#+begin_src elisp :var cmd=create-serv-cmd()
+(let ((cmd-file (expand-file-name "_output/create-service.cmd")))
+  (make-directory (file-name-directory cmd-file) t)
+  (write-region cmd nil cmd-file)
+  (kill-new cmd-file))
 #+end_src
 
-** ahk
-#+begin_src org :eval no :var ahk=(concat (getenv "userprofile") "\\scoop\\shims\\autohotkey.exe") script=(expand-file-name "../ahk/default.ahk") user=(concat user-login-name)
-schtasks /create /ru $user /it /sc onlogon /tn "$user\ahk" /tr "'$ahk' /script '$script'" /rl highest
+#+name: create-serv-cmd
+#+begin_src elisp :var services=services[]
+(mapconcat
+ (lambda (s)
+   (pcase-let ((`(,name ,prog ,args ,task-args) s))
+     (format "C:\\Windows\\System32\\schtasks.exe /create /ru %s /it /sc onlogon /tn \"%s\" /tr \"'%s' %s\" %s"
+             user-login-name
+             name
+             (if (file-name-absolute-p prog) prog
+               (concat (getenv "userprofile") "\\scoop\\shims\\" prog))
+             (if (string-match-p (rx bos ?( (+ anychar) ?) eos) args)
+                 (eval (car (read-from-string args)))
+               args)
+             task-args)))
+ services "\n")
 #+end_src
