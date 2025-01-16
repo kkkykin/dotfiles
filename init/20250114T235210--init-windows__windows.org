@@ -23,11 +23,6 @@ cd %USERPROFILE%
 start /b runemacs.exe --daemon "--init-directory=%initd%" -l "%profileel%"
 #+end_src
 
-#+attr_babel: :id 78e7f59c-62ab-4205-998f-c55b70b56e72
-#+begin_src bat
-start /b gpgconf.exe --launch gpg-agent
-#+end_src
-
 #+attr_babel: :id bb974f73-f04e-41da-91f2-49f8570a3c7e
 #+begin_src bat :var rclone-user=(plist-get zr-local-rclone-secrets :user) rclone-pass=(auth-info-password zr-local-rclone-secrets)
 start /b rclone rcd "--rc-user=%rclone-user%" "--rc-pass=%rclone-pass%" --rc-addr=127.0.0.1:5572 --no-console
@@ -38,7 +33,7 @@ start /b rclone rcd "--rc-user=%rclone-user%" "--rc-pass=%rclone-pass%" --rc-add
 start /b autohotkey /script "%ahk-script%"
 #+end_src
 
-** trojan
+*** trojan
 :PROPERTIES:
 :header-args: :var trojan-dir=(substitute-in-file-name "$USERPROFILE/scoop/app/trojan-go")
 :END:
@@ -56,13 +51,18 @@ start /b autohotkey /script "%ahk-script%"
 
 #+attr_babel: :id 8f658dff-c9ab-4de7-88b5-6e0f2ee7583c
 #+begin_src bat :prologue "SETLOCAL\ntimeout /t 2 /nobreak >nul" :epilogue "ENDLOCAL\ntimeout /t 3 /nobreak >nul"
-start /b /abovenormal /d "%USERPROFILE%\scoop\app\trojan-go" trojan-go.exe
+start /b /abovenormal /d "%trojan-dir%" trojan-go.exe
 #+end_src
 
 ** later
 :PROPERTIES:
 :header-args:bat+: :epilogue "ENDLOCAL\ntimeout /t 3 /nobreak >nul"
 :END:
+
+#+attr_babel: :id 78e7f59c-62ab-4205-998f-c55b70b56e72
+#+begin_src bat
+start /b gpgconf.exe --launch gpg-agent
+#+end_src
 
 #+name: git-pull
 #+begin_src bat :tangle no
@@ -140,7 +140,7 @@ start /b mpd "%USERPROFILE%\scoop\persist\mpd\mpd.conf"
 #+end_src
 
 #+name: env-call
-#+begin_src elisp
+#+begin_src elisp :eval no
 (when-let* ((env (executable-find "env")))
   (setq args (format "'-C' '%s' '%s' %s" (getenv "USERPROFILE") prog args)
         prog (subst-char-in-string ?/ ?\\ env)))
