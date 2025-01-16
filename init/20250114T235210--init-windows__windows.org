@@ -20,7 +20,7 @@
 #+attr_babel: :id 3b6d81d2-4736-4dbd-af8d-9b3bd20c74b6
 #+begin_src bat :var initd=(expand-file-name "../../.emacs.d") profileel=(zr-org-by-tangle-dir "profile.el")
 cd %USERPROFILE%
-start /b runemacs.exe --daemon "--init-directory=%initd%" -l "%profileel%"
+start /b runemacs.exe --daemon "--init-directory=%initd%" -l "%profileel%" -l "org-protocol"
 #+end_src
 
 #+attr_babel: :id bb974f73-f04e-41da-91f2-49f8570a3c7e
@@ -35,7 +35,7 @@ start /b autohotkey /script "%ahk-script%"
 
 *** trojan
 :PROPERTIES:
-:header-args: :var trojan-dir=(substitute-in-file-name "$USERPROFILE/scoop/app/trojan-go")
+:header-args: :var trojan-dir=(concat (getenv "USERPROFILE") "\\scoop\\app\\trojan-go")
 :END:
 
 #+attr_babel: :id cbfdfd17-d8cd-485d-abdd-158c9e5057a1
@@ -64,9 +64,9 @@ start /b /abovenormal /d "%trojan-dir%" trojan-go.exe
 start /b gpgconf.exe --launch gpg-agent
 #+end_src
 
-#+name: git-pull
-#+begin_src bat :tangle no
-start /b git -C %git-dir% pull --no-edit
+#+attr_babel: :id 13aee48e-7257-4200-976d-01b7d0fc7628
+#+begin_src bat :var conf=(expand-file-name "../aria2/aria2.conf")
+start /b /abovenormal aria2c.exe --conf-path "%conf%"
 #+end_src
 
 #+attr_babel: :id d13debed-329b-48d3-8e0c-e670bdf7e3a9
@@ -77,11 +77,6 @@ start /b git -C %git-dir% pull --no-edit
 #+attr_babel: :id 695b66d0-9708-4c37-aa09-d64b8f0ab3d7
 #+begin_src bat
 start /d "%USERPROFILE%\AppData\Local\Microsoft\OneDrive" OneDrive.exe /background
-#+end_src
-
-#+attr_babel: :id 13aee48e-7257-4200-976d-01b7d0fc7628
-#+begin_src bat :var conf=(expand-file-name "../aria2/aria2.conf")
-start /b /abovenormal aria2c.exe --conf-path "%conf%"
 #+end_src
 
 #+attr_babel: :id dfde4575-db18-4fbb-b517-1f2ebae2c0d0
@@ -102,6 +97,11 @@ start /b alist server
 #+attr_babel: :id cef48492-5484-4c96-859c-ebcfe6f4c356
 #+begin_src bat
 start /b mpd "%USERPROFILE%\scoop\persist\mpd\mpd.conf"
+#+end_src
+
+#+name: git-pull
+#+begin_src bat :tangle no
+start /b git -C %git-dir% pull --no-edit
 #+end_src
 
 * Service
