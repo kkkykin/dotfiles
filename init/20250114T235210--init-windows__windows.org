@@ -110,6 +110,18 @@ start /b mpd "%USERPROFILE%\scoop\persist\mpd\mpd.conf"
 start /b git -C %git-dir% pull --no-edit
 #+end_src
 
+* Custom
+
+** Explorer Network Driver
+#+begin_src bat :eval no
+reg add HKLM\SYSTEM\CurrentControlSet\Services\WebClient\Parameters /v BasicAuthLevel /t reg_dword /d 2 /f
+reg add HKLM\SYSTEM\CurrentControlSet\Services\WebClient\Parameters /v FileSizeLimitInBytes /t reg_dword /d 0xffffffff /f
+
+net stop WebClient
+net start WebClient
+
+#+end_src
+
 * Service
 #+name: services
 | name    | prog   | args                                                                                     | task-args |
