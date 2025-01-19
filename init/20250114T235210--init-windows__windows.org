@@ -11,16 +11,22 @@
 (org-babel-tangle)
 #+end_src
 
+* Scripts
+#+attr_babel: :id 3b6d81d2-4736-4dbd-af8d-9b3bd20c74b6
+#+begin_src bat :tangle (zr-org-by-tangle-dir "emacs-daemon.cmd") :var initd=(expand-file-name "../../.emacs.d") profileel=(zr-org-by-tangle-dir "profile.el")
+cd %USERPROFILE%
+start /b emacs.exe --daemon "--init-directory=%initd%" -l "%profileel%" -l "org-protocol"
+#+end_src
+
 * Profile
 :PROPERTIES:
 :header-args:bat: :tangle (zr-org-by-tangle-dir "profile.cmd") :epilogue "ENDLOCAL\ntimeout /t 1 /nobreak >nul"
 :END:
 
 ** first
-#+attr_babel: :id 3b6d81d2-4736-4dbd-af8d-9b3bd20c74b6
-#+begin_src bat :var initd=(expand-file-name "../../.emacs.d") profileel=(zr-org-by-tangle-dir "profile.el")
-cd %USERPROFILE%
-start /b runemacs.exe --daemon "--init-directory=%initd%" -l "%profileel%" -l "org-protocol"
+#+attr_babel: :id 7cb40f81-a0f6-4d2e-9e8d-f6274373a631
+#+begin_src bat :var emacs-daemon=(zr-org-by-tangle-dir "emacs-daemon.cmd")
+call "%emacs-daemon%"
 #+end_src
 
 #+attr_babel: :id bb974f73-f04e-41da-91f2-49f8570a3c7e
