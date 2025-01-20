@@ -1,12 +1,8 @@
-__pycache__
+# Ignore all files
+*
 
-clangd/index/
+# And except for .org files
+!*.org
 
-mitmproxy/*
-!mitmproxy/config.yaml
-!mitmproxy/scripts
-.dir-locals-2.el
-
-
-**/_*
-TAGS
+!.gitignore
+!.gitmodules
