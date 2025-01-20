@@ -35,7 +35,7 @@ start /b rclone rcd "--rc-user=%rclone-user%" "--rc-pass=%rclone-pass%" --rc-add
 #+end_src
 
 #+attr_babel: :id b95a50b0-1057-4411-bfad-52e0c67f25b5
-#+begin_src bat :var ahk-script=(expand-file-name "../ahk/default.ahk")
+#+begin_src bat :var ahk-script=(expand-file-name "../ahk/_tangle/default.ahk")
 start /b autohotkey /script "%ahk-script%"
 #+end_src
 

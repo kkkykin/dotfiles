@@ -1,0 +1,539 @@
+#+title:      ahk
+#+date:       [2025-01-14 Tue 23:19]
+#+filetags:   :windows:
+#+identifier: 20250114T231945
+
+* default
+:PROPERTIES:
+:header-args:ahk: :tangle (zr-org-by-tangle-dir "default.ahk")
+:END:
+
+** include
+:PROPERTIES:
+:CUSTOM_ID: 7bfba842-bc68-4665-9af1-a37da905366a
+:END:
+#+begin_src ahk
+#Include 'games.ahk'
+#Include 'mouse.ahk'
+#+end_src
+
+** universal-arg
+:PROPERTIES:
+:CUSTOM_ID: d275a01a-d285-46de-bf5c-698f5300653b
+:END:
+#+begin_src ahk
+myNumArg := 1
+myNumKeys := []
+Loop 10{
+  myNumKeys.push('<!' A_Index - 1)
+}
+
+findInArray(a, i) {
+  Loop a.Length{
+    if a[A_Index] = i
+      return A_Index
+  }
+  return False
+}
+
+setNumArg(n, clear := False){
+  global myNumArg
+  if (findInArray(myNumKeys, A_PriorHotkey)){
+    myNumArg := 10 * myNumArg + n
+  }
+  else
+    myNumArg := n
+  if not clear{
+    tooltip(myNumArg)
+    SetTimer () => ToolTip(), -1000
+    SetTimer clearNumArg, -10000
+  }
+}
+
+clearNumArg(){
+  setNumArg(1, True)
+  tooltip('Num Clear')
+  SetTimer () => ToolTip(), -1000
+}
+#+end_src
+
+** App
+*** edge
+:PROPERTIES:
+:CUSTOM_ID: c100aa36-9a58-4e66-b85d-c6256dba7dee
+:END:
+#+begin_src ahk
+findEdgeDefaultProfile(edgeWins) {
+  local defaultProfileRegex := ' - Personal - Microsoft​ Edge$'
+  Loop edgeWins.Length {
+    if RegExMatch(WinGetTitle(edgeWins[A_Index]), defaultProfileRegex)
+      return A_Index
+  }
+  return False
+}
+
+edgeToggle(index := 1){
+  local edgeWinName := 'ahk_exe msedge.exe'
+  if WinActive(edgeWinName) {
+    WinMinimize
+    return
+  }
+  local edgeWins := WinGetList(edgeWinName)
+  switch edgeWins.length {
+    case 0: Run(EnvGet('ProgramFiles(x86)') '\Microsoft\Edge\Application\msedge.exe --profile-directory=Default')
+    case 1: WinActivate(edgeWins[1])
+    default:
+    {
+      local default := findEdgeDefaultProfile(edgeWins)
+      if (index = 1) {
+        WinActivate(edgeWins[default or index])
+      } else {
+        edgeWins.RemoveAt[default]
+        WinActivate(edgeWins[Min(edgeWins.Length, index - 1)])
+      }
+    }
+  }
+}
+#+end_src
+** Misc Func
+:PROPERTIES:
+:CUSTOM_ID: f80b46cf-63bf-45c3-8a75-fafa356597a2
+:END:
+#+begin_src ahk
+centerWindow(window := 'A'){
+  WinGetPos ,, &Width, &Height, window
+  WinMove (A_ScreenWidth/2)-(Width/2), (A_ScreenHeight/2)-(Height/2),,, window
+}
+
+capturePrintWindow(window := 'A'){
+  Run A_ComSpec Format(' /c ""ffmpeg" "-f" "gdigrab" "-framerate" "1" "-i" "title={1}" "-vframes" "1" "-f" "matroska" "-" | "ffplay" "-""', WinGetTitle(window))
+}
+#+end_src
+
+** Bind
+
+*** Global
+:PROPERTIES:
+:CUSTOM_ID: 1a77bcfe-be1a-4b2d-beac-0879b9f7c5e7
+:END:
+#+begin_src ahk
+<#q::{
+  global myNumArg
+  edgeToggle(myNumArg)
+  myNumArg := 1
+}
+
+Capslock::Esc
+Capslock & Esc::SetCapsLockState !GetKeyState('CapsLock', 'T') 
+Capslock & F9::WinSetAlwaysOnTop(-1, 'A')
+Capslock & F10::Run 'hh.exe "ms-its:' RegExReplace(A_AhkPath, 'UX\\AutoHotkeyUX\.exe$', 'v2\AutoHotkey.chm')  '"', , 'Max'
+Capslock & F11::Run A_Programs '\AutoHotkey Window Spy.lnk'
+Capslock & F12::Reload
+Capslock & PrintScreen::capturePrintWindow
+
+<^.::^NumpadDot
+#+end_src
+
+*** Local
+
+**** MatchMode3
+:PROPERTIES:
+:CUSTOM_ID: 5dd7edc3-c99a-439e-9bba-522ad81318be
+:END:
+#+begin_src ahk
+SetTitleMatchMode 3
+
+GroupAdd 'NoEmacsKeys', 'ahk_class Emacs'
+GroupAdd 'NoEmacsKeys', 'ahk_exe scrcpy.exe'
+GroupAdd 'NoEmacsKeys', 'ahk_exe WindowsTerminal.exe'
+#+end_src
+
+#+begin_src ahk
+cmdTitle := 'Command Prompt'
+#HotIf WinActive(cmdTitle)
+<^p::Up
+<^f::Right
+<^b::Left
+<^a::Home
+<^e::End
+<^u::^Home
+<^k::^End
+<^m::Enter
+<^d::Del
+<^l::F7
+<!z::F4
+<!p::F8
+<!b::^Left
+<!f::^Right
+
+; #HotIf WinActive('ahk_exe msedge.exe') || WinActive(cmdTitle)
+<^n::Down
+
+#HotIf not WinActive('ahk_group NoEmacsKeys')
+<^g::clearNumArg
+<!1::setNumArg(1)
+<!2::setNumArg(2)
+<!3::setNumArg(3)
+<!4::setNumArg(4)
+<!5::setNumArg(5)
+<!6::setNumArg(6)
+<!7::setNumArg(7)
+<!8::setNumArg(8)
+<!9::setNumArg(9)
+<!0::setNumArg(0)
+#HotIf
+#+end_src
+
+* mouse
+:PROPERTIES:
+:header-args:ahk: :tangle (zr-org-by-tangle-dir "mouse.ahk")
+:END:
+
+** include
+:PROPERTIES:
+:CUSTOM_ID: c77c0629-f231-402e-823f-a5b6efab50fb
+:END:
+#+begin_src ahk
+#Include '../lib/HotGestures/HotGestures.ahk'
+#+end_src
+
+** gestures
+:PROPERTIES:
+:CUSTOM_ID: 749ea152-6a90-4ab0-a5ce-d395a47d1e4e
+:END:
+#+begin_src ahk
+_L := HotGestures.Gesture('←:-1,0')
+_R := HotGestures.Gesture('→:1,0')
+_U := HotGestures.Gesture('↑:0,-1')
+_D := HotGestures.Gesture('↓:0,1')
+_UL := HotGestures.Gesture('↖:-1,-1')
+_UR := HotGestures.Gesture('↗:1,-1')
+_DR := HotGestures.Gesture('↘:1,1')
+_DL := HotGestures.Gesture('↙:-1,1')
+_U_D := HotGestures.Gesture('↑↓:0,-1|0,1')
+_D_U := HotGestures.Gesture('↓↑:0,1|0,-1')
+_R_L := HotGestures.Gesture('→←:1,0|-1,0')
+_L_R := HotGestures.Gesture('←→:-1,0|1,0')
+_D_R := HotGestures.Gesture('↓→:0,1|1,0')
+_D_L := HotGestures.Gesture('↓←:0,1|-1,0')
+_U_R := HotGestures.Gesture('↑→:0,-1|1,0')
+_U_L := HotGestures.Gesture('↑←:0,-1|-1,0')
+_L_U := HotGestures.Gesture('←↑:-1,0|0,-1')
+_L_D := HotGestures.Gesture('←↓:-1,0|0,1')
+_R_U := HotGestures.Gesture('→↑:1,0|0,-1')
+_R_D := HotGestures.Gesture('→↓:1,0|0,1')
+
+hgs := HotGestures()
+hgs.Register(_L, '←')
+hgs.Register(_R, '→')
+hgs.Register(_U, '↑')
+hgs.Register(_D, '↓')
+hgs.Register(_UL, '↖')
+hgs.Register(_UR, '↗')
+; hgs.Register(_DR, '↘')
+hgs.Register(_DL, '↙')
+; hgs.Register(_U_D, '↑↓')
+hgs.Register(_D_U, '↓↑')
+; hgs.Register(_R_L, '→←')
+; hgs.Register(_L_R, '←→')
+; hgs.Register(_D_R, '↓→')
+; hgs.Register(_D_L, '↓←')
+; hgs.Register(_U_R, '↑→')
+; hgs.Register(_U_L, '↑←')
+; hgs.Register(_L_U, '←↑')
+; hgs.Register(_L_D, '←↓')
+; hgs.Register(_R_U, '→↑')
+; hgs.Register(_R_D, '→↓')
+#+end_src
+
+** Action
+
+*** Global
+:PROPERTIES:
+:CUSTOM_ID: 089834b9-4044-4ad2-8473-1a2266e20691
+:END:
+#+begin_src ahk
+defaultHgs(g){
+  switch g{
+    case _D_U: Send('!{F4}')
+  }
+}
+#+end_src
+
+*** Local
+
+**** Browser
+:PROPERTIES:
+:CUSTOM_ID: f23179e0-5a9c-40c4-b3e9-f355710ebf89
+:END:
+#+begin_src ahk
+browserHgs(g){
+  switch g{
+    case _U: Send('{Home}')
+    case _UL: Send('!{Left}')
+    case _UR: Send('!{Right}')
+    case _L: Send('+^{Tab}')
+    case _R: Send('^{Tab}')
+    case _DL: Send('^{r}')
+    case _D: Send('^{w}')
+    default: defaultHgs(g)
+  }
+}
+#+end_src
+
+** Router
+:PROPERTIES:
+:CUSTOM_ID: 5190391d-0221-466c-a4a1-5ef7f6c30f83
+:END:
+#+begin_src ahk
+hotGestureRouter(mWin, gesture){
+  switch {
+    case WinGetProcessName(mWin) == 'msedge.exe' : browserHgs(gesture)
+    case WinGetClass(mWin) == 'MozillaWindowClass' : browserHgs(gesture)
+    default: defaultHgs(gesture)
+  }
+}
+#+end_src
+
+** Trigger
+:PROPERTIES:
+:CUSTOM_ID: 9d0a5191-1fc0-4225-8f4c-6f467c7410ea
+:END:
+#+begin_src ahk
+GroupAdd 'NoHotGestures', 'ahk_class Emacs'
+GroupAdd 'NoHotGestures', 'ahk_class UnityWndClass'
+GroupAdd 'NoHotGestures', 'ahk_exe Game.exe'
+
+#HotIf not WinActive('ahk_group NoHotGestures')
+$RButton::{
+  MouseGetPos ,, &mWin
+  if mWin != WinGetID('A')
+    WinActivate(mWin)
+
+  hgs.Start() ; Start recording
+  KeyWait('RButton') ; Keep recording until RButton is released
+  hgs.Stop() ; Stop recording
+  if hgs.Result.Valid { ; Check validity of result
+    hotGestureRouter(mWin, hgs.Result.MatchedGesture)
+  }
+  ; if no movement or track is too short, hgs.Result.Valid is false, and a right click is expected
+  else {
+    Send('{RButton}')
+  }
+}
+#HotIf
+#+end_src
+
+* games
+
+** main
+:PROPERTIES:
+:CUSTOM_ID: d9d1e8cc-7c8d-41b3-a502-3d085df6dcec
+:END:
+
+#+name: enabled-games
+#+begin_src ahk :tangle no
+; #Include "../games/from-frontier.ahk"
+#+end_src
+
+#+begin_src ahk :tangle (zr-org-by-tangle-dir "games.ahk")
+class Game {
+  window := "ahk_class RGSS Player"
+  keyEnabled := true
+
+  configMap := Map(
+    "defaultKeyDuration", 100,
+    "defaultKeyWait", 1000,
+    "defaultKeyBetween", 0,
+    "defaultKeyAfter", 0,
+    "defaultKeyRepeat", 1,
+    "defaultSpeed", 1
+  )
+
+  actionMap := Map()
+
+  __New(
+    window := this.window,
+    keyEnabled := this.keyEnabled,
+    actions := this.actionMap,
+    config := Map()) {
+
+    ; HotIf((*) => WinActive(this.window))
+    ; callback := ObjBindMethod(this, 'reloadSave', this.intervalMap, this.keyMap)
+    ; Hotkey "^p", callback
+    this.keyEnabled := keyEnabled
+    actionMap := actions
+
+    for key, value in config {
+      this.configMap[key] := value
+    }
+  }
+
+  toggleKeys(){
+    if (this.keyEnabled := !this.keyEnabled)
+      ToolTip("Hotkey Enabled")
+    else
+      ToolTip("Hotkey Disabled")
+    Sleep 1000
+    ToolTip()
+  }
+
+  takeAction(action){
+    config := this.configMap
+    speed := config["defaultSpeed"]
+
+    wait := (action.Has("wait") ? action["wait"] : config["defaultKeyWait"])/speed
+    duration := (action.Has("duration") ? action["duration"] : config["defaultKeyDuration"])/speed
+    after := (action.Has("after") ? action["after"] : config["defaultKeyAfter"])/speed
+    between := (action.Has("between") ? action["between"] : config["defaultKeyBetween"])/speed
+    repeat := action.Has("repeat") ? action["repeat"] : config["defaultKeyRepeat"]
+
+    SetKeyDelay wait, duration
+    Loop repeat {
+      if action.Has("action")
+        this.takeActions(this.actionMap[action["action"]])
+      else
+        SendEvent action["key"]
+
+      if (A_Index < repeat) 
+        Sleep between
+    }
+    Sleep after
+  }
+
+  takeActions(actions){
+    Loop actions.Length {
+      this.takeAction(actions[A_Index])
+    }
+  }
+
+}
+
+<<enabled-games>>
+#+end_src
+
+** others
+:PROPERTIES:
+:header-args:ahk: :mkdirp t
+:tangle-dir: games
+:END:
+
+*** fall in labyrinth
+:PROPERTIES:
+:CUSTOM_ID: 731ff508-738c-4521-a418-d255d3b64cac
+:END:
+#+begin_src ahk :tangle (zr-org-by-tangle-dir "fall-in-labyrinth.ahk")
+class FallInLabyRinth extends Game {
+
+  actionMap := Map(
+    "reloadSave", [
+      Map("key", "{F12}", "wait", 2000),
+      Map("key", "{Down}", "after", 300),
+      Map("key", "z", "repeat", 2)
+    ],
+    "interactBoss", [
+      Map("key", "{Up}", "duration", 1800, "wait", 500),
+      Map("key", "z"),
+      Map("key", "{Down}"),
+      Map("key", "z"),
+      Map("key", "z", "wait", 9000),
+      Map("key", "z", "wait", 1000, "repeat", 1)
+    ],
+    "combatTune", [
+      Map("key", "{Down}", "wait", 800),
+      Map("key", "z", "wait", 800, "repeat", 3),
+    ],
+    "combat", [
+      Map("action", "combatTune", "repeat", 3, "between", 6000, "after", 9000),
+      ; Map("action", "combatTune", "after", 7000),
+      ; Map("action", "combatTune", "after", 5000),
+      Map("key", "z", "wait", 800, "repeat", 1, "after", 1000)
+    ]
+  )
+
+  reloadSave() => this.takeActions(this.actionMap["reloadSave"])
+
+  bossRush(){
+    this.takeActions(this.actionMap["interactBoss"])
+    this.combat
+  }
+
+  combat() => this.takeActions(this.actionMap["combat"])
+
+  reBossRush(){
+    this.reloadSave
+    this.bossRush
+    capturePrintWindow
+    SoundBeep
+  }
+}
+
+g_fallInLabyRinth := FallInLabyRinth("ahk_class RGSS Player")
+
+#HotIf WinActive("fd: ahk_exe ffplay.exe") and WinExist(g_FallInLabyRinth.window)
+
+r::{
+  Send "q"
+  Sleep 1000
+  WinActivate
+  Sleep 1000
+  g_fallInLabyRinth.reBossRush
+}
+
+#HotIf
+
+#HotIf WinActive(g_FallInLabyRinth.window)
+^t::g_fallInLabyRinth.toggleKeys
+
+
+#HotIf WinActive(g_FallInLabyRinth.window) && g_fallInLabyRinth.keyEnabled
+
+^r::g_fallInLabyRinth.reloadSave
+
+^p::g_fallInLabyRinth.reBossRush
+^b::g_fallInLabyRinth.bossRush
+^c::g_fallInLabyRinth.combat
+
+e::w
+c::a
+Space::s
+w::Up
+s::Down
+a::Left
+d::Right
+
+#HotIf
+#+end_src
+*** from-frontier
+:PROPERTIES:
+:CUSTOM_ID: fcb0158c-4311-4e19-9d30-6b7c7523a596
+:END:
+#+begin_src ahk :tangle (zr-org-by-tangle-dir "from-frontier.ahk")
+class FromFrontier extends Game {
+  window := 'From Frontier_Steam_ver1.0H ahk_exe Game.exe'
+
+  actionMap := Map(
+    "attackFirst", [
+      Map("key", "z", "wait", 500, "repeat", 3)
+    ],
+    "attackSecond", [
+      Map("key", "z", "wait", 500, "repeat", 2),
+      Map("key", "{Right}", "wait", 500),
+      Map("key", "z", "wait", 500)
+    ]
+  )
+
+  attackFirst() => this.takeActions(this.actionMap["attackFirst"])
+  attackSecond() => this.takeActions(this.actionMap["attackSecond"])
+}
+
+g_fromFrontier := FromFrontier()
+
+#HotIf WinActive(g_fromFrontier.window)
+
+1::g_fromFrontier.attackFirst
+2::g_fromFrontier.attackSecond
+
+#HotIf
+#+end_src
+
