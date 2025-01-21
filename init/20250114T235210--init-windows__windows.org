@@ -5,6 +5,7 @@
 
 * tangle
 #+begin_src elisp
+(make-directory "_tangle" t)
 (setq-local zr-local-rclone-secrets
             (car (auth-source-search
                   :max 1 :host "127.0.0.1" :port 5572)))
@@ -12,6 +13,9 @@
 #+end_src
 
 * Scripts
+:PROPERTIES:
+:CUSTOM_ID: e56356f4-7700-435b-b354-55e246a3b53b
+:END:
 #+attr_babel: :id 3b6d81d2-4736-4dbd-af8d-9b3bd20c74b6
 #+begin_src bat :tangle (zr-org-by-tangle-dir "emacs-daemon.cmd") :var initd=(expand-file-name "../../.emacs.d") profileel=(zr-org-by-tangle-dir "profile.el")
 cd %USERPROFILE%
@@ -24,6 +28,9 @@ start /b emacs.exe --daemon "--init-directory=%initd%" -l "%profileel%" -l "org-
 :END:
 
 ** first
+:PROPERTIES:
+:CUSTOM_ID: da9ed6cf-528a-4f14-88a8-2dbb671d1c13
+:END:
 #+attr_babel: :id 7cb40f81-a0f6-4d2e-9e8d-f6274373a631
 #+begin_src bat :var emacs-daemon=(zr-org-by-tangle-dir "emacs-daemon.cmd")
 call "%emacs-daemon%"
@@ -42,6 +49,7 @@ start /b autohotkey /script "%ahk-script%"
 *** trojan
 :PROPERTIES:
 :header-args: :var trojan-dir=(concat (getenv "USERPROFILE") "\\scoop\\app\\trojan-go")
+:CUSTOM_ID: 2374627e-d10d-46d4-8ff7-6f1d9d9a7b63
 :END:
 
 #+attr_babel: :id cbfdfd17-d8cd-485d-abdd-158c9e5057a1
@@ -63,6 +71,7 @@ start /b /abovenormal /d "%trojan-dir%" trojan-go.exe
 ** later
 :PROPERTIES:
 :header-args:bat+: :epilogue "ENDLOCAL\ntimeout /t 3 /nobreak >nul"
+:CUSTOM_ID: 9912c6e6-b8bc-4d71-84ed-f43ac3012012
 :END:
 
 #+attr_babel: :id 78e7f59c-62ab-4205-998f-c55b70b56e72
