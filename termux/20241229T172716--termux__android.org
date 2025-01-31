@@ -75,3 +75,35 @@ Check by exit code.
 #+begin_src sh :tangle (zr-org-by-tangle-dir "vpn-enable-p")
 /system/bin/dumpsys vpn_management | grep -q "^    Active vpn type: 1"
 #+end_src
+
+** vpn-enable
+:PROPERTIES:
+:CUSTOM_ID: c62bd644-4645-402b-b530-a17e9042c68a
+:END:
+#+begin_src sh :tangle (zr-org-by-tangle-dir "vpn-enable")
+if [ $# -ne 1 ]; then
+    echo "Usage: $0 <true|false>" >&2
+    exit 1
+fi
+
+vpn-toggle () {
+    termux-am start -n io.nekohasekai.sagernet/io.nekohasekai.sagernet.QuickToggleShortcut >/dev/null 2>&1
+}
+
+case "$1" in
+    true)
+        if ! vpn-enable-p; then
+            vpn-toggle
+        fi
+        ;;
+    false)
+        if vpn-enable-p; then
+            vpn-toggle
+        fi
+        ;;
+    *)
+        echo "Error: Argument must be 'true' or 'false'" >&2
+        exit 1
+        ;;
+esac
+#+end_src
