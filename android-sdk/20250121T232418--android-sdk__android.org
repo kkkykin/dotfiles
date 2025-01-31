@@ -1,0 +1,11 @@
+#+title:      android-sdk
+#+date:       [2025-01-21 Tue 23:24]
+#+filetags:   :android:
+#+identifier: 20250121T232418
+
+* sdkmanager
+
+** install tools
+#+begin_src sh
+sdkmanager "build-tools;34.0.0" "platform-tools" "platforms;android-14"
+#+end_src

@@ -1,0 +1,27 @@
+#+title:      gnupg
+#+date:       [2025-01-20 Mon 23:50]
+#+filetags:   :base:
+#+identifier: 20250120T235013
+
+* agent
+:PROPERTIES:
+:header-args:conf: :tangle (zr-org-by-tangle-dir "gpg-agent.conf") :mkdirp t :comments no
+:CUSTOM_ID: edef521e-1e5b-4fdb-b396-a57c32cf92fb
+:END:
+
+#+begin_src conf
+allow-emacs-pinentry
+allow-loopback-pinentry
+#+end_src
+** Windows
+:PROPERTIES:
+:header-args:conf+: :tangle (if (eq system-type 'windows-nt) (zr-org-by-tangle-dir "gpg-agent.conf") "no")
+:CUSTOM_ID: ec3f3d0e-1b88-4f8c-9f45-1a2b19c8c0fc
+:END:
+
+#+begin_src conf 
+enable-win32-openssh-support
+#+end_src
+
+* ssh
+https://incenp.org/notes/2015/gnupg-for-ssh-authentication.html

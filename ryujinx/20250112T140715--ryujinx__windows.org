@@ -1,0 +1,11 @@
+#+title:      ryujinx
+#+date:       [2025-01-12 Sun 14:07]
+#+filetags:   :windows:
+#+identifier: 20250112T140715
+
+* CommandLine
+https://github.com/Ryubing/Ryujinx/blob/master/src/Ryujinx/Utilities/CommandLineState.cs
+
+* Setup
+https://github.com/Ryubing/Ryujinx/wiki/Ryujinx-Setup-&-Configuration-Guide
+https://ryujinx-emulator.com/setup/windows/

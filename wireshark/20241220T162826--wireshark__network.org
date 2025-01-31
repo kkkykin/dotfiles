@@ -47,12 +47,13 @@ https://wiki.wireshark.org/CaptureFilters
 https://wiki.wireshark.org/DisplayFilters
 https://unit42.paloaltonetworks.com/using-wireshark-display-filter-expressions/
 #+name: display-filters
-| name      | filter                                                                                                      | arg |
-|-----------+-------------------------------------------------------------------------------------------------------------+-----|
-| basic     | (http.request or tls.handshake.type eq 1) and !(ssdp)                                                       |     |
-| basic+    | (http.request or tls.handshake.type eq 1 or (tcp.flags.syn eq 1 and tcp.flags.ack eq 0)) and !(ssdp)        |     |
-| basic+dns | (http.request or tls.handshake.type eq 1 or (tcp.flags.syn eq 1 and tcp.flags.ack eq 0) or dns) and !(ssdp) |     |
-| ftp       | ftp.request.command or (ftp-data and tcp.seq eq 1)                                                          |     |
+| name                   | filter                                                                                                      | arg |
+|------------------------+-------------------------------------------------------------------------------------------------------------+-----|
+| basic                  | (http.request or tls.handshake.type eq 1) and !(ssdp)                                                       |     |
+| basic+                 | (http.request or tls.handshake.type eq 1 or (tcp.flags.syn eq 1 and tcp.flags.ack eq 0)) and !(ssdp)        |     |
+| basic+dns              | (http.request or tls.handshake.type eq 1 or (tcp.flags.syn eq 1 and tcp.flags.ack eq 0) or dns) and !(ssdp) |     |
+| ftp                    | ftp.request.command or (ftp-data and tcp.seq eq 1)                                                          |     |
+| adb-exclude-keep-alive | not ((tcp.options[0:4] eq 01:01:05:0a) or (data.data eq 00:))                                               |     |
 
 ** preference
 #+name: http-preferences

@@ -1,0 +1,174 @@
+#+title:      init-windows
+#+date:       [2025-01-14 Tue 23:52]
+#+filetags:   :windows:
+#+identifier: 20250114T235210
+
+* tangle
+#+begin_src elisp
+(make-directory "_tangle" t)
+(setq-local zr-local-rclone-secrets
+            (car (auth-source-search
+                  :max 1 :host "127.0.0.1" :port 5572)))
+(org-babel-tangle)
+#+end_src
+
+* Scripts
+:PROPERTIES:
+:CUSTOM_ID: e56356f4-7700-435b-b354-55e246a3b53b
+:END:
+#+attr_babel: :id 3b6d81d2-4736-4dbd-af8d-9b3bd20c74b6
+#+begin_src bat :tangle (zr-org-by-tangle-dir "emacs-daemon.cmd") :var initd=(expand-file-name "../../.emacs.d") profileel=(zr-org-by-tangle-dir "profile.el")
+cd %USERPROFILE%
+start /b emacs.exe --daemon "--init-directory=%initd%" -l "%profileel%" -l "org-protocol"
+#+end_src
+
+* Profile
+:PROPERTIES:
+:header-args:bat: :tangle (zr-org-by-tangle-dir "profile.cmd") :epilogue "ENDLOCAL\ntimeout /t 1 /nobreak >nul"
+:END:
+
+** first
+:PROPERTIES:
+:CUSTOM_ID: da9ed6cf-528a-4f14-88a8-2dbb671d1c13
+:END:
+#+attr_babel: :id 7cb40f81-a0f6-4d2e-9e8d-f6274373a631
+#+begin_src bat :var emacs-daemon=(zr-org-by-tangle-dir "emacs-daemon.cmd")
+call "%emacs-daemon%"
+#+end_src
+
+#+attr_babel: :id bb974f73-f04e-41da-91f2-49f8570a3c7e
+#+begin_src bat :var rclone-user=(plist-get zr-local-rclone-secrets :user) rclone-pass=(auth-info-password zr-local-rclone-secrets)
+start /b rclone rcd "--rc-user=%rclone-user%" "--rc-pass=%rclone-pass%" --rc-addr=127.0.0.1:5572 --no-console
+#+end_src
+
+#+attr_babel: :id b95a50b0-1057-4411-bfad-52e0c67f25b5
+#+begin_src bat :var ahk-script=(expand-file-name "../ahk/_tangle/default.ahk")
+start /b autohotkey /script "%ahk-script%"
+#+end_src
+
+*** trojan
+:PROPERTIES:
+:header-args: :var trojan-dir=(concat (getenv "USERPROFILE") "\\scoop\\app\\trojan-go")
+:CUSTOM_ID: 2374627e-d10d-46d4-8ff7-6f1d9d9a7b63
+:END:
+
+#+attr_babel: :id cbfdfd17-d8cd-485d-abdd-158c9e5057a1
+#+begin_src elisp :tangle (zr-org-by-tangle-dir "profile.el") :mkdirp t
+(ignore-errors
+  (delete-file (expand-file-name "trojan.log" trojan-dir) t)
+  (delete-file (substitute-in-file-name "$USERPROFILE/ansel/tmp"))
+  (dolist (f (directory-files-recursively
+              (substitute-in-file-name "$USERPROFILE/AppData/Roaming/Tencent/QQ/AuTemp/")
+              (rx bos "cfg.db" eos)))
+    (rename-file f (file-name-with-extension f "bak") t)))
+#+end_src
+
+#+attr_babel: :id 8f658dff-c9ab-4de7-88b5-6e0f2ee7583c
+#+begin_src bat :prologue "SETLOCAL\ntimeout /t 2 /nobreak >nul" :epilogue "ENDLOCAL\ntimeout /t 3 /nobreak >nul"
+start /b /abovenormal /d "%trojan-dir%" trojan-go.exe
+#+end_src
+
+** later
+:PROPERTIES:
+:header-args:bat+: :epilogue "ENDLOCAL\ntimeout /t 3 /nobreak >nul"
+:CUSTOM_ID: 9912c6e6-b8bc-4d71-84ed-f43ac3012012
+:END:
+
+#+attr_babel: :id 78e7f59c-62ab-4205-998f-c55b70b56e72
+#+begin_src bat
+start /b gpgconf.exe --launch gpg-agent
+#+end_src
+
+#+attr_babel: :id 13aee48e-7257-4200-976d-01b7d0fc7628
+#+begin_src bat :var conf=(expand-file-name "../aria2/aria2.conf")
+start /b /abovenormal aria2c.exe --conf-path "%conf%"
+#+end_src
+
+#+attr_babel: :id d13debed-329b-48d3-8e0c-e670bdf7e3a9
+#+begin_src bat :var git-dir=(expand-file-name "../../.emacs.d")
+<<git-pull>>
+#+end_src
+
+#+attr_babel: :id 695b66d0-9708-4c37-aa09-d64b8f0ab3d7
+#+begin_src bat
+start /d "%USERPROFILE%\AppData\Local\Microsoft\OneDrive" OneDrive.exe /background
+#+end_src
+
+#+attr_babel: :id dfde4575-db18-4fbb-b517-1f2ebae2c0d0
+#+begin_src bat
+start /b openresty -p %USERPROFILE%\scoop\apps\openresty\current
+#+end_src
+
+#+attr_babel: :id 830fe500-5da5-4799-8560-0f8af8f55cd5
+#+begin_src bat :var no_proxy=(concat (getenv "no_proxy") ",.alipan.com,.aliyundrive.net")
+start /b alist server
+#+end_src
+
+#+attr_babel: :id f761d87a-e4bb-4f89-9212-b3fc7d485931
+#+begin_src bat :var git-dir=(expand-file-name "..")
+<<git-pull>>
+#+end_src
+
+#+attr_babel: :id cef48492-5484-4c96-859c-ebcfe6f4c356
+#+begin_src bat
+start /b mpd "%USERPROFILE%\scoop\persist\mpd\mpd.conf"
+#+end_src
+
+#+name: git-pull
+#+begin_src bat :tangle no
+start /b git -C %git-dir% pull --no-edit
+#+end_src
+
+* Custom
+
+** Explorer Network Driver
+#+begin_src bat :eval no
+reg add HKLM\SYSTEM\CurrentControlSet\Services\WebClient\Parameters /v BasicAuthLevel /t reg_dword /d 2 /f
+reg add HKLM\SYSTEM\CurrentControlSet\Services\WebClient\Parameters /v FileSizeLimitInBytes /t reg_dword /d 0xffffffff /f
+
+net stop WebClient
+net start WebClient
+
+#+end_src
+
+* Service
+#+name: services
+| name    | prog   | args                                                                                     | task-args |
+|---------+--------+------------------------------------------------------------------------------------------+-----------|
+| profile | wt.exe | (format "'-w' '_quake' '-p' 'Command Prompt' '%s'" (zr-org-by-tangle-dir "profile.cmd")) |           |
+
+#+name: services-bak
+| name  | prog           | args                                                                            | task-args |
+|-------+----------------+---------------------------------------------------------------------------------+-----------|
+| emacs | runemacs.exe   | (format "'--daemon' '--init-directory=%s'" (expand-file-name "../../.emacs.d")) |           |
+| ahk   | autohotkey.exe | (format "'/script' '%s'" (expand-file-name "../ahk/default.ahk"))               |           |
+
+#+begin_src elisp :var cmd=create-serv-cmd()
+(let ((cmd-file (expand-file-name "_output/create-service.cmd")))
+  (make-directory (file-name-directory cmd-file) t)
+  (write-region cmd nil cmd-file)
+  (kill-new cmd-file)
+  (message "%s" "Please run the copied script."))
+#+end_src
+
+#+name: create-serv-cmd
+#+begin_src elisp :var services=services[]
+(mapconcat
+ (lambda (s)
+   (pcase-let ((`(,name ,prog ,args ,task-args) s))
+     (unless (file-name-absolute-p prog)
+       (setq prog (subst-char-in-string ?/ ?\\ (executable-find prog))))
+     (when (string-match-p (rx bos ?( (+ anychar) ?) eos) args)
+       (setq args (eval (car (read-from-string args)))))
+     ;; <<env-call>>
+     (format "C:\\Windows\\System32\\schtasks.exe /create /ru %s /it /sc onlogon /tn \"%s\" /tr \"'%s' %s\" %s"
+             user-login-name name prog args task-args)))
+ services "\n")
+#+end_src
+
+#+name: env-call
+#+begin_src elisp :eval no
+(when-let* ((env (executable-find "env")))
+  (setq args (format "'-C' '%s' '%s' %s" (getenv "USERPROFILE") prog args)
+        prog (subst-char-in-string ?/ ?\\ env)))
+#+end_src
