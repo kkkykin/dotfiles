@@ -41,6 +41,9 @@ pm grant com.termux android.permission.DUMP
 #+end_src
 
 * properties
+:PROPERTIES:
+:CUSTOM_ID: 3bb71465-c2e2-4dc1-8987-6997f6d6f9a6
+:END:
 #+begin_src conf :tangle (zr-org-by-tangle-dir "termux.properties")
 allow-external-apps = true
 extra-keys = [[ESC, CTRL, ALT, LEFT, DOWN, UP, RIGHT, ENTER]]
@@ -53,9 +56,22 @@ extra-keys = [[ESC, CTRL, ALT, LEFT, DOWN, UP, RIGHT, ENTER]]
 :END:
 
 ** screen-on-p
+:PROPERTIES:
+:CUSTOM_ID: 8197aa92-1e58-4ca9-a15b-37e0e981d45a
+:END:
 https://www.reddit.com/r/termux/comments/11e2s3j/check_if_display_is_on_or_off/
 
 Check by exit code.
 #+begin_src sh :tangle (zr-org-by-tangle-dir "screen-on-p")
 /system/bin/dumpsys deviceidle | grep -q "^  mScreenOn=true$"
+#+end_src
+
+** vpn-enable-p
+:PROPERTIES:
+:CUSTOM_ID: 19918dc2-5be8-42f4-ac59-c22e28d92fe9
+:END:
+
+Check by exit code.
+#+begin_src sh :tangle (zr-org-by-tangle-dir "vpn-enable-p")
+/system/bin/dumpsys vpn_management | grep -q "^    Active vpn type: 1"
 #+end_src
