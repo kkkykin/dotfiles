@@ -1,0 +1,37 @@
+#+title:      fooview
+#+date:       [2025-02-01 Sat 18:06]
+#+filetags:   :android:
+#+identifier: 20250201T180643
+
+* tangle
+#+begin_src elisp
+(let* ((js (org-babel-tangle nil nil "^js$"))
+       (sh (org-babel-tangle nil nil "^sh$"))
+       (base-dir "/storage/emulated/0/Android/obb/com.fooview.android.fooview")
+       (pub-dir "/storage/emulated/0/fooview")
+       (cmd (list "mkdir" "-p" base-dir ";"))
+       mv-dir
+       (shell-file-name (expand-file-name "usr/bin/rish" zr-termux-root-directory)))
+  (when js (push (expand-file-name "js" pub-dir) mv-dir))
+  (when sh (push (expand-file-name "sh" pub-dir) mv-dir))
+  (when mv-dir (setq cmd `(,@cmd "mv" "-f" ,@mv-dir ,base-dir)))
+  (start-process-shell-command
+   "Deploy fv scripts" nil (combine-and-quote-strings cmd)))
+#+end_src
+
+* js
+:PROPERTIES:
+:tangle-dir: /storage/emulated/0/fooview/js
+:header-args: :comments no
+:END:
+
+** termux-program
+#+begin_src js :mkdirp t :tangle (zr-org-by-tangle-dir "termux-program.js")
+return '/data/data/com.termux/files/usr/bin/' +
+  (typeof arg1 === 'string' ? arg1 : arg1[0]);
+#+end_src
+
+** termux-args
+#+begin_src js :tangle (zr-org-by-tangle-dir "termux-args.js")
+return arg1.slice(1).join(',');
+#+end_src
