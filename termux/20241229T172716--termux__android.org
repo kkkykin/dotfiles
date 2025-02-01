@@ -107,3 +107,54 @@ case "$1" in
         ;;
 esac
 #+end_src
+
+** wifi-enable
+:PROPERTIES:
+:CUSTOM_ID: de7b47e1-bdb2-4b46-a64a-f84121416c14
+:END:
+#+begin_src sh :tangle (zr-org-by-tangle-dir "wifi-enable")
+if [ "$1" = 'true' ]; then
+    rish -c 'svc wifi enable'
+else
+    termux-wifi-enable $*
+fi
+#+end_src
+
+** mobile-enable
+:PROPERTIES:
+:CUSTOM_ID: 6a1151db-438b-41d2-84c0-77c1273b6be5
+:END:
+#+begin_src sh :tangle (zr-org-by-tangle-dir "mobile-enable")
+if [ $# -ne 1 ]; then
+    echo "Usage: $0 <true|false>" >&2
+    exit 1
+fi
+
+case "$1" in
+    true)
+        rish -c 'svc data enable'
+        ;;
+    false)
+        rish -c 'svc data disable'
+        ;;
+    *)
+        echo "Error: Argument must be 'true' or 'false'" >&2
+        exit 1
+        ;;
+esac
+#+end_src
+
+** wifi-mobile-switch
+:PROPERTIES:
+:CUSTOM_ID: 52419187-e1b8-4716-a543-3f739a676bd2
+:END:
+#+begin_src sh :tangle (zr-org-by-tangle-dir "wifi-mobile-switch")
+if termux-wifi-connectioninfo | grep -q '^  "supplicant_state": "UNINITIALIZED"$'; then
+    wifi-enable true
+    mobile-enable false
+else
+    mobile-enable true
+    wifi-enable false
+fi
+#+end_src
+
