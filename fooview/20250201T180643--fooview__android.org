@@ -35,3 +35,26 @@ return '/data/data/com.termux/files/usr/bin/' +
 #+begin_src js :tangle (zr-org-by-tangle-dir "termux-args.js")
 return arg1.slice(1).join(',');
 #+end_src
+
+** share
+
+*** text
+#+begin_src js :tangle (zr-org-by-tangle-dir "text-router.js")
+const bili_re = /(https?:\/\/www.bilibili.com\/[^ ]*)/i;
+
+const results = {
+  type: -1,
+  data: null
+};
+
+switch (true) {
+case bili_re.test(arg1):
+  results.type = 'bilibili';
+  results.data = arg1.match(bili_re)[1];
+  break;
+default:
+  results.type = -1;
+}
+
+return results;
+#+end_src
