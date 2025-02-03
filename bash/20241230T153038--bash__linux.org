@@ -26,12 +26,18 @@
 *** non-interactive
 
 **** gpg
+:PROPERTIES:
+:CUSTOM_ID: 22b4d733-f226-4aed-9eeb-94fc59252605
+:END:
 #+begin_src sh
 SSH_AUTH_SOCK="$(gpgconf --list-dirs agent-ssh-socket)"
 export SSH_AUTH_SOCK
 #+end_src
 
 **** smb
+:PROPERTIES:
+:CUSTOM_ID: c8001f32-0dfa-46cd-8535-dccfa3617373
+:END:
 #+begin_src sh
 check_smb_connection() {
   local uri=$1
@@ -41,6 +47,9 @@ check_smb_connection() {
 #+end_src
 
 **** rclone
+:PROPERTIES:
+:CUSTOM_ID: de7954e3-446a-4f54-b192-9f443ab6d919
+:END:
 #+begin_src sh
 rclone_sync_dir() {
   local parent=$1
@@ -54,24 +63,38 @@ rclone_sync_dir() {
 #+end_src
 
 **** by-device
+:PROPERTIES:
+:CUSTOM_ID: e5567631-0383-469b-b0a3-11ab1d77ed31
+:END:
 #+begin_src sh :var device_rc_file=(expand-file-name (pcase system-type ('android "termux") (_ "/dev/null")) "_tangle/rc")
 . "$device_rc_file"
 #+end_src
 
 *** interactive
+:PROPERTIES:
+:CUSTOM_ID: e06846d6-1213-4d8a-acf6-5012f3e47de0
+:END:
 
 #+begin_src sh
 [[ $- == *i* ]] || return
 #+end_src
 
 **** gpg
+:PROPERTIES:
+:CUSTOM_ID: e588620f-76c4-43c2-8a95-284e34bd2e8f
+:END:
 #+begin_src sh
-GPG_TTY="$(tty)"
-export GPG_TTY
-gpg-connect-agent updatestartuptty /bye > /dev/null
+if [ -z "$INSIDE_EMACS" ] && [ "$TERM" != "DUMB" ]; then
+    GPG_TTY="$(tty)"
+    export GPG_TTY
+    gpg-connect-agent updatestartuptty /bye > /dev/null
+fi    
 #+end_src
 
 **** by-device
+:PROPERTIES:
+:CUSTOM_ID: ae9f0440-f852-40dd-aace-a7a4d1825263
+:END:
 #+begin_src sh
 . "${device_rc_file}_i"
 #+end_src
@@ -79,16 +102,25 @@ gpg-connect-agent updatestartuptty /bye > /dev/null
 ** termux
 
 *** splash-screen
+:PROPERTIES:
+:CUSTOM_ID: ba4e3893-d838-4df9-8fe2-5b14189c555f
+:END:
 #+begin_src sh :tangle (zr-org-by-tangle-dir "termux_i")
 ifconfig 2>/dev/null | grep 255.255.255.0
 #+end_src
 
 *** emacs
+:PROPERTIES:
+:CUSTOM_ID: a26d14e2-2756-4dad-9083-1549c9488088
+:END:
 #+begin_src sh :tangle (zr-org-by-tangle-dir "termux") :var EMACS_SOCKET_NAME=(format "/data/data/org.gnu.emacs/cache/emacs10%s/server" (substring user-login-name -3))
 export EMACS_SOCKET_NAME
 #+end_src
 
 *** network
+:PROPERTIES:
+:CUSTOM_ID: c443b8e1-b807-4f43-a652-32b65c10ae0a
+:END:
 #+begin_src sh :tangle (zr-org-by-tangle-dir "termux") 
 check_home_network() {
   termux-wifi-connectioninfo  | grep -q '\(pppoppt\|ppptppo\)'
@@ -96,6 +128,9 @@ check_home_network() {
 #+end_src
 
 *** retroarch
+:PROPERTIES:
+:CUSTOM_ID: 289bd6c9-63c0-467b-819b-ea82aa91863e
+:END:
 #+begin_src sh :tangle (zr-org-by-tangle-dir "termux")
 retroarch_sync_pc() {
   if check_home_network && check_smb_connection 'smb://192.168.0.110/retroarch-sync/1.txt'; then
