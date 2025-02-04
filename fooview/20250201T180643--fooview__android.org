@@ -22,18 +22,98 @@
 * js
 :PROPERTIES:
 :tangle-dir: /storage/emulated/0/fooview/js
-:header-args: :comments no
+:header-args: :comments no :mkdirp t
 :END:
 
-** termux-program
-#+begin_src js :mkdirp t :tangle (zr-org-by-tangle-dir "termux-program.js")
-return '/data/data/com.termux/files/usr/bin/' +
-  (typeof arg1 === 'string' ? arg1 : arg1[0]);
-#+end_src
+** termux-run-command
+#+begin_src js :tangle (zr-org-by-tangle-dir "termux-run-command.js")
+function ensureArray(v) {
+  return (typeof v === 'string' ? [v] : v);
+}
 
-** termux-args
-#+begin_src js :tangle (zr-org-by-tangle-dir "termux-args.js")
-return arg1.slice(1).join(',');
+const [
+  program,
+  args,
+  resultdir,
+  workdir,
+  foreground,
+  session_action
+] = ensureArray(arg1);
+
+function expand_file_name(path, parent) {
+  let prefix = '';
+  const ab_re = /^(~|\$PREFIX)?\//;
+  switch(true) {
+  case (ab_re.test(path)):
+    prefix = '';
+    break;
+  case (!!parent):
+    prefix = parent + '/';
+    break;
+  default:
+    prefix = '~/'
+  }
+  return prefix + path;
+}
+
+function quoteArg(arg) {
+  return "'" + arg.replaceAll("'", "'\\''") + "'";
+}
+
+let command = [
+  'am', 'startservice',
+  '--user', '0',
+  '-n', 'com.termux/com.termux.app.RunCommandService',
+  '-a', 'com.termux.RUN_COMMAND',
+  '--es', 'com.termux.RUN_COMMAND_PATH', quoteArg(expand_file_name(program, '$PREFIX/bin'))
+];
+
+function containsCharacter(arr, c) {
+  return arr.some(str => str.includes(c));
+}
+
+function getAMissingVisibleChar(arr) {
+  const allVisibleChars = " !\"#$%&'()*+-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
+  const combinedString = arr.join('');
+  for (const c of allVisibleChars) {
+    if (!combinedString.includes(c)) {
+      return c;
+    }
+  }
+  return ',';
+}
+
+function putArgs(arr) {
+  let args = arr;
+  if (containsCharacter(arr, ',')) {
+    const c = getAMissingVisibleChar(arr);
+    args = arr.map(s => s.replace(',', c)).join(',');
+    command = command.concat('--ez', 'com.termux.RUN_COMMAND_REPLACE_COMMA_ALTERNATIVE_CHARS_IN_ARGUMENTS', 'true', '--es', 'com.termux.RUN_COMMAND_COMMA_ALTERNATIVE_CHARS_IN_ARGUMENTS', quoteArg(c));
+  }
+  command = command.concat('--esa', 'com.termux.RUN_COMMAND_ARGUMENTS', quoteArg(args));
+}
+
+if (args) {
+  putArgs(ensureArray(args));
+}
+
+if (resultdir) {
+  command = command.concat('--es', 'com.termux.RUN_COMMAND_RESULT_DIRECTORY', quoteArg(expand_file_name(resultdir, '/sdcard/.fvout')));
+}
+
+if (workdir) {
+  command = command.concat('--es', 'com.termux.RUN_COMMAND_WORKDIR', quoteArg(expand_file_name(workdir)));
+}
+
+if (!foreground) {
+  command = command.concat('--ez', 'com.termux.RUN_COMMAND_BACKGROUND', 'true');
+}
+
+if (session_action) {
+  command = command.concat('--es', 'com.termux.RUN_COMMAND_SESSION_ACTION', quoteArg(session_action));
+}
+
+return command.join(' ');
 #+end_src
 
 ** share
