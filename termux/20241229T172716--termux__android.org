@@ -36,8 +36,17 @@ termux-setup-storage
 #+end_src
 
 ** adb
-#+begin_src sh
-pm grant com.termux android.permission.DUMP
+#+name: grant-perm
+#+begin_src sh :eval no
+pm grant "$pkg" android.permission.DUMP
+pm grant "$pkg" android.permission.PACKAGE_USAGE_STATS
+#+end_src
+
+#+name: perm-setup
+#+begin_src elisp :var pkg="com.termux" script=grant-perm[]
+(let ((shell-file-name (expand-file-name "usr/bin/rish" zr-termux-root-directory)))
+  (start-process-shell-command
+   "perm-setup" "perm-setup-log" (format "pkg=\"%s\"\n%s" pkg script)))
 #+end_src
 
 * properties
@@ -158,3 +167,22 @@ else
 fi
 #+end_src
 
+** recent-apps
+:PROPERTIES:
+:CUSTOM_ID: 12768000-6d66-47cd-b2a4-b2694e9c485d
+:END:
+#+begin_src sh :tangle (zr-org-by-tangle-dir "recent-apps")
+/system/bin/dumpsys activity recents | awk -F '[ :}]' '/^  \* Recent #[[:digit:]]+:.+type=standard A=/{print $11}'
+#+end_src
+
+** kill-latest-app
+:PROPERTIES:
+:CUSTOM_ID: bb284853-b6aa-4e30-abe0-f0f187924df3
+:END:
+#+begin_src sh :tangle (zr-org-by-tangle-dir "kill-latest-app")
+app=$(echo "$(recent-apps)" | head -1)
+
+termux-toast "Killing ${app}"
+
+rish -c "am stop-app '${app}'"
+#+end_src
