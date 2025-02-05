@@ -169,6 +169,10 @@ cmdTitle := 'Command Prompt'
 ; #HotIf WinActive('ahk_exe msedge.exe') || WinActive(cmdTitle)
 <^n::Down
 
+#HotIf WinActive('ahk_exe scrcpy.exe')
+<^Space::^@
+>!`::Run 'wt.exe -w _quake ft'
+
 #HotIf not WinActive('ahk_group NoEmacsKeys')
 <^g::clearNumArg
 <!1::setNumArg(1)
