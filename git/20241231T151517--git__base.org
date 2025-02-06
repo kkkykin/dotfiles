@@ -40,4 +40,6 @@
 #+begin_src conf :tangle (if (eq system-type 'windows-nt) (zr-org-by-tangle-dir "gitconfig") "no")
 [core]
 	sshCommand = C:/Windows/System32/OpenSSH/ssh.exe
+[gc]
+	auto = 256
 #+end_src
