@@ -9,50 +9,119 @@
 (setq-local zr-local-rclone-secrets
             (car (auth-source-search
                   :max 1 :host "127.0.0.1" :port 5572)))
-(org-babel-tangle)
+(let (org-confirm-babel-evaluate)
+  (org-babel-tangle))
 #+end_src
 
-* Scripts
+* profile
 :PROPERTIES:
-:CUSTOM_ID: e56356f4-7700-435b-b354-55e246a3b53b
+:header-args:bat: :tangle (zr-org-by-tangle-dir "profile.cmd")
+:CUSTOM_ID: d961cb32-f35a-4e8e-99f0-bcd5edf4267b
 :END:
-#+attr_babel: :id 3b6d81d2-4736-4dbd-af8d-9b3bd20c74b6
-#+begin_src bat :tangle (zr-org-by-tangle-dir "emacs-daemon.cmd") :var initd=(expand-file-name "../../.emacs.d") profileel=(zr-org-by-tangle-dir "profile.el")
+
+#+begin_src bat :prologue :epilogue
+@echo off
+SETLOCAL
+
+call :profile_main %1
+#+end_src
+
+** sub
+
+*** misc
+:PROPERTIES:
+:header-args:bat+: :prologue (format ":%s" (org-element-property :name (org-element-at-point-no-context))) :epilogue "goto :eof"
+:CUSTOM_ID: 66e3faf0-2247-4c25-b9ee-1d68a0b24f54
+:END:
+#+name: wait_seconds
+#+begin_src bat 
+timeout /t %1 /nobreak >nul 2>&1
+#+end_src
+
+#+name: kill_process
+#+begin_src bat
+taskkill /f /im %1 >nul 2>&1
+#+end_src
+
+#+name: run_git_pull
+#+begin_src bat
+start /b git -C %1 pull --no-edit
+#+end_src
+
+#+name: check-prog
+#+begin_src org :var program="emacs"
+where $program >nul 2>&1
+if errorlevel 1 (
+  echo "$program not found"
+  ENDLOCAL
+  goto :eof
+)
+#+end_src
+
+*** proc
+:PROPERTIES:
+:header-args:bat+: :prologue (format ":%s\nSETLOCAL" (org-element-property :name (org-element-at-point-no-context))) :epilogue "ENDLOCAL\ngoto :eof"
+:CUSTOM_ID: c0ee49e0-fc37-4a12-9412-d54686aaca83
+:END:
+#+name: run_emacs
+#+begin_src bat :var initd=(expand-file-name "../../.emacs.d") profileel=(zr-org-by-tangle-dir "profile.el")
 cd %USERPROFILE%
 start /b emacs.exe --daemon "--init-directory=%initd%" -l "%profileel%" -l "org-protocol"
 #+end_src
 
-* Profile
-:PROPERTIES:
-:header-args:bat: :tangle (zr-org-by-tangle-dir "profile.cmd") :epilogue "ENDLOCAL\ntimeout /t 1 /nobreak >nul"
-:END:
-
-** first
-:PROPERTIES:
-:CUSTOM_ID: da9ed6cf-528a-4f14-88a8-2dbb671d1c13
-:END:
-#+attr_babel: :id 7cb40f81-a0f6-4d2e-9e8d-f6274373a631
-#+begin_src bat :var emacs-daemon=(zr-org-by-tangle-dir "emacs-daemon.cmd")
-call "%emacs-daemon%"
-#+end_src
-
-#+attr_babel: :id bb974f73-f04e-41da-91f2-49f8570a3c7e
+#+name: run_rclone
 #+begin_src bat :var rclone-user=(plist-get zr-local-rclone-secrets :user) rclone-pass=(auth-info-password zr-local-rclone-secrets)
+<<check-prog(program="rclone")>>
 start /b rclone rcd "--rc-user=%rclone-user%" "--rc-pass=%rclone-pass%" --rc-addr=127.0.0.1:5572 --no-console
 #+end_src
 
-#+attr_babel: :id b95a50b0-1057-4411-bfad-52e0c67f25b5
+#+name: run_ahk
 #+begin_src bat :var ahk-script=(expand-file-name "../ahk/_tangle/default.ahk")
+<<check-prog(program="autohotkey")>>
 start /b autohotkey /script "%ahk-script%"
 #+end_src
 
-*** trojan
+#+name: run_gpg_agent
+#+begin_src bat
+<<check-prog(program="gpgconf")>>
+start /b gpgconf.exe --launch gpg-agent
+#+end_src
+
+#+name: run_aria2c
+#+begin_src bat :var conf=(expand-file-name "../aria2/aria2.conf")
+<<check-prog(program="aria2c")>>
+start /b /abovenormal aria2c.exe --conf-path "%conf%"
+#+end_src
+
+#+name: run_onedrive
+#+begin_src bat
+start /d "%USERPROFILE%\AppData\Local\Microsoft\OneDrive" OneDrive.exe /background
+#+end_src
+
+#+name: run_openresty
+#+begin_src bat
+<<check-prog(program="openresty")>>
+start /b openresty -p %USERPROFILE%\scoop\apps\openresty\current
+#+end_src
+
+#+name: run_alist
+#+begin_src bat :var no_proxy=(concat (getenv "no_proxy") ",.alipan.com,.aliyundrive.net")
+<<check-prog(program="alist")>>
+start /b alist server
+#+end_src
+
+#+name: run_mpd
+#+begin_src bat
+<<check-prog(program="mpd")>>
+start /b mpd "%USERPROFILE%\scoop\persist\mpd\mpd.conf"
+#+end_src
+
+**** trojan
 :PROPERTIES:
-:header-args: :var trojan-dir=(concat (getenv "USERPROFILE") "\\scoop\\app\\trojan-go")
+:header-args+: :var trojan-dir=(concat (getenv "USERPROFILE") "\\scoop\\app\\trojan-go")
 :CUSTOM_ID: 2374627e-d10d-46d4-8ff7-6f1d9d9a7b63
 :END:
 
-#+attr_babel: :id cbfdfd17-d8cd-485d-abdd-158c9e5057a1
 #+begin_src elisp :tangle (zr-org-by-tangle-dir "profile.el") :mkdirp t
 (ignore-errors
   (delete-file (expand-file-name "trojan.log" trojan-dir) t)
@@ -63,62 +132,62 @@ start /b autohotkey /script "%ahk-script%"
     (rename-file f (file-name-with-extension f "bak") t)))
 #+end_src
 
-#+attr_babel: :id 8f658dff-c9ab-4de7-88b5-6e0f2ee7583c
-#+begin_src bat :prologue "SETLOCAL\ntimeout /t 2 /nobreak >nul" :epilogue "ENDLOCAL\ntimeout /t 3 /nobreak >nul"
+#+name: run_trojan
+#+begin_src bat
 start /b /abovenormal /d "%trojan-dir%" trojan-go.exe
 #+end_src
 
-** later
+** main
 :PROPERTIES:
-:header-args:bat+: :epilogue "ENDLOCAL\ntimeout /t 3 /nobreak >nul"
-:CUSTOM_ID: 9912c6e6-b8bc-4d71-84ed-f43ac3012012
+:CUSTOM_ID: 9376588a-03e6-48d7-b125-fe4025b5d1f5
 :END:
+#+name: profile_main
+#+begin_src bat :prologue (format ":%s\nSETLOCAL" (org-element-property :name (org-element-at-point-no-context))) :epilogue :var git_pull_dir_1=(expand-file-name "../../.emacs.d") git_pull_dir_2=(expand-file-name "../../.config")
+set "arg=%1"
 
-#+attr_babel: :id 78e7f59c-62ab-4205-998f-c55b70b56e72
-#+begin_src bat
-start /b gpgconf.exe --launch gpg-agent
+if /i "%arg%"=="emacs" (
+    call :kill_process emacs.exe
+    call :wait_seconds 1
+    call :run_emacs
+) else if /i "%arg%"=="ahk" (
+    call :kill_process autohotkeyux.exe
+    call :wait_seconds 1
+    call :run_ahk
+) else if /i "%arg%"=="init" (
+    call :run_emacs
+    call :wait_seconds 1
+    call :run_rclone
+    call :wait_seconds 1
+    call :run_ahk
+    call :wait_seconds 2
+    call :run_trojan
+    call :wait_seconds 3
+    call :run_gpg_agent
+    call :wait_seconds 3
+    call :run_aria2c
+    call :wait_seconds 3
+    call :run_git_pull %git_pull_dir_1%
+    call :wait_seconds 3
+    call :run_onedrive
+    call :wait_seconds 3
+    call :run_openresty
+    call :wait_seconds 3
+    call :run_alist
+    call :wait_seconds 3
+    call :run_mpd
+    call :wait_seconds 3
+    call :run_git_pull %git_pull_dir_2%
+) else (
+  echo "Please give an valid argument."
+)
+
+ENDLOCAL
 #+end_src
 
-#+attr_babel: :id 13aee48e-7257-4200-976d-01b7d0fc7628
-#+begin_src bat :var conf=(expand-file-name "../aria2/aria2.conf")
-start /b /abovenormal aria2c.exe --conf-path "%conf%"
-#+end_src
-
-#+attr_babel: :id d13debed-329b-48d3-8e0c-e670bdf7e3a9
-#+begin_src bat :var git-dir=(expand-file-name "../../.emacs.d")
-<<git-pull>>
-#+end_src
-
-#+attr_babel: :id 695b66d0-9708-4c37-aa09-d64b8f0ab3d7
-#+begin_src bat
-start /d "%USERPROFILE%\AppData\Local\Microsoft\OneDrive" OneDrive.exe /background
-#+end_src
-
-#+attr_babel: :id dfde4575-db18-4fbb-b517-1f2ebae2c0d0
-#+begin_src bat
-start /b openresty -p %USERPROFILE%\scoop\apps\openresty\current
-#+end_src
-
-#+attr_babel: :id 830fe500-5da5-4799-8560-0f8af8f55cd5
-#+begin_src bat :var no_proxy=(concat (getenv "no_proxy") ",.alipan.com,.aliyundrive.net")
-start /b alist server
-#+end_src
-
-#+attr_babel: :id f761d87a-e4bb-4f89-9212-b3fc7d485931
-#+begin_src bat :var git-dir=(expand-file-name "..")
-<<git-pull>>
-#+end_src
-
-#+attr_babel: :id cef48492-5484-4c96-859c-ebcfe6f4c356
-#+begin_src bat
-start /b mpd "%USERPROFILE%\scoop\persist\mpd\mpd.conf"
-#+end_src
-
-#+name: git-pull
-#+begin_src bat :tangle no
-start /b git -C %git-dir% pull --no-edit
-#+end_src
-
+* Scripts
+:PROPERTIES:
+:CUSTOM_ID: e56356f4-7700-435b-b354-55e246a3b53b
+:END:
 * Custom
 
 ** Explorer Network Driver
