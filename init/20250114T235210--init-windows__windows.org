@@ -153,6 +153,10 @@ if /i "%arg%"=="emacs" (
     call :kill_process autohotkeyux.exe
     call :wait_seconds 1
     call :run_ahk
+) else if /i "%arg%"=="alist" (
+    call :kill_process alist.exe
+    call :wait_seconds 1
+    call :run_alist
 ) else if /i "%arg%"=="init" (
     call :run_emacs
     call :wait_seconds 1
