@@ -116,6 +116,12 @@ if (session_action) {
 return command.join(' ');
 #+end_src
 
+** get-pos-of-str-in-screen
+#+begin_src js :tangle (zr-org-by-tangle-dir "get-pos-of-str-in-screen.js")
+const m=arg1.find(t=>t.includes(arg2));
+return m&&((l,t,r,b)=>[+l+ +r>>1,+t+ +b>>1])(...m.match(/\d+(?!.*\()/g).slice(-4));
+#+end_src
+
 ** share
 
 *** text
