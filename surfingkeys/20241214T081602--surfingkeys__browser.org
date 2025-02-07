@@ -22,6 +22,9 @@
 
 * source
 ** apis
+:PROPERTIES:
+:CUSTOM_ID: 2e669b54-0206-40f4-a9dc-1bdfab188886
+:END:
 https://github.com/brookhong/Surfingkeys/blob/master/docs/API.md
 https://github.com/brookhong/Surfingkeys/blob/master/src/content_scripts/common/api.js
 https://github.com/brookhong/Surfingkeys/blob/master/src/content_scripts/common/default.js
@@ -37,12 +40,18 @@ const {
 } = api;
 #+end_src
 *** settings
+:PROPERTIES:
+:CUSTOM_ID: 26c182f8-317e-4ca3-bc8c-fe5110e04971
+:END:
 #+begin_src js
 settings.clickablePat = /(https?:\/\/|thunder:\/\/|magnet:)\S+/ig;
 settings.interceptedErrors = ["*"];
 #+end_src
 
 ** utils
+:PROPERTIES:
+:CUSTOM_ID: 7ffe28ab-62a9-4c9e-82cc-5c4a15f9dafd
+:END:
 #+begin_src js
 function extractDomainFromHost(hostname) {
   try {
@@ -96,6 +105,9 @@ mapkey(',o', 'Open detected links from text in new tab', () => {
 });
 #+end_src
 ** internal
+:PROPERTIES:
+:CUSTOM_ID: 86a568a1-98d2-4357-b9b2-93b0bb510f1b
+:END:
 #+begin_src js :var myLocalAuthKey=(auth-source-pick-first-password :host "mpv.nginx.localhost")
 async function callInternal(app, headers){
   try {
@@ -117,6 +129,9 @@ async function callInternal(app, headers){
 #+end_src
 
 *** mpv
+:PROPERTIES:
+:CUSTOM_ID: 66f4ed36-2d7f-453f-a04a-8c1291931ecd
+:END:
 
 #+begin_src js
 function callMpv(url, args){
@@ -132,6 +147,9 @@ function callMpv(url, args){
 #+end_src
 
 **** binding
+:PROPERTIES:
+:CUSTOM_ID: d090c98d-fa29-41b6-bf52-7db55ee3bd81
+:END:
 #+name: mpv-key-binding
 | key | info  | arg                |
 |-----+-------+--------------------|
@@ -153,6 +171,9 @@ for (const k of mpvKeyBindings) {
 #+end_src
 
 ** inline query
+:PROPERTIES:
+:CUSTOM_ID: b4da8523-58a6-41c1-94fc-fde44bdfa1e3
+:END:
 https://github.com/brookhong/Surfingkeys/wiki/Register-inline-query
 
 #+begin_src js
@@ -234,6 +255,9 @@ Front.registerInlineQuery({
 #+end_src
 
 ** search engine
+:PROPERTIES:
+:CUSTOM_ID: c1157996-52a0-4db7-86f1-16a13b1bb71a
+:END:
 #+name: search-engine-table
 | alias | name           | engine                                                                               |
 |-------+----------------+--------------------------------------------------------------------------------------|
@@ -251,6 +275,9 @@ for (const alias of mySearchAlias) {
 #+end_src
 
 ** theme
+:PROPERTIES:
+:CUSTOM_ID: 891f5762-a76b-4f1c-b57e-ceb2f351bbc8
+:END:
 https://github.com/brookhong/Surfingkeys/issues/1655#issuecomment-1037459656
 #+begin_src js
 solarizedDark = `
@@ -333,12 +360,18 @@ settings.theme = `
 #+end_src
 
 ** chrome
+:PROPERTIES:
+:CUSTOM_ID: 55bbd191-e7d6-4374-a7b8-932039f55538
+:END:
 
 #+begin_src js
 if (getBrowserName() === 'Chrome') {
 #+end_src
 
 *** proxy
+:PROPERTIES:
+:CUSTOM_ID: 8a494f69-f794-4e91-96d6-e3299aa22068
+:END:
 https://github.com/brookhong/Surfingkeys/blob/master/src/background/chrome.js
 
 #+begin_src js
@@ -373,6 +406,9 @@ mapkey(';pl', 'toggle proxy current site', () => {
 #+end_src
 
 **** pac
+:PROPERTIES:
+:CUSTOM_ID: 1dcc733d-0fa2-4156-8020-04f6a8446d27
+:END:
 #+name: json-file-to-js-obj
 #+begin_src elisp
 (if (file-exists-p file)
@@ -436,6 +472,9 @@ function FindProxyForURL(url, host) {
 #+end_src
 
 *** end
+:PROPERTIES:
+:CUSTOM_ID: 66421736-0059-408e-b459-30112a58c0c1
+:END:
 #+begin_src js
 }
 #+end_src
