@@ -30,7 +30,7 @@
 #+name: expand-serve-files
 #+begin_src elisp :noweb no :results value replace raw
 (format
- "#+begin_src conf :tangle \"_tangle/conf/sites-enabled/serve-files.conf.3\" :mkdirp t\n%s\n#+end_src"
+ "#+begin_src conf-space :tangle \"_tangle/conf/sites-enabled/serve-files.conf.3\" :comments no :mkdirp t\n%s\n#+end_src"
  (mapconcat
   (lambda (s)
     (when-let* ((d (expand-file-name (caddr s)))
@@ -42,8 +42,11 @@
 
 * conf
 ** main
+:PROPERTIES:
+:CUSTOM_ID: 5fad775c-17e9-40c2-97ce-09ea75e1d313
+:END:
 #+header: :var listen=(zr-org-table-select "%d,1" "secrets" ",0" "http listen")
-#+begin_src conf :tangle "_tangle/conf/nginx.conf" :mkdirp yes
+#+begin_src conf-space :tangle "_tangle/conf/nginx.conf" :mkdirp yes
 worker_processes  1;
 
 events {
@@ -88,8 +91,11 @@ http {
 ** server
 
 *** pac file
+:PROPERTIES:
+:CUSTOM_ID: 3879a2c6-647b-4be8-b399-135093b6b33a
+:END:
 #+header: :var location=(zr-org-table-select "%d,1" "secrets" ",0" "pac file") alias=(expand-file-name (zr-org-table-select "%d,2" "secrets" ",0" "pac file"))
-#+begin_src conf :tangle "_tangle/conf/sites-enabled/pac.conf.3" :mkdirp t
+#+begin_src conf-space :tangle "_tangle/conf/sites-enabled/pac.conf.3" :mkdirp t
 location $location {
     alias $alias;
 
@@ -103,7 +109,10 @@ location $location {
 #+end_src
 
 *** lua
-#+begin_src conf :tangle "_tangle/conf/sites-enabled/lua.conf.3"
+:PROPERTIES:
+:CUSTOM_ID: a5df7913-663e-4cd4-a582-2ee3f7795cd9
+:END:
+#+begin_src conf-space :tangle "_tangle/conf/sites-enabled/lua.conf.3"
 location ~ /lua/(.+) {
   allow 127.0.0.1;
   deny all;
@@ -205,6 +214,7 @@ end
 **** mpv
 :PROPERTIES:
 :header-args:lua: :tangle "_tangle/lua-scripts/mpv.lua" :mkdirp t
+:CUSTOM_ID: 3e5ddb96-3ebf-4af7-aa99-85b2fe03abac
 :END:
 
 #+header: :var auth_key=(auth-source-pick-first-password :host "mpv.nginx.localhost") allowd_headers="url, args, authorization"
@@ -241,7 +251,7 @@ end
 
 *** serve files
 #+name: serve-files
-#+begin_src conf
+#+begin_src conf-space
 location $location {
   alias $alias;
   autoindex on;
