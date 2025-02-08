@@ -1,0 +1,15 @@
+#+title:      pandoc
+#+date:       [2025-02-08 Sat 15:11]
+#+filetags:   :work:
+#+identifier: 20250208T151150
+
+* tangle
+#+begin_src elisp
+(make-symbolic-link (expand-file-name "data") (substitute-in-file-name "$APPDATA/pandoc") t)
+#+end_src
+
+* templates
+#+begin_src sh :eval no
+mkdir -p data
+pandoc -o data/reference.docx --print-default-data-file reference.docx
+#+end_src
