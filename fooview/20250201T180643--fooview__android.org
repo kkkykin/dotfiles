@@ -90,7 +90,7 @@ function putArgs(arr) {
     args = arr.map(s => s.replace(',', c)).join(',');
     command = command.concat('--ez', 'com.termux.RUN_COMMAND_REPLACE_COMMA_ALTERNATIVE_CHARS_IN_ARGUMENTS', 'true', '--es', 'com.termux.RUN_COMMAND_COMMA_ALTERNATIVE_CHARS_IN_ARGUMENTS', quoteArg(c));
   }
-  command = command.concat('--esa', 'com.termux.RUN_COMMAND_ARGUMENTS', quoteArg(args));
+  command = command.concat('--esa', 'com.termux.RUN_COMMAND_ARGUMENTS', quoteArg(args.join(',')));
 }
 
 if (args) {
