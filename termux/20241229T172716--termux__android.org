@@ -18,14 +18,6 @@
 (let ((conf (expand-file-name "home/.termux/termux.properties"
                               zr-termux-root-directory)))
   (rename-file (expand-file-name "_tangle/termux.properties") conf t))
-
-;; setup emacsclient
-(make-symbolic-link
- (expand-file-name emacsclient-program-name
-                   "/data/data/org.gnu.emacs/lib")
- (expand-file-name "usr/bin/emacsclient"
-                   zr-termux-root-directory)
- t)
 #+end_src
 
 * permissions
@@ -63,6 +55,31 @@ extra-keys = [[ESC, CTRL, ALT, LEFT, DOWN, UP, RIGHT, ENTER]]
 :header-args:sh: :shebang "#!/data/data/com.termux/files/usr/bin/env bash" :mkdirp t
 :tangle-dir: _tangle/bin
 :END:
+
+** emacsclient
+:PROPERTIES:
+:CUSTOM_ID: 4bf09652-8c4c-44ad-96bf-7335f0efe5b5
+:END:
+#+begin_src sh :tangle (zr-org-by-tangle-dir "emacsclient") :var EMACS_SOCKET_NAME=(expand-file-name server-name server-socket-dir) emacsclient=(symbol-value 'emacsclient-program-name)
+set -euo pipefail
+
+cleanup() {
+  local exit_code=$?
+  popd > /dev/null
+  if [ $? -ne 0 ]; then
+    echo "Warn: cannot return original_dir."
+    exit $exit_code
+  fi
+}
+
+trap cleanup EXIT
+
+pushd "/data/data/org.gnu.emacs/lib" > /dev/null
+
+export EMACS_SOCKET_NAME
+"./$emacsclient" "$@"
+#+end_src
+
 
 ** screen-on-p
 :PROPERTIES:

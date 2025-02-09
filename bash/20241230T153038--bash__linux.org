@@ -109,14 +109,6 @@ fi
 ifconfig 2>/dev/null | grep 255.255.255.0
 #+end_src
 
-*** emacs
-:PROPERTIES:
-:CUSTOM_ID: a26d14e2-2756-4dad-9083-1549c9488088
-:END:
-#+begin_src sh :tangle (zr-org-by-tangle-dir "termux") :var EMACS_SOCKET_NAME=(format "/data/data/org.gnu.emacs/cache/emacs10%s/server" (substring user-login-name -3))
-export EMACS_SOCKET_NAME
-#+end_src
-
 *** network
 :PROPERTIES:
 :CUSTOM_ID: c443b8e1-b807-4f43-a652-32b65c10ae0a
