@@ -25,11 +25,17 @@
 :header-args: :comments no :mkdirp t
 :END:
 
-** termux-run-command
-#+begin_src js :tangle (zr-org-by-tangle-dir "termux-run-command.js")
+** functions
+#+name: ensure-array
+#+begin_src js
 function ensureArray(v) {
   return (typeof v === 'string' ? [v] : v);
 }
+#+end_src
+
+** termux-run-command
+#+begin_src js :tangle (zr-org-by-tangle-dir "termux-run-command.js")
+<<ensure-array>>
 
 const [
   program,
@@ -118,7 +124,22 @@ return command.join(' ');
 
 ** get-pos-of-str-in-screen
 #+begin_src js :tangle (zr-org-by-tangle-dir "get-pos-of-str-in-screen.js")
-const m=arg1.find(t=>t.includes(arg2));
+<<ensure-array>>
+
+const [
+  str,
+  pkg
+] = ensureArray(arg2);
+
+const positions = {
+  'com.coolapk.market.view.splash.SplashActivity': [980, 200]
+};
+
+if (pkg) {
+  return positions[pkg];
+}
+
+const m=arg1.find(t=>t.includes(str));
 return m&&((l,t,r,b)=>[+l+ +r>>1,+t+ +b>>1])(...m.match(/\d+(?!.*\()/g).slice(-4));
 #+end_src
 
