@@ -211,6 +211,46 @@ case "$1" in
 esac
 #+end_src
 
+** tailscale-enable
+:PROPERTIES:
+:CUSTOM_ID: 2fa215c1-0152-4103-9817-f000fd990a68
+:END:
+#+begin_src sh :tangle (zr-org-by-tangle-dir "zr-tailscale-enable")
+function tailscale-broadcast() {
+  termux-am broadcast -n com.tailscale.ipn/.IPNReceiver -a com.tailscale.ipn.$1
+}
+
+function tailscale-stat() {
+  local content
+  content=$(termux-notification-list | jq -r '.[] | select(.packageName == "com.tailscale.ipn") | .content')
+  if [ "$content" = "Connected" ]; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+case "$1" in
+  true)
+    tailscale-broadcast "CONNECT_VPN"
+    ;;
+  false)
+    tailscale-broadcast "DISCONNECT_VPN"
+    ;;
+  toggle)
+    if tailscale-stat; then
+      action="DISCONNECT_VPN"
+    else
+      action="CONNECT_VPN"
+    fi
+    tailscale-broadcast $action
+    ;;
+  ,*)
+    echo "Wrong argument."
+    ;;
+esac
+#+end_src
+
 ** wifi-enable
 :PROPERTIES:
 :CUSTOM_ID: de7b47e1-bdb2-4b46-a64a-f84121416c14
