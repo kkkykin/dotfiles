@@ -1,0 +1,90 @@
+#+title:      windows-terminal
+#+date:       [2025-01-18 Sat 10:59]
+#+filetags:   :windows:
+#+identifier: 20250118T105916
+#+property: header-args:elisp :var wt-settings-path=(substitute-in-file-name "$LOCALAPPDATA/Packages/Microsoft.WindowsTerminal_8wekyb3d8bbwe/LocalState/settings.json")
+
+* tangle
+#+begin_src elisp
+(let ((setting-path (expand-file-name "_output/settings.json")))
+  (make-directory (file-name-directory setting-path) t)
+  (zr-org-babel-execute-named-src-block
+   "gen-settings" `((:results . "file silent")
+                    (:file . ,setting-path)))
+
+  (unless (file-symlink-p wt-settings-path)
+    (when (file-exists-p wt-settings-path)
+      (rename-file wt-settings-path (concat setting-path ".bak") t))
+    ;; gui cannot modify settings anymore.
+    (make-symbolic-link setting-path wt-settings-path)))
+#+end_src
+
+* settings
+#+name: profile-order
+| name               | wd                                               | cli                                                                                        | if                        |
+|--------------------+--------------------------------------------------+--------------------------------------------------------------------------------------------+---------------------------|
+| Windows PowerShell |                                                  |                                                                                            |                           |
+| Command Prompt     |                                                  |                                                                                            |                           |
+| nvim               | (getenv "USERPROFILE")                           | (format "%s --listen %s +te +star" (executable-find "nvim") zr-viper-default-nvim-server ) | (executable-find "nvim")  |
+| UCRT64             | (file-name-concat msys2-dir "home" "%USERNAME%") | (concat msys2-dir msys2-common-cli "ucrt64")                                               | (file-exists-p msys2-dir) |
+| CLANG64            | (file-name-concat msys2-dir "home" "%USERNAME%") | (concat msys2-dir msys2-common-cli "clang64")                                              | (file-exists-p msys2-dir) |
+| MINGW64            | (file-name-concat msys2-dir "home" "%USERNAME%") | (concat msys2-dir msys2-common-cli "mingw64")                                              | (file-exists-p msys2-dir) |
+| Alpine             |                                                  |                                                                                            |                           |
+| nixos              |                                                  |                                                                                            |                           |
+
+#+name: gen-settings
+#+header: :var msys2-dir=(substitute-in-file-name "$USERPROFILE/scoop/apps/msys2/current") msys2-common-cli="/msys2_shell.cmd -defterm -here -no-start -"
+#+begin_src elisp :var profile-order=profile-order[]
+(with-temp-buffer
+  (insert-file-contents wt-settings-path)
+  (goto-char (point-min))
+  (let* ((conf (json-parse-buffer :object-type 'alist))
+         (profiles (alist-get 'profiles conf))
+         (list (alist-get 'list profiles)))
+    (let ((visible (make-vector (length profile-order) (aref list 0)))
+          hidden available)
+      (seq-do-indexed
+       (lambda (sh i)
+         (let* ((name (nth 0 sh))
+                (wd (nth 1 sh))
+                (cli (nth 2 sh))
+                (raw-sexp (nth 3 sh))
+                (profile (cl-find-if
+                          (lambda (p) (string= name (alist-get 'name p)))
+                          list))
+                new-prof)
+           (cond
+            (profile
+             (push name available)
+             (unless (string-empty-p cli)
+               (push (cons 'commandline (zr-org-string-maybe-eval cli))
+                     profile))
+             (unless (string-empty-p wd)
+               (push (cons 'startingDirectory
+                           (zr-org-string-maybe-eval wd))
+                     profile))
+             (aset visible i profile))
+            ((and (not (string-empty-p cli))
+                  (string-match-p (rx bos ?( (+ anychar) ?) eos)
+                                  raw-sexp)
+                  (zr-org-string-eval raw-sexp))
+             (setq new-prof `((commandline
+                               . ,(zr-org-string-maybe-eval cli))
+                              (name . ,name)
+                              (guid . ,(concat "{" (org-id-new) "}"))))
+             (unless (string-empty-p wd)
+               (push (cons 'startingDirectory
+                           (zr-org-string-maybe-eval wd))
+                     new-prof))
+             (push name available)
+             (aset visible i new-prof)))))
+       profile-order)
+      (mapc
+       (lambda (p)
+         (unless (cl-position (alist-get 'name p) available
+                              :test #'string=)
+           (push (push (cons 'hidden t) p) hidden)))
+       list)
+      (push (cons 'list (vconcat visible hidden)) profiles))
+    (json-serialize (push (cons 'profiles profiles) conf))))
+#+end_src
