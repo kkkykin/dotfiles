@@ -32,6 +32,11 @@
 | Alpine             |                                                  |                                                                                            |                           |
 | nixos              |                                                  |                                                                                            |                           |
 
+#+name: profile-alias
+| base           | alias      |
+|----------------+------------|
+| Command Prompt | 命令提示符 |
+
 #+name: gen-settings
 #+header: :var msys2-dir=(substitute-in-file-name "$USERPROFILE/scoop/apps/msys2/current") msys2-common-cli="/msys2_shell.cmd -defterm -here -no-start -"
 #+begin_src elisp :var profile-order=profile-order[]
@@ -42,7 +47,7 @@
          (profiles (alist-get 'profiles conf))
          (list (alist-get 'list profiles)))
     (let ((visible (make-vector (length profile-order) (aref list 0)))
-          hidden available)
+          hidden available available-index)
       (seq-do-indexed
        (lambda (sh i)
          (let* ((name (nth 0 sh))
@@ -50,9 +55,18 @@
                 (cli (nth 2 sh))
                 (raw-sexp (nth 3 sh))
                 (profile (cl-find-if
-                          (lambda (p) (string= name (alist-get 'name p)))
+                          (lambda (p)
+                            (string= name (alist-get 'name p)))
                           list))
                 new-prof)
+           (unless profile
+             (setq profile
+                   (cl-loop for (base alias) in profile-alias
+                            if (string= base name)
+                            return (cl-find-if
+                                    (lambda (p)
+                                      (string= alias (alist-get 'name p)))
+                                    list))))
            (cond
             (profile
              (push name available)
@@ -63,26 +77,30 @@
                (push (cons 'startingDirectory
                            (zr-org-string-maybe-eval wd))
                      profile))
+             (push i available-index)
              (aset visible i profile))
             ((and (not (string-empty-p cli))
                   (string-match-p (rx bos ?( (+ anychar) ?) eos)
                                   raw-sexp)
                   (zr-org-string-eval raw-sexp))
-             (setq new-prof `((commandline
-                               . ,(zr-org-string-maybe-eval cli))
-                              (name . ,name)
-                              (guid . ,(concat "{" (org-id-new) "}"))))
+             (setq new-prof (list (cons 'commandline
+                                        (zr-org-string-maybe-eval cli))
+                                  (cons 'name name)
+                                  (cons 'guid (concat "{" (org-id-new) "}"))))
              (unless (string-empty-p wd)
                (push (cons 'startingDirectory
                            (zr-org-string-maybe-eval wd))
                      new-prof))
              (push name available)
-             (aset visible i new-prof)))))
+             (aset visible i new-prof))
+            (t
+             (let ((dummy (aref visible i)))
+               (push (cons 'guid (concat "{" (org-id-new) "}")) dummy)
+               (aset visible i dummy))))))
        profile-order)
-      (mapc
-       (lambda (p)
-         (unless (cl-position (alist-get 'name p) available
-                              :test #'string=)
+      (seq-do-indexed
+       (lambda (p i)
+         (unless (member i available-index)
            (push (push (cons 'hidden t) p) hidden)))
        list)
       (push (cons 'list (vconcat visible hidden)) profiles))
