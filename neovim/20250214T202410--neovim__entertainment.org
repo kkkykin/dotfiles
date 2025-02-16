@@ -2,7 +2,7 @@
 #+date:       [2025-02-14 Fri 20:24]
 #+filetags:   :entertainment:
 #+identifier: 20250214T202410
-* tanglec
+* tangle
 #+begin_src elisp
 (org-babel-tangle)
 
@@ -53,8 +53,6 @@ vim.keymap.set('n', '<Leader>e', open_with_emacsclient, { noremap = true, silent
 :CUSTOM_ID: cba672ec-fabe-426d-9967-5d11342b607b
 :END:
 #+begin_src lua
-vim.keymap.set('t', '<Esc>', '<C-\\><C-n>', { noremap = true })
-
 vim.keymap.set('t', '<C-r>', function()
   return '<C-\\><C-N>"' .. vim.fn.nr2char(vim.fn.getchar()) .. 'pi'
 end, { expr = true, noremap = true })
@@ -64,10 +62,25 @@ end, { expr = true, noremap = true })
 :PROPERTIES:
 :CUSTOM_ID: e137dfbe-f420-4fc3-b904-89cccbc7d719
 :END:
+
+#+begin_src lua
+local function lcd_by_cur_line_and_to_normal()
+  local current_line = vim.api.nvim_get_current_line()
+  local path_pattern = '^\\(PS \\)\\?\\([a-zA-Z]:\\\\[^>]*\\)>'
+  local path = vim.fn.matchlist(current_line, path_pattern)[3]
+
+  if path and vim.fn.isdirectory(path) then
+    vim.fn.chdir(path)
+  end
+  vim.cmd.stopinsert()
+end
+#+end_src
+
 #+begin_src lua
 if is_windows then
-  
+  vim.keymap.set('t', '<Esc>', lcd_by_cur_line_and_to_normal, { noremap = true })
 else
+  vim.keymap.set('t', '<Esc>', '<C-\\><C-n>', { noremap = true })
   vim.api.nvim_create_autocmd({ 'TermRequest' }, {
     desc = 'Handles OSC 7 dir change requests',
     callback = function(ev)
@@ -84,13 +97,12 @@ else
       end
     end,
   })
+  vim.api.nvim_create_autocmd({ 'BufEnter', 'WinEnter', 'DirChanged' }, {
+    callback = function(ev)
+      if vim.b.osc7_dir and vim.fn.isdirectory(vim.b.osc7_dir) == 1 then
+        vim.cmd.cd(vim.b.osc7_dir)
+      end
+    end,
+  })
 end
-
-vim.api.nvim_create_autocmd({ 'BufEnter', 'WinEnter', 'DirChanged' }, {
-  callback = function(ev)
-    if vim.b.osc7_dir and vim.fn.isdirectory(vim.b.osc7_dir) == 1 then
-      vim.cmd.cd(vim.b.osc7_dir)
-    end
-  end,
-})
 #+end_src
