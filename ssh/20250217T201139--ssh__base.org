@@ -1,0 +1,42 @@
+#+title:      ssh
+#+date:       [2025-02-17 Mon 20:11]
+#+filetags:   :base:
+#+identifier: 20250217T201139
+
+* tangle
+#+begin_src elisp
+(let ((zr-local-pls (plstore-open "ssh.pls")))
+  (plstore-close zr-local-pls)
+  (org-babel-tangle))
+#+end_src
+
+* example
+:PROPERTIES:
+:CUSTOM_ID: f5e58b4d-428d-4730-aa4e-8cfe7a6730b0
+:END:
+#+name: tty
+#+begin_src conf :tangle no
+RequestTTY yes
+#+end_src
+
+#+name: vim
+#+begin_src conf-space :tangle (zr-org-by-tangle-dir) :mkdirp t
+<<tty>>
+RemoteCommand /usr/bin/env vim -c terminal -c only -c startinsert
+#+end_src
+
+#+name: nvim
+#+begin_src conf-space :tangle (zr-org-by-tangle-dir)
+<<tty>>
+RemoteCommand /usr/bin/env nvim +te +star
+#+end_src
+
+#+name: github
+#+begin_src conf-space :tangle (zr-org-by-tangle-dir) :var proxy=(cond* ((bind* (proxy (plist-get (cdr (plstore-get zr-local-pls "proxy")) :proxy))) :non-exit) ((executable-find "ncat") (format "ProxyCommand ncat --proxy %s --proxy-type socks5 %%h %%p" proxy)) (t ""))
+Host github.com
+Hostname ssh.github.com
+User git
+Port 443
+PreferredAuthentications publickey
+$proxy
+#+end_src
