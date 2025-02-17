@@ -106,3 +106,41 @@ else
   })
 end
 #+end_src
+
+** remote
+
+*** start
+:PROPERTIES:
+:CUSTOM_ID: c1082729-583b-4866-849f-4f5615e60630
+:END:
+#+begin_src lua
+if os.getenv('SSH_TTY') then
+#+end_src
+
+*** clipboard
+:PROPERTIES:
+:CUSTOM_ID: cc4bceeb-422b-4b35-8ec7-a8563dc18cec
+:END:
+#+begin_src lua
+local osc52 = require('vim.ui.clipboard.osc52')
+
+vim.g.clipboard = {
+  name = 'OSC 52',
+  copy = {
+    ['+'] = osc52.copy('+'),
+    ['*'] = osc52.copy('*'),
+  },
+  paste = {
+    ['+'] = osc52.paste('+'),
+    ['*'] = osc52.paste('*'),
+  },
+}
+#+end_src
+
+*** end
+:PROPERTIES:
+:CUSTOM_ID: bbf6df13-a341-489c-92be-22d3c37679f1
+:END:
+#+begin_src lua
+end
+#+end_src
