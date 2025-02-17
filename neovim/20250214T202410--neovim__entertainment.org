@@ -53,9 +53,33 @@ vim.keymap.set('n', '<Leader>e', open_with_emacsclient, { noremap = true, silent
 :CUSTOM_ID: cba672ec-fabe-426d-9967-5d11342b607b
 :END:
 #+begin_src lua
-vim.keymap.set('t', '<C-r>', function()
-  return '<C-\\><C-N>"' .. vim.fn.nr2char(vim.fn.getchar()) .. 'pi'
-end, { expr = true, noremap = true })
+-- vim.keymap.set('t', '<C-r>', function()
+--   return '<C-\\><C-N>"' .. vim.fn.nr2char(vim.fn.getchar()) .. 'pi'
+-- end, { expr = true, noremap = true })
+#+end_src
+
+**** windows
+:PROPERTIES:
+:CUSTOM_ID: 2f1e9372-3ed8-4d52-8a51-1ec94be182bb
+:END:
+#+begin_src lua
+if vim.o.shell == 'cmd.exe' then
+  vim.keymap.set('t', '<C-p>', '<Up>')
+  vim.keymap.set('t', '<C-f>', '<Right>')
+  vim.keymap.set('t', '<C-b>', '<Left>')
+  vim.keymap.set('t', '<C-a>', '<Home>')
+  vim.keymap.set('t', '<C-e>', '<End>')
+  vim.keymap.set('t', '<C-u>', '<C-Home>')
+  vim.keymap.set('t', '<C-k>', '<C-End>')
+  vim.keymap.set('t', '<C-m>', '<Enter>')
+  vim.keymap.set('t', '<C-d>', '<Del>')
+  vim.keymap.set('t', '<M-d>', '<C-BS>')
+  vim.keymap.set('t', '<C-l>', '<F7>')
+  vim.keymap.set('t', '<M-z>', '<F4>')
+  vim.keymap.set('t', '<M-p>', '<F8>')
+  vim.keymap.set('t', '<M-b>', '<C-Left>')
+  vim.keymap.set('t', '<M-f>', '<C-Right>')
+end
 #+end_src
 
 *** dirtrack
@@ -70,7 +94,11 @@ local function lcd_by_cur_line_and_to_normal()
   local path = vim.fn.matchlist(current_line, path_pattern)[3]
 
   if path and vim.fn.isdirectory(path) then
-    vim.fn.chdir(path)
+    local buf = vim.api.nvim_get_current_buf()
+    vim.api.nvim_buf_set_var(buf, 'osc7_dir', path)
+    if vim.o.autochdir then
+      vim.fn.chdir(path)
+    end
   end
   vim.cmd.stopinsert()
 end
@@ -87,7 +115,6 @@ else
       if string.sub(vim.v.termrequest, 1, 4) == '\x1b]7;' then
         local dir = string.gsub(vim.v.termrequest, '\x1b]7;file://[^/]*', '')
         if vim.fn.isdirectory(dir) == 0 then
-          vim.notify('invalid dir: ' .. dir, vim.log.levels.WARN)
           return
         end
         vim.api.nvim_buf_set_var(ev.buf, 'osc7_dir', dir)
@@ -97,14 +124,14 @@ else
       end
     end,
   })
-  vim.api.nvim_create_autocmd({ 'BufEnter', 'WinEnter', 'DirChanged' }, {
-    callback = function(ev)
-      if vim.b.osc7_dir and vim.fn.isdirectory(vim.b.osc7_dir) == 1 then
-        vim.cmd.cd(vim.b.osc7_dir)
-      end
-    end,
-  })
 end
+vim.api.nvim_create_autocmd({ 'BufEnter', 'WinEnter', 'DirChanged' }, {
+  callback = function(ev)
+    if vim.b.osc7_dir and vim.fn.isdirectory(vim.b.osc7_dir) == 1 then
+      vim.cmd.cd(vim.b.osc7_dir)
+    end
+  end,
+})
 #+end_src
 
 ** remote
