@@ -153,6 +153,10 @@ if /i "%arg%"=="emacs" (
     call :kill_process autohotkeyux.exe
     call :wait_seconds 1
     call :run_ahk
+) else if /i "%arg%"=="trojan-go" (
+    call :kill_process trojan-go
+    call :wait_seconds 1
+    call :run_trojan
 ) else if /i "%arg%"=="alist" (
     call :kill_process alist.exe
     call :wait_seconds 1

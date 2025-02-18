@@ -1,0 +1,31 @@
+#+title:      vim
+#+date:       [2025-02-18 Tue 10:40]
+#+filetags:   :server:
+#+identifier: 20250218T104040
+* clipboard
+:PROPERTIES:
+:CUSTOM_ID: 0f2a2629-f665-4637-8129-5337b908e9ff
+:END:
+copy via OSC52；
+#+begin_src viml :comments no :tangle (zr-org-by-tangle-dir ".vimrc") :mkdirp t
+function! CopyToClipboardOSC52(text)
+    let tty = $SSH_TTY
+    if empty(tty)
+        echoerr 'SSH_TTY is not set. This function only works over SSH.'
+        return
+    endif
+
+    let base64_text = system('base64 | tr -d "\n"', a:text)
+
+    let osc52_code = "\e]52;c;" . base64_text . "\x07"
+
+    call writefile([osc52_code], tty, 'b')
+endfunction
+
+function! CopyToClipboard()
+    let text = getreg('"')
+    call CopyToClipboardOSC52(text)
+endfunction
+
+vnoremap <leader>y y:call CopyToClipboard()<CR>
+#+end_src

@@ -18,3 +18,23 @@
 | package | target        | link        |
 |---------+---------------+-------------|
 | tcpview | tcpvcon64.exe | tcpvcon.exe |
+
+* Buckets
+#+name: buckets
+| user           | repo                  |
+|----------------+-----------------------|
+| kkkykin        | Personal-Scoop-Bucket |
+| YDX-2147483647 | scoop-bucket          |
+| brian6932      | dank-scoop            |
+
+#+begin_src elisp :eval no :var buckets=buckets
+(let ((cmd (mapconcat
+            (lambda (b)
+              (format "scoop bucket add %s https://github.com/%s/%s"
+                      (car b) (car b) (cadr b)))
+            buckets " && ")))
+  (start-process-shell-command
+   "scoop-add-buckets"
+   "scoop-add-buckets"
+   cmd))
+#+end_src
