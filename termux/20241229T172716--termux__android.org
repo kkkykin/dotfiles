@@ -47,7 +47,7 @@ pm grant "$pkg" android.permission.PACKAGE_USAGE_STATS
 :END:
 #+begin_src conf :tangle (zr-org-by-tangle-dir "termux.properties")
 allow-external-apps = true
-extra-keys = [[ESC, CTRL, ALT, LEFT, DOWN, UP, RIGHT, ENTER]]
+extra-keys = [[ESC, CTRL, ALT, LEFT, DOWN, UP, RIGHT, DRAWER]]
 #+end_src
 
 * cli
@@ -158,6 +158,17 @@ case "$1" in
 esac
 #+end_src
 
+** audio-manage
+#+begin_src sh
+function headphone-enable-p() {
+  if /system/bin/dumpsys audio 2>/dev/null | grep -q '^  mBluetoothName=null$'; then
+    return 1
+  else
+    return 0
+  fi
+}
+#+end_src
+
 ** screen-on-p
 :PROPERTIES:
 :CUSTOM_ID: 8197aa92-1e58-4ca9-a15b-37e0e981d45a
@@ -245,7 +256,7 @@ case "$1" in
     fi
     tailscale-broadcast $action
     ;;
-  ,*)
+  *)
     echo "Wrong argument."
     ;;
 esac
