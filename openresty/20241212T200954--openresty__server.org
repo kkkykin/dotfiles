@@ -3,14 +3,13 @@
 #+filetags:   :server:
 #+identifier: 20241212T200954
 
-* manager
+* tangle
 :PROPERTIES:
 :header-args: :var prefix=(expand-file-name "scoop/apps/openresty/current" (getenv "USERPROFILE"))
 :END:
-
 #+begin_src elisp
-(org-decrypt-entries)
-(let (org-confirm-babel-evaluate
+(let ((zr-local-pls (plstore-open "openresty.pls"))
+      org-confirm-babel-evaluate
       org-babel-pre-tangle-hook
       (exe (executable-find "openresty")))
   (zr-org-babel-execute-named-src-block
@@ -33,11 +32,12 @@
  "#+begin_src conf-space :tangle \"_tangle/conf/sites-enabled/serve-files.conf.3\" :comments no :mkdirp t\n%s\n#+end_src"
  (mapconcat
   (lambda (s)
-    (when-let* ((d (expand-file-name (caddr s)))
+    (when-let* ((serve (cdr s))
+                (d (expand-file-name (plist-get serve :alias)))
                 (file-exists-p d))
       (format "<<serve-files(location=\"%s\",alias=\"%s\")>>"
-              (cadr s) d)))
-  (org-babel-ref-resolve "s-files") "\n"))
+              (plist-get serve :path) d)))
+  (plstore-find zr-local-pls '(:type ("serve-file"))) "\n"))
 #+end_src
 
 * conf
@@ -45,7 +45,7 @@
 :PROPERTIES:
 :CUSTOM_ID: 5fad775c-17e9-40c2-97ce-09ea75e1d313
 :END:
-#+header: :var listen=(zr-org-table-select "%d,1" "secrets" ",0" "http listen")
+#+header: :var listen=(let ((http (cdr (plstore-get zr-local-pls "http listen")))) (format "%s:%s" (plist-get http :host) (plist-get http :listen)))
 #+begin_src conf-space :tangle "_tangle/conf/nginx.conf" :mkdirp yes
 worker_processes  1;
 
@@ -94,7 +94,7 @@ http {
 :PROPERTIES:
 :CUSTOM_ID: 3879a2c6-647b-4be8-b399-135093b6b33a
 :END:
-#+header: :var location=(zr-org-table-select "%d,1" "secrets" ",0" "pac file") alias=(expand-file-name (zr-org-table-select "%d,2" "secrets" ",0" "pac file"))
+#+header: :var location=(plist-get (cdr (plstore-get zr-local-pls "pac file")) :path) alias=(expand-file-name (plist-get (cdr (plstore-get zr-local-pls "pac file")) :alias))
 #+begin_src conf-space :tangle "_tangle/conf/sites-enabled/pac.conf.3" :mkdirp t
 location $location {
     alias $alias;
@@ -219,7 +219,7 @@ end
 
 #+header: :var auth_key=(auth-source-pick-first-password :host "mpv.nginx.localhost") allowd_headers="url, args, authorization"
 #+begin_src lua
-local allowd_origin = {<<expand-lua-table(value=(zr-org-table-select "%d,1:-1" "s-cors" ",0" "mpv"))>>}
+local allowd_origin = {<<expand-lua-table(value=(plist-get (cdr (plstore-get zr-local-pls "mpv-cors")) :cors))>>}
 <<check-auth-and-origin>>
 
 local url = ngx.req.get_headers()['url']
@@ -259,21 +259,6 @@ location $location {
   tcp_nodelay on;
 }
 #+end_src
-
-* secrets                                                             :crypt:
------BEGIN PGP MESSAGE-----
-
-hF4DhteJcpg+xyQSAQdA74XsX85LlNQF7I0mPl88WTggd/W6poKAUrDRRJTzL3Mw
-NwiW6DzRI9yBgk3eHexO6dqsHDCWfTaznwLCd43Y8yEM5hsmDDWLhLlv3UokNpbY
-1MBuAQkCECuWkiLrd+YahxQLEa22Wan/E4f6tAqghcWt1Z7Z+PUVii96xHkyM0HX
-BZTKO92edeiJTYGO5e56bWxfqtaOrPKUTCXFRN69b1/mtfV/72O2GghLMoBjI01U
-O7f0I+PxZlzi5JibVpe3HVK+bmcFXpdLawOyHvHmOAsgIV7F6Zvy+IglRqXX/sAK
-35/8+dOFDvMGOx9vY6TiNvA2lr8vZ6H3pijOVpP5Dlu2sLr/g10421JPD4L0uq44
-fjt3HkBzzRB7+VxORQ1bV+lyzas8prF+Ic2TCgCVtpxP8lntabBjihKimAoGbI2/
-/Azvd21BZu3GlP0Rsx1LaY4pSZja7rWLe1xI7MdSSu7Q7YAvyJFoCIV8cql1RPXt
-NVYyWmMo/h1PWZsXl64kMaA=
-=doRW
------END PGP MESSAGE-----
 
 * local-variables
 # Local Variables:

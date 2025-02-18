@@ -3,8 +3,11 @@
 #+filetags:   :server:
 #+identifier: 20250218T104040
 * clipboard
+:PROPERTIES:
+:CUSTOM_ID: 0f2a2629-f665-4637-8129-5337b908e9ff
+:END:
 copy via OSC52；
-#+begin_src viml
+#+begin_src viml :comments no :tangle (zr-org-by-tangle-dir ".vimrc") :mkdirp t
 function! CopyToClipboardOSC52(text)
     let tty = $SSH_TTY
     if empty(tty)
