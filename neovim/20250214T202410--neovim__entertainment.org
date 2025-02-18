@@ -76,6 +76,7 @@ vim.keymap.set('t', '<C-w>gT', '<C-\\><C-o>gT')
 #+begin_src lua
 if vim.o.shell == 'cmd.exe' then
   vim.keymap.set('t', '<C-p>', '<Up>')
+  vim.keymap.set('t', '<C-n>', '<Down>')
   vim.keymap.set('t', '<C-f>', '<Right>')
   vim.keymap.set('t', '<C-b>', '<Left>')
   vim.keymap.set('t', '<C-a>', '<Home>')
