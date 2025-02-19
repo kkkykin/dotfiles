@@ -39,7 +39,7 @@
 
 #+name: gen-settings
 #+header: :var msys2-dir=(substitute-in-file-name "$USERPROFILE/scoop/apps/msys2/current") msys2-common-cli="/msys2_shell.cmd -defterm -here -no-start -"
-#+begin_src elisp :var profile-order=profile-order[]
+#+begin_src elisp :var profile-order=profile-order[] profile-alias=profile-alias[]
 (with-temp-buffer
   (insert-file-contents wt-settings-path)
   (goto-char (point-min))
