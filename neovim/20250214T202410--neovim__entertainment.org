@@ -6,8 +6,11 @@
 #+begin_src elisp
 (org-babel-tangle)
 
-(make-symbolic-link (expand-file-name "_tangle")
-                    (substitute-in-file-name "$LOCALAPPDATA/nvim") t)
+(let ((dir (pcase system-type
+            ('windows-nt
+             (substitute-in-file-name "$LOCALAPPDATA/nvim"))
+            (_ (expand-file-name "~/.config/nvim")))))
+  (make-symbolic-link (expand-file-name "_tangle") dir t))
 #+end_src
 * init
 :PROPERTIES:

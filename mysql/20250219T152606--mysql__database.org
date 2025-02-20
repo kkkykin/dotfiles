@@ -1,0 +1,41 @@
+#+title:      mysql
+#+date:       [2025-02-19 Wed 15:26]
+#+filetags:   :database:
+#+identifier: 20250219T152606
+
+* tangle
+#+begin_src elisp :var datadir=find-mysql-datadir()
+(let* ((base (file-name-directory datadir))
+       (link (expand-file-name "my.ini" base))
+       org-confirm-babel-evaluate)
+  (org-babel-tangle)
+  (call-process "setx" nil 0 nil "MYSQL_HOME" base)
+  (unless (file-symlink-p link)
+    (rename-file link (concat link ".bak"))
+    (make-symbolic-link (expand-file-name "_tangle/my.cnf") link t)))
+#+end_src
+
+* conf
+:PROPERTIES:
+:CUSTOM_ID: f474c7a3-a9ae-4b19-ad16-f6a6cbcc60b6
+:END:
+#+name: find-mysql-datadir
+#+begin_src elisp
+(let* ((base (substitute-in-file-name "$userprofile/scoop/persist/mysql"))
+       (lts (concat base "-lts")))
+  (expand-file-name "data" (if (file-directory-p lts) lts my)))
+#+end_src
+
+#+begin_src conf :tangle (zr-org-by-tangle-dir "my.cnf") :mkdirp t :var datadir=find-mysql-datadir()
+[mysqld]
+datadir=$datadir
+collation-server=utf8mb4_general_ci
+character-set-server=utf8mb4
+
+[client]
+user=root
+default-character-set=utf8mb4
+
+[mysql]
+default-character-set=utf8mb4
+#+end_src
