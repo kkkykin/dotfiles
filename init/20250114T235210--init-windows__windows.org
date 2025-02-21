@@ -6,10 +6,8 @@
 * tangle
 #+begin_src elisp
 (make-directory "_tangle" t)
-(setq-local zr-local-rclone-secrets
-            (car (auth-source-search
-                  :max 1 :host "127.0.0.1" :port 5572)))
-(let (org-confirm-babel-evaluate)
+(let (org-confirm-babel-evaluate
+      (zr-local-pls (plstore-open "init.pls")))
   (org-babel-tangle))
 #+end_src
 
@@ -70,7 +68,7 @@ start /b emacs.exe --daemon "--init-directory=%initd%" -l "%profileel%" -l "org-
 #+end_src
 
 #+name: run_rclone
-#+begin_src bat :var rclone-user=(plist-get zr-local-rclone-secrets :user) rclone-pass=(auth-info-password zr-local-rclone-secrets)
+#+begin_src bat :var rclone-user=(plist-get (cdr (plstore-get zr-local-pls "rclone")) :user) rclone-pass=(plist-get (cdr (plstore-get zr-local-pls "rclone")) :pass)
 <<check-prog(program="rclone")>>
 start /b rclone rcd "--rc-user=%rclone-user%" "--rc-pass=%rclone-pass%" --rc-addr=127.0.0.1:5572 --no-console
 #+end_src
@@ -88,9 +86,9 @@ start /b gpgconf.exe --launch gpg-agent
 #+end_src
 
 #+name: run_aria2c
-#+begin_src bat :var conf=(expand-file-name "../aria2/aria2.conf")
+#+begin_src bat :var dir=(expand-file-name "../aria2/_tangle") all_proxy=(plist-get (cdr (plstore-get zr-local-pls "proxy")) :proxy)
 <<check-prog(program="aria2c")>>
-start /b /abovenormal aria2c.exe --conf-path "%conf%"
+start /b /d "%dir%" /abovenormal aria2c.exe --conf-path aria2.conf
 #+end_src
 
 #+name: run_onedrive
@@ -161,6 +159,10 @@ if /i "%arg%"=="emacs" (
     call :kill_process alist.exe
     call :wait_seconds 1
     call :run_alist
+) else if /i "%arg%"=="aria2" (
+    call :kill_process aria2c.exe
+    call :wait_seconds 1
+    call :run_aria2c
 ) else if /i "%arg%"=="init" (
     call :run_emacs
     call :wait_seconds 1
