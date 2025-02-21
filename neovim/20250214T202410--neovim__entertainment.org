@@ -148,6 +148,17 @@ vim.api.nvim_create_autocmd({ 'BufEnter', 'WinEnter', 'DirChanged' }, {
 })
 #+end_src
 
+#+begin_src lua
+vim.api.nvim_create_user_command('Oc', function()
+  local osc7_dir = vim.b.osc7_dir
+  if osc7_dir and vim.fn.isdirectory(osc7_dir) == 1 then
+    vim.cmd.lcd(osc7_dir)
+  else
+    print('osc7_dir is not set or is not a valid directory')
+  end
+end, {})
+#+end_src
+
 ** remote
 
 *** start
