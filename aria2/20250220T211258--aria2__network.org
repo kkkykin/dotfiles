@@ -5,20 +5,25 @@
 
 * tangle
 #+begin_src elisp
-(let ((zr-local-pls (plstore-open "aria2.pls")))
-  (org-babel-tangle))
-
 (dolist (l '("https://github.com/P3TERX/aria2.conf/raw/refs/heads/master/dht.dat"
              "https://github.com/P3TERX/aria2.conf/raw/refs/heads/master/dht6.dat"))
   (let ((arg (zr-net-curl-parameters-dwim l))
         (name (expand-file-name (file-name-nondirectory l) "_tangle")))
     (apply #'start-process "aria2-download-dht" nil
-           "curl" "-Lo" name (car arg) (cadr arg))))
+           "curl" "-Lo" name l arg)))
+
+(let ((zr-local-pls (plstore-open "aria2.pls"))
+      (session (zr-org-by-tangle-dir "aria2.session"))
+      (link-dir (zr-org-by-tangle-dir "downloads")))
+  (unless (file-exists-p session)
+    (make-empty-file session t))
+  (org-babel-tangle)
+  (unless (file-symlink-p link-dir)
+    (let ((dir (read-directory-name "downloads dir? ")))
+      (make-symbolic-link dir link-dir))))
 #+end_src
 
 * conf
-
-
 ** main
 :PROPERTIES:
 :header-args+: :tangle (zr-org-by-tangle-dir "aria2.conf") :mkdirp t
@@ -30,7 +35,7 @@ https://github.com/P3TERX/aria2.conf
 :CUSTOM_ID: 2847641e-b3b8-4f68-b91c-4a1c6722d88e
 :END:
 
-#+begin_src conf-unix :var dir=(zr-org-by-tangle-dir "downloads")
+#+begin_src conf-unix :var dir="./downloads" alloc=(if (y-or-n-p "SSD? ") "none" "falloc")
 # 下载目录。可使用绝对路径或相对路径, 默认: 当前启动位置
 dir=$dir
 
@@ -39,6 +44,14 @@ dir=$dir
 # 建议在有足够的内存空闲情况下适当增加，但不要超过剩余可用内存空间大小。
 # 此项值仅决定上限，实际对内存的占用取决于网速(带宽)和设备性能等其它因素。
 disk-cache=64M
+
+# 文件预分配方式, 可选：none, prealloc, trunc, falloc, 默认:prealloc
+# 预分配对于机械硬盘可有效降低磁盘碎片、提升磁盘读写性能、延长磁盘寿命。
+# 机械硬盘使用 ext4（具有扩展支持），btrfs，xfs 或 NTFS（仅 MinGW 编译版本）等文件系统建议设置为 falloc
+# 若无法下载，提示 fallocate failed.cause：Operation not supported 则说明不支持，请设置为 none
+# prealloc 分配速度慢, trunc 无实际作用，不推荐使用。
+# 固态硬盘不需要预分配，只建议设置为 none ，否则可能会导致双倍文件大小的数据写入，从而影响寿命。
+file-allocation=$alloc
 
 # 文件预分配大小限制。小于此选项值大小的文件不预分配空间，单位 K 或 M，默认：5M
 no-file-allocation-limit=64M
@@ -61,7 +74,7 @@ remote-time=true
 :PROPERTIES:
 :CUSTOM_ID: 27f62b99-4fa2-40e4-9ade-9b9550952056
 :END:
-#+begin_src conf-unix :var session=(zr-org-by-tangle-dir "aria2.session")
+#+begin_src conf-unix :var session="./aria2.session"
 # 从会话文件中读取下载任务
 input-file=$session
 
@@ -168,7 +181,7 @@ content-disposition-default-utf8=true
 :PROPERTIES:
 :CUSTOM_ID: 00b15b1b-cbb2-4628-a525-8aa775cde413
 :END:
-#+begin_src conf-unix :var dht=(zr-org-by-tangle-dir "dht.dat") 6dht=(zr-org-by-tangle-dir "dht6.dat") tracker=(org-file-contents "https://cf.trackerslist.com/best_aria2.txt")
+#+begin_src conf-unix :var dht="./dht.dat" 6dht="./dht6.dat" tracker=(org-file-contents "https://cf.trackerslist.com/best_aria2.txt")
 # BT 监听端口(TCP), 默认:6881-6999
 # 直通外网的设备，比如 VPS ，务必配置防火墙和安全组策略允许此端口入站
 # 内网环境的设备，比如 NAS ，除了防火墙设置，还需在路由器设置外网端口转发到此端口
@@ -423,34 +436,4 @@ summary-interval=0
 
 # 关闭控制台进度条输出，避免日志里面打印大量空行
 show-console-readout=false
-#+end_src
-
-*** misc
-:PROPERTIES:
-:CUSTOM_ID: 0a6a0edf-5f19-4039-8a18-485a1e9a9b34
-:END:
-#+begin_src conf-unix :var proxy=(plist-get (cdr (plstore-get zr-local-pls "proxy")) :proxy)
-all-proxy=http://$proxy
-#+end_src
-
-** SSD or HDD
-:PROPERTIES:
-:CUSTOM_ID: 50d0912b-79c3-4249-a13d-f5043808b514
-:header-args:conf-unix+: :var conf=(zr-org-by-tangle-dir "aria2.conf")
-:END:
-文件预分配方式, 可选：none, prealloc, trunc, falloc, 默认:prealloc
-预分配对于机械硬盘可有效降低磁盘碎片、提升磁盘读写性能、延长磁盘寿命。
-机械硬盘使用 ext4（具有扩展支持），btrfs，xfs 或 NTFS（仅 MinGW 编译版本）等文件系统建议设置为 falloc
-若无法下载，提示 fallocate failed.cause：Operation not supported 则说明不支持，请设置为 none
-prealloc 分配速度慢, trunc 无实际作用，不推荐使用。
-固态硬盘不需要预分配，只建议设置为 none ，否则可能会导致双倍文件大小的数据写入，从而影响寿命。
-
-#+begin_src conf-unix :tangle (zr-org-by-tangle-dir "ssd.conf")
-file-allocation=none
-conf-path=$conf
-#+end_src
-
-#+begin_src conf-unix :tangle (zr-org-by-tangle-dir "hdd.conf")
-file-allocation=falloc
-conf-path=$conf
 #+end_src
