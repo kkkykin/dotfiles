@@ -23,6 +23,23 @@
 :END:
 #+begin_src lua
 local is_windows = vim.fn.has('win32') == 1 or vim.fn.has('win64') == 1
+
+local archive_7z_program = nil
+
+if vim.fn.executable('7z') == 1 then
+  archive_7z_program = '7z'
+elseif vim.fn.executable('7zz') == 1 then
+  archive_7z_program = '7zz'
+end
+
+
+if archive_7z_program then
+  vim.g.netrw_decompress = {
+    ['.zip'] = archive_7z_program .. ' x -otmp-zip',
+    ['.7z'] = archive_7z_program .. ' x -otmp-7z',
+    ['.rar'] = archive_7z_program .. ' x -otmp-rar'
+  }
+end
 #+end_src
 
 ** theme
@@ -63,7 +80,6 @@ vim.keymap.set('n', '<Leader>e', open_with_emacsclient, { noremap = true, silent
 #+begin_src lua
 vim.keymap.set('t', '<C-w>.', '<C-w>')
 vim.keymap.set('t', '<C-w><C-\\>', '<C-\\>')
-vim.keymap.set('t', '<C-w>n', '<C-\\><C-n>')
 vim.keymap.set('t', '<C-w>"', function()
   return '<C-\\><C-N>"' .. vim.fn.nr2char(vim.fn.getchar()) .. 'pi'
 end, { expr = true, noremap = true })
@@ -120,9 +136,9 @@ end
 
 #+begin_src lua
 if is_windows then
-  vim.keymap.set('t', '<Esc>', lcd_by_cur_line_and_to_normal, { noremap = true })
+  vim.keymap.set('t', '<C-w>n', lcd_by_cur_line_and_to_normal, { noremap = true })
 else
-  vim.keymap.set('t', '<Esc>', '<C-\\><C-n>', { noremap = true })
+  vim.keymap.set('t', '<C-w>n', '<C-\\><C-n>', { noremap = true })
   vim.api.nvim_create_autocmd({ 'TermRequest' }, {
     desc = 'Handles OSC 7 dir change requests',
     callback = function(ev)
