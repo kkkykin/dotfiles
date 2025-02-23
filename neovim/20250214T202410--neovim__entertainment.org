@@ -31,15 +31,6 @@ if vim.fn.executable('7z') == 1 then
 elseif vim.fn.executable('7zz') == 1 then
   archive_7z_program = '7zz'
 end
-
-
-if archive_7z_program then
-  vim.g.netrw_decompress = {
-    ['.zip'] = archive_7z_program .. ' x -otmp-zip',
-    ['.7z'] = archive_7z_program .. ' x -otmp-7z',
-    ['.rar'] = archive_7z_program .. ' x -otmp-rar'
-  }
-end
 #+end_src
 
 ** theme
@@ -135,6 +126,24 @@ end
 #+end_src
 
 #+begin_src lua
+local function get_buffer_dir()
+  if vim.b.osc7_dir and vim.fn.isdirectory(vim.b.osc7_dir) == 1 then
+    return vim.b.osc7_dir
+  end
+  local current_file_path = vim.fn.expand('%:p')
+  return = vim.fn.fnamemodify(current_file_path, ':h')
+end
+#+end_src
+
+#+begin_src lua
+local function cd_to_buffer_dir()
+  vim.cmd.cd(get_buffer_dir())
+end
+
+vim.keymap.set('n', '<Leader>c', cd_to_buffer_dir, { noremap = true })
+#+end_src
+
+#+begin_src lua
 if is_windows then
   vim.keymap.set('t', '<C-w>n', lcd_by_cur_line_and_to_normal, { noremap = true })
 else
@@ -155,12 +164,9 @@ else
     end,
   })
 end
+
 vim.api.nvim_create_autocmd({ 'BufEnter', 'WinEnter', 'DirChanged' }, {
-  callback = function(ev)
-    if vim.b.osc7_dir and vim.fn.isdirectory(vim.b.osc7_dir) == 1 then
-      vim.cmd.cd(vim.b.osc7_dir)
-    end
-  end,
+  callback = cd_to_buffer_dir,
 })
 #+end_src
 
@@ -211,4 +217,30 @@ vim.g.clipboard = {
 :END:
 #+begin_src lua
 end
+#+end_src
+
+** netrw
+*** vars
+:PROPERTIES:
+:CUSTOM_ID: 0c6f9751-5296-4199-879d-dd91d0e9d278
+:END:
+#+begin_src lua
+if archive_7z_program then
+  vim.g.netrw_decompress = {
+    ['.zip'] = archive_7z_program .. ' x -otmp-zip',
+    ['.7z'] = archive_7z_program .. ' x -otmp-7z',
+    ['.rar'] = archive_7z_program .. ' x -otmp-rar'
+  }
+end
+#+end_src
+*** bind
+:PROPERTIES:
+:CUSTOM_ID: 1ad2abfd-1d4a-4651-85c5-859f1f2ba1e6
+:END:
+#+begin_src lua
+local function netrw_buffer_dir()
+  vim.cmd.edit(get_buffer_dir())
+end
+
+vim.keymap.set('n', '<Leader>d', netrw_buffer_dir, { noremap = true })
 #+end_src
