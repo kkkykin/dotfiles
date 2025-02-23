@@ -3,6 +3,11 @@
 #+filetags:   :windows:
 #+identifier: 20250114T231945
 
+* tangle
+#+begin_src elisp
+(org-babel-tangle)
+#+end_src
+
 * default
 :PROPERTIES:
 :header-args:ahk: :tangle (zr-org-by-tangle-dir "default.ahk")
@@ -306,6 +311,7 @@ hotGestureRouter(mWin, gesture){
 #+begin_src ahk
 GroupAdd 'NoHotGestures', 'ahk_class Emacs'
 GroupAdd 'NoHotGestures', 'ahk_class UnityWndClass'
+GroupAdd 'NoHotGestures', 'ahk_class UnrealWindow'
 GroupAdd 'NoHotGestures', 'ahk_exe Game.exe'
 
 #HotIf not WinActive('ahk_group NoHotGestures')
