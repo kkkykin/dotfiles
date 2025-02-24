@@ -123,11 +123,11 @@ start /b mpd "%USERPROFILE%\scoop\persist\mpd\mpd.conf"
 #+begin_src elisp :tangle (zr-org-by-tangle-dir "profile.el") :mkdirp t
 (ignore-errors
   (delete-file (expand-file-name "trojan.log" trojan-dir) t)
-  (delete-file (substitute-in-file-name "$USERPROFILE/ansel/tmp"))
   (dolist (f (directory-files-recursively
               (substitute-in-file-name "$USERPROFILE/AppData/Roaming/Tencent/QQ/AuTemp/")
               (rx bos "cfg.db" eos)))
-    (rename-file f (file-name-with-extension f "bak") t)))
+    (rename-file f (file-name-with-extension f "bak") t))
+  (delete-file (substitute-in-file-name "$USERPROFILE/ansel/tmp")))
 #+end_src
 
 #+name: run_trojan
