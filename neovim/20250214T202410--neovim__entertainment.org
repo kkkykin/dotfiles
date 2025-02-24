@@ -155,7 +155,10 @@ end
 local function setup_terminal_bash()
   local job_id = vim.b.terminal_job_id
   if job_id then
-    vim.api.nvim_chan_send(job_id, 'function print_osc7() { printf "\\033]7;file://$HOSTNAME$PWD\\033\\\\"; }\nPROMPT_COMMAND=print_osc7\n')
+    vim.api.nvim_chan_send(job_id, 'set +o history\n')
+    vim.api.nvim_chan_send(job_id, 'function print_osc7() { printf "\\033]7;file://$HOSTNAME$PWD\\033\\\\"; }\n')
+    vim.api.nvim_chan_send(job_id, 'PROMPT_COMMAND=print_osc7\n')
+    vim.api.nvim_chan_send(job_id, 'set -o history\n')
   end
 
   local buf = vim.api.nvim_get_current_buf()
