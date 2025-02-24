@@ -31,6 +31,11 @@ if vim.fn.executable('7z') == 1 then
 elseif vim.fn.executable('7zz') == 1 then
   archive_7z_program = '7zz'
 end
+
+local vi_program = 'nvim'
+if vim.fn.executable('nvim') == 0 then
+  vi_program = vim.v.progpath
+end
 #+end_src
 
 ** theme
@@ -112,11 +117,13 @@ end
 #+end_src
 
 #+begin_src lua
-local function cd_to_buffer_dir()
-  vim.cmd.cd(get_buffer_dir())
+local function cd_to_buffer_dir(force)
+  if force == 1 or vim.o.autochdir then
+    vim.cmd.cd(get_buffer_dir())
+  end
 end
 
-vim.keymap.set('n', '<Leader>c', cd_to_buffer_dir, { noremap = true })
+vim.keymap.set('n', '<Leader>c', function() cd_to_buffer_dir(1) end)
 #+end_src
 
 #+begin_src lua
@@ -148,6 +155,16 @@ local function setup_terminal_cmd()
   vim.keymap.set('t', '<M-p>', '<F8>', { buffer = buf })
   vim.keymap.set('t', '<M-b>', '<C-Left>', { buffer = buf })
   vim.keymap.set('t', '<M-f>', '<C-Right>', { buffer = buf })
+
+  local job_id = vim.b.terminal_job_id
+  if job_id then
+    vim.api.nvim_chan_send(job_id, 'echo off\r\n')
+
+    vim.api.nvim_chan_send(
+      job_id, string.format('doskey vi="%s" --server "%%NVIM%%" --remote $*\r\n', vi_program))
+
+    vim.api.nvim_chan_send(job_id, 'echo on\r\n')
+  end
 end
 #+end_src
 
@@ -158,6 +175,7 @@ local function setup_terminal_bash()
     vim.api.nvim_chan_send(job_id, 'set +o history\n')
     vim.api.nvim_chan_send(job_id, 'function print_osc7() { printf "\\033]7;file://$HOSTNAME$PWD\\033\\\\"; }\n')
     vim.api.nvim_chan_send(job_id, 'PROMPT_COMMAND=print_osc7\n')
+    vim.api.nvim_chan_send(job_id, string.format('alias vi=\'"%s" --server "$NVIM" --remote\'\n', vi_program))
     vim.api.nvim_chan_send(job_id, 'set -o history\n')
   end
 
