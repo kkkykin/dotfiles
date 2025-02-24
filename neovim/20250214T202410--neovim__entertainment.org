@@ -158,12 +158,14 @@ local function setup_terminal_cmd()
 
   local job_id = vim.b.terminal_job_id
   if job_id then
-    vim.api.nvim_chan_send(job_id, 'echo off\r\n')
-
-    vim.api.nvim_chan_send(
-      job_id, string.format('doskey vi="%s" --server "%%NVIM%%" --remote $*\r\n', vi_program))
-
-    vim.api.nvim_chan_send(job_id, 'echo on\r\n')
+    local commands = {
+      'echo off',
+      'doskey vi=emacsclient $*',
+      'echo on'
+    }
+    for _, cmd in ipairs(commands) do
+      vim.api.nvim_chan_send(job_id, cmd .. '\r\n')
+    end
   end
 end
 #+end_src
@@ -172,11 +174,16 @@ end
 local function setup_terminal_bash()
   local job_id = vim.b.terminal_job_id
   if job_id then
-    vim.api.nvim_chan_send(job_id, 'set +o history\n')
-    vim.api.nvim_chan_send(job_id, 'function print_osc7() { printf "\\033]7;file://$HOSTNAME$PWD\\033\\\\"; }\n')
-    vim.api.nvim_chan_send(job_id, 'PROMPT_COMMAND=print_osc7\n')
-    vim.api.nvim_chan_send(job_id, string.format('alias vi=\'"%s" --server "$NVIM" --remote\'\n', vi_program))
-    vim.api.nvim_chan_send(job_id, 'set -o history\n')
+    local commands = {
+      'set +o history',
+      string.format('vi() { "%s" --server "$NVIM" --remote $(realpath -z "$@" | xargs -0); }', vi_program),
+      'print_osc7() { printf "\\033]7;file://$HOSTNAME$PWD\\033\\\\"; }',
+      'PROMPT_COMMAND=print_osc7',
+      'set -o history'
+    }
+    for _, cmd in ipairs(commands) do
+      vim.api.nvim_chan_send(job_id, cmd .. '\n')
+    end
   end
 
   local buf = vim.api.nvim_get_current_buf()
