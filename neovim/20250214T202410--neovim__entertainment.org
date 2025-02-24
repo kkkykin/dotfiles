@@ -79,30 +79,6 @@ vim.keymap.set('t', '<C-w>gt', '<C-\\><C-o>gt')
 vim.keymap.set('t', '<C-w>gT', '<C-\\><C-o>gT')
 #+end_src
 
-**** windows
-:PROPERTIES:
-:CUSTOM_ID: 2f1e9372-3ed8-4d52-8a51-1ec94be182bb
-:END:
-#+begin_src lua
-if vim.o.shell == 'cmd.exe' then
-  vim.keymap.set('t', '<C-p>', '<Up>')
-  vim.keymap.set('t', '<C-n>', '<Down>')
-  vim.keymap.set('t', '<C-f>', '<Right>')
-  vim.keymap.set('t', '<C-b>', '<Left>')
-  vim.keymap.set('t', '<C-a>', '<Home>')
-  vim.keymap.set('t', '<C-e>', '<End>')
-  vim.keymap.set('t', '<C-u>', '<C-Home>')
-  vim.keymap.set('t', '<C-k>', '<C-End>')
-  vim.keymap.set('t', '<C-m>', '<Enter>')
-  vim.keymap.set('t', '<C-d>', '<Del>')
-  vim.keymap.set('t', '<C-l>', '<F7>')
-  vim.keymap.set('t', '<M-z>', '<F4>')
-  vim.keymap.set('t', '<M-p>', '<F8>')
-  vim.keymap.set('t', '<M-b>', '<C-Left>')
-  vim.keymap.set('t', '<M-f>', '<C-Right>')
-end
-#+end_src
-
 *** dirtrack
 :PROPERTIES:
 :CUSTOM_ID: e137dfbe-f420-4fc3-b904-89cccbc7d719
@@ -131,7 +107,7 @@ local function get_buffer_dir()
     return vim.b.osc7_dir
   end
   local current_file_path = vim.fn.expand('%:p')
-  return = vim.fn.fnamemodify(current_file_path, ':h')
+  return vim.fn.fnamemodify(current_file_path, ':h')
 end
 #+end_src
 
@@ -144,10 +120,46 @@ vim.keymap.set('n', '<Leader>c', cd_to_buffer_dir, { noremap = true })
 #+end_src
 
 #+begin_src lua
-if is_windows then
-  vim.keymap.set('t', '<C-w>n', lcd_by_cur_line_and_to_normal, { noremap = true })
-else
-  vim.keymap.set('t', '<C-w>n', '<C-\\><C-n>', { noremap = true })
+vim.api.nvim_create_autocmd({ 'BufEnter', 'WinEnter', 'DirChanged' }, {
+  callback = cd_to_buffer_dir,
+})
+#+end_src
+
+*** shell
+:PROPERTIES:
+:CUSTOM_ID: b3b3a606-2889-4775-bd6d-2cd38ef9ec33
+:END:
+#+begin_src lua
+local function setup_terminal_cmd()
+  local buf = vim.api.nvim_get_current_buf()
+  vim.keymap.set('t', '<C-w>n', lcd_by_cur_line_and_to_normal, { noremap = true, buffer = buf })
+  vim.keymap.set('t', '<C-p>', '<Up>', { buffer = buf })
+  vim.keymap.set('t', '<C-n>', '<Down>', { buffer = buf })
+  vim.keymap.set('t', '<C-f>', '<Right>', { buffer = buf })
+  vim.keymap.set('t', '<C-b>', '<Left>', { buffer = buf })
+  vim.keymap.set('t', '<C-a>', '<Home>', { buffer = buf })
+  vim.keymap.set('t', '<C-e>', '<End>', { buffer = buf })
+  vim.keymap.set('t', '<C-u>', '<C-Home>', { buffer = buf })
+  vim.keymap.set('t', '<C-k>', '<C-End>', { buffer = buf })
+  vim.keymap.set('t', '<C-m>', '<Enter>', { buffer = buf })
+  vim.keymap.set('t', '<C-d>', '<Del>', { buffer = buf })
+  vim.keymap.set('t', '<C-l>', '<F7>', { buffer = buf })
+  vim.keymap.set('t', '<M-z>', '<F4>', { buffer = buf })
+  vim.keymap.set('t', '<M-p>', '<F8>', { buffer = buf })
+  vim.keymap.set('t', '<M-b>', '<C-Left>', { buffer = buf })
+  vim.keymap.set('t', '<M-f>', '<C-Right>', { buffer = buf })
+end
+#+end_src
+
+#+begin_src lua
+local function setup_terminal_bash()
+  local job_id = vim.b.terminal_job_id
+  if job_id then
+    vim.api.nvim_chan_send(job_id, 'function print_osc7() { printf "\\033]7;file://$HOSTNAME$PWD\\033\\\\"; }\nPROMPT_COMMAND=print_osc7\n')
+  end
+
+  local buf = vim.api.nvim_get_current_buf()
+  vim.keymap.set('t', '<C-w>n', '<C-\\><C-n>', { noremap = true, buffer = buf })
   vim.api.nvim_create_autocmd({ 'TermRequest' }, {
     desc = 'Handles OSC 7 dir change requests',
     callback = function(ev)
@@ -157,28 +169,34 @@ else
           return
         end
         vim.api.nvim_buf_set_var(ev.buf, 'osc7_dir', dir)
-        if vim.o.autochdir and vim.api.nvim_get_current_buf() == ev.buf then
+        if vim.o.autochdir and buf == ev.buf then
           vim.cmd.cd(dir)
         end
       end
     end,
   })
 end
-
-vim.api.nvim_create_autocmd({ 'BufEnter', 'WinEnter', 'DirChanged' }, {
-  callback = cd_to_buffer_dir,
-})
 #+end_src
 
 #+begin_src lua
-vim.api.nvim_create_user_command('Oc', function()
-  local osc7_dir = vim.b.osc7_dir
-  if osc7_dir and vim.fn.isdirectory(osc7_dir) == 1 then
-    vim.cmd.lcd(osc7_dir)
-  else
-    print('osc7_dir is not set or is not a valid directory')
+local function setup_terminal()
+  local bufname = vim.api.nvim_buf_get_name(0)
+  if bufname:match('^term://') then
+    local cmd = bufname:match('([%w.]+)$')
+    if cmd == 'cmd.exe' then
+      setup_terminal_cmd()
+    elseif cmd == 'bash' then
+      setup_terminal_bash()
+    end
   end
-end, {})
+end
+#+end_src
+
+#+begin_src lua
+vim.api.nvim_create_autocmd('TermOpen', {
+  pattern = '*',
+  callback = setup_terminal,
+})
 #+end_src
 
 ** remote
