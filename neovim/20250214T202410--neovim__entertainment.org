@@ -136,6 +136,26 @@ vim.api.nvim_create_autocmd({ 'BufEnter', 'WinEnter', 'DirChanged' }, {
 :PROPERTIES:
 :CUSTOM_ID: b3b3a606-2889-4775-bd6d-2cd38ef9ec33
 :END:
+
+**** rc
+:PROPERTIES:
+:CUSTOM_ID: 96b627f6-d3a1-41d9-9413-c73505aca25c
+:END:
+#+begin_src lua
+local cmd_rc = {
+  'doskey vi=emacsclient $*',
+}
+
+local bash_rc = {
+  string.format('vi() { %s --server "$NVIM" --remote $(realpath -z "$@" | xargs -0); }', vim.fn.shellescape(vi_program)),
+  'print_osc7() { printf "\\033]7;file://$HOSTNAME$PWD\\033\\\\"; }',
+}
+#+end_src
+
+**** setup
+:PROPERTIES:
+:CUSTOM_ID: a2021abf-db0d-438c-9805-5a04a25a0958
+:END:
 #+begin_src lua
 local function setup_terminal_cmd()
   local buf = vim.api.nvim_get_current_buf()
@@ -158,14 +178,11 @@ local function setup_terminal_cmd()
 
   local job_id = vim.b.terminal_job_id
   if job_id then
-    local commands = {
-      'echo off',
-      'doskey vi=emacsclient $*',
-      'echo on'
-    }
-    for _, cmd in ipairs(commands) do
+    vim.api.nvim_chan_send(job_id, 'echo off\r\n')
+    for _, cmd in ipairs(cmd_rc) do
       vim.api.nvim_chan_send(job_id, cmd .. '\r\n')
     end
+    vim.api.nvim_chan_send(job_id, 'echo on\r\n')
   end
 end
 #+end_src
@@ -174,17 +191,11 @@ end
 local function setup_terminal_bash()
   local job_id = vim.b.terminal_job_id
   if job_id then
-    local commands = {
-      'set +o history',
-      string.format('vi() { %s --server "$NVIM" --remote $(realpath -z "$@" | xargs -0); }', vim.fn.shellescape(vi_program)),
-      'clip() { printf "\\033]52;c;%s\\a" "$(base64 -w0)" > "$SSH_TTY"; }',
-      'print_osc7() { printf "\\033]7;file://$HOSTNAME$PWD\\033\\\\"; }',
-      'PROMPT_COMMAND=print_osc7',
-      'set -o history'
-    }
-    for _, cmd in ipairs(commands) do
+    vim.api.nvim_chan_send(job_id, 'set +o history\n')
+    for _, cmd in ipairs(bash_rc) do
       vim.api.nvim_chan_send(job_id, cmd .. '\n')
     end
+    vim.api.nvim_chan_send(job_id, 'set -o history\n')
   end
 
   local buf = vim.api.nvim_get_current_buf()
@@ -243,6 +254,8 @@ if os.getenv('SSH_TTY') then
 :CUSTOM_ID: cc4bceeb-422b-4b35-8ec7-a8563dc18cec
 :END:
 #+begin_src lua
+table.insert(bash_rc, 'clip() { printf "\\033]52;c;%s\\a" "$(base64 -w0)" > "$SSH_TTY"; }')
+
 local osc52 = require('vim.ui.clipboard.osc52')
 
 vim.g.clipboard = {
@@ -352,4 +365,12 @@ local function sudo_edit (args)
 end
 
 vim.api.nvim_create_user_command('Sudoedit', sudo_edit, { nargs = '*' })
+#+end_src
+
+** post
+:PROPERTIES:
+:CUSTOM_ID: e9ab948e-c8d6-4f2c-ab8f-d225b27d9114
+:END:
+#+begin_src lua
+table.insert(bash_rc, 'PROMPT_COMMAND=print_osc7')
 #+end_src
