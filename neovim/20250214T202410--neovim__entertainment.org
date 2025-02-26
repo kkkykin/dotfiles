@@ -24,6 +24,8 @@
 #+begin_src lua
 local is_windows = vim.fn.has('win32') == 1 or vim.fn.has('win64') == 1
 
+local my_augroup = vim.api.nvim_create_augroup("MyAutoCommands", { clear = true })
+
 local archive_7z_program = nil
 
 if vim.fn.executable('7z') == 1 then
@@ -128,6 +130,7 @@ vim.keymap.set('n', '<Leader>c', function() cd_to_buffer_dir(1) end)
 
 #+begin_src lua
 vim.api.nvim_create_autocmd({ 'BufEnter', 'WinEnter', 'DirChanged' }, {
+  group = my_augroup,
   callback = cd_to_buffer_dir,
 })
 #+end_src
@@ -144,6 +147,7 @@ vim.api.nvim_create_autocmd({ 'BufEnter', 'WinEnter', 'DirChanged' }, {
 #+begin_src lua
 local cmd_rc = {
   'doskey vi=emacsclient $*',
+  string.format('set PATH=%s;%%PATH%%', vim.fn.resolve(os.getenv('myvimrc')):gsub('neovim\\_tangle\\.+', 'init\\_tangle', 1)),
 }
 
 local bash_rc = {
@@ -201,6 +205,7 @@ local function setup_terminal_bash()
   local buf = vim.api.nvim_get_current_buf()
   vim.keymap.set('t', '<C-w>n', '<C-\\><C-n>', { noremap = true, buffer = buf })
   vim.api.nvim_create_autocmd({ 'TermRequest' }, {
+    group = my_augroup,
     desc = 'Handles OSC 7 dir change requests',
     callback = function(ev)
       if string.sub(vim.v.termrequest, 1, 4) == '\x1b]7;' then
@@ -234,6 +239,7 @@ end
 
 #+begin_src lua
 vim.api.nvim_create_autocmd('TermOpen', {
+  group = my_augroup,
   pattern = '*',
   callback = setup_terminal,
 })
