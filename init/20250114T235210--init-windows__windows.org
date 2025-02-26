@@ -64,6 +64,7 @@ if errorlevel 1 (
 #+name: run_emacs
 #+begin_src bat :var initd=(expand-file-name "../../.emacs.d") profileel=(zr-org-by-tangle-dir "profile.el")
 cd %USERPROFILE%
+del "%APPDATA%\.emacs.d\server\server"
 start /b emacs.exe --daemon "--init-directory=%initd%" -l "%profileel%" -l "org-protocol"
 #+end_src
 
