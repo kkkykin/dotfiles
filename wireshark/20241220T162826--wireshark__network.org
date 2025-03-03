@@ -6,8 +6,10 @@
 * tangle
 #+begin_src elisp
 (org-decrypt-entries)
-(let (org-babel-pre-tangle-hook
+(let ((zr-local-pls (plstore-open "wireshark.pls"))
+      org-babel-pre-tangle-hook
       org-confirm-babel-evaluate)
+  (plstore-close zr-local-pls)
   (org-babel-tangle))
 
 (mkdir "_prefs/profiles/dummy" t)
@@ -15,6 +17,7 @@
 (let ((lua-dir (pcase system-type
                  ('gnu/linux (expand-file-name "~/.local/lib/wireshark/plugins/"))
                  ('windows-nt (expand-file-name "plugins/" (getenv "WIRESHARK_DATA_DIR"))))))
+  (make-directory lua-dir t)
   (dolist (f (directory-files "_tangle/lua-plugins" t "^[^.]" t))
     (unless (file-symlink-p
              (expand-file-name (file-name-nondirectory f) lua-dir))
@@ -39,9 +42,9 @@ https://wiki.wireshark.org/CaptureFilters
 #+name: capture-filters
 | name         | filter                                                                                                                                                                               | arg                                                             |
 |--------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------|
-| proxies      | dst port %s && (tcp[(((tcp[12:1] & 0xf0) >> 2)) + 0:4] = 0x05010003) or (tcp[(((tcp[12:1] & 0xf0) >> 2)) + 0:4] = 0x434f4e4e && tcp[(((tcp[12:1] & 0xf0) >> 2)) + 4:4] = 0x45435420) | (zr-org-table-select "%d,1" "key-value-pair" ",0" "proxy-port") |
-| socks5-proxy | dst port %s && (tcp[(((tcp[12:1] & 0xf0) >> 2)) + 0:4] = 0x05010003)                                                                                                                 | (zr-org-table-select "%d,1" "key-value-pair" ",0" "proxy-port") |
-| http-proxy   | dst port %s && (tcp[(((tcp[12:1] & 0xf0) >> 2)) + 0:4] = 0x434f4e4e && tcp[(((tcp[12:1] & 0xf0) >> 2)) + 4:4] = 0x45435420)                                                          | (zr-org-table-select "%d,1" "key-value-pair" ",0" "proxy-port") |
+| proxies      | dst port %s && (tcp[(((tcp[12:1] & 0xf0) >> 2)) + 0:4] = 0x05010003) or (tcp[(((tcp[12:1] & 0xf0) >> 2)) + 0:4] = 0x434f4e4e && tcp[(((tcp[12:1] & 0xf0) >> 2)) + 4:4] = 0x45435420) | (plist-get (cdr (plstore-get zr-local-pls "proxy-port")) :port) |
+| socks5-proxy | dst port %s && (tcp[(((tcp[12:1] & 0xf0) >> 2)) + 0:4] = 0x05010003)                                                                                                                 | (plist-get (cdr (plstore-get zr-local-pls "proxy-port")) :port) |
+| http-proxy   | dst port %s && (tcp[(((tcp[12:1] & 0xf0) >> 2)) + 0:4] = 0x434f4e4e && tcp[(((tcp[12:1] & 0xf0) >> 2)) + 4:4] = 0x45435420)                                                          | (plist-get (cdr (plstore-get zr-local-pls "proxy-port")) :port) |
 
 *** display
 https://wiki.wireshark.org/DisplayFilters
@@ -94,6 +97,9 @@ https://www.wireshark.org/docs/wsug_html_chunked/ChCustCommandLine.html
 
 * plugins
 ** socks5 proxy
+:PROPERTIES:
+:CUSTOM_ID: dbdca4b8-733b-4c14-a9f7-ca7e403f711a
+:END:
 Check which domains pass through the proxy port.
 #+begin_src lua :tangle "_tangle/lua-scripts/socks5.lua" :mkdirp t :var proxy_port=(zr-org-table-select "%d,1" "key-value-pair" ",0" "proxy-port")
 local socks5 = Proto("socks5", "SOCKS5")
@@ -125,6 +131,9 @@ local tcp_port = DissectorTable.get("tcp.port")
 tcp_port:add(proxy_port, socks5)
 #+end_src
 ** port query
+:PROPERTIES:
+:CUSTOM_ID: 0d8189e3-d090-4ea8-a252-63630fe5926a
+:END:
 #+begin_src lua :tangle "_tangle/lua-plugins/port-query.lua" :mkdirp t
 local port_query_proto = Proto('port_query', 'Port Query Plugin')
 
@@ -348,17 +357,6 @@ end
 
 register_packet_menu('Query Port Program', query_port_program)
 #+end_src
-* secrets                                                             :crypt:
------BEGIN PGP MESSAGE-----
-
-hF4DhteJcpg+xyQSAQdAVpsv4pZS4Yh+vsnzL3D+8oFRTBoR4mQ7SUeiMQASu18w
-vYUy/yzRLZkSrfXRTLptRSwAaSiGK9e6RRfjkCUv6IPoZqpB8fni0jOvsyrQ73F8
-1IUBCQIQPFjK1kwURVZJeYIaI5fpec6z4aAiT1/Es4znsOKRvv6fUDfwjX/1U0di
-b1FVb4cubtB4a2y5qNuXOjf0jvUa5Ii5bqzCu8K6du60MAYAsUjz0JKpMPB8E8fs
-Ffp0eoVAmEstibR009UvUQXX/2x8hvGb95zmFY3x/EeDx7dMsDa+
-=Zntk
------END PGP MESSAGE-----
-
 * local variables
 
 # Local Variables:
