@@ -149,6 +149,7 @@ Capslock & PrintScreen::capturePrintWindow
 SetTitleMatchMode 3
 
 GroupAdd 'NoEmacsKeys', 'ahk_class Emacs'
+GroupAdd 'NoEmacsKeys', 'ahk_class Xming X'
 GroupAdd 'NoEmacsKeys', 'ahk_exe scrcpy.exe'
 GroupAdd 'NoEmacsKeys', 'ahk_exe WindowsTerminal.exe'
 #+end_src
