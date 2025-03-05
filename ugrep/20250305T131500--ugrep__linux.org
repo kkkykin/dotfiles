@@ -1,0 +1,28 @@
+#+title:      ugrep
+#+date:       [2025-03-05 Wed 13:15]
+#+filetags:   :linux:
+#+identifier: 20250305T131500
+* tangle
+#+begin_src elisp
+(let ((suffix "")
+      ug-dir usr-path)
+  (pcase system-type
+    ('windows-nt
+     (setq suffix "exe"
+           ug-dir (substitute-in-file-name "$userprofile/scoop/apps/ugrep/current")
+           usr-path (string-replace "bin/" "usr/bin/" invocation-directory))))
+  (let ((ug-program (file-name-with-extension
+                     (expand-file-name "ug" ug-dir) suffix))
+        (index-program (file-name-with-extension
+                        (expand-file-name "ugrep-indexer" ug-dir) suffix)))
+    (when (file-executable-p ug-program)
+      (dolist (bin '("grep" "egrep" "fgrep"))
+        (make-symbolic-link
+         ug-program
+         (file-name-with-extension (expand-file-name bin usr-path) suffix)
+         t))
+      (make-symbolic-link
+       index-program
+       (file-name-with-extension (expand-file-name "ug-indexer" usr-path) suffix)
+       t))))
+#+end_src
