@@ -151,7 +151,7 @@ local cmd_rc = {
 }
 
 local bash_rc = {
-  string.format('vi() { realpath -z -- "$@" | xargs -0 %s --server "$NVIM" --remote; }', vim.fn.shellescape(vi_program)),
+  string.format('vi() { realpath -z -- "$@" | xargs -0 %s --server "$NVIM" --remote-tab; }', vim.fn.shellescape(vi_program)),
   'print_osc7() { printf "\\033]7;file://$HOSTNAME$PWD\\033\\\\"; }',
 }
 #+end_src
