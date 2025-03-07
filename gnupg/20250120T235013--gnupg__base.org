@@ -22,6 +22,12 @@ allow-loopback-pinentry
 #+begin_src conf 
 enable-win32-openssh-support
 #+end_src
-
+** Linux
+:PROPERTIES:
+:header-args:conf+: :tangle (if (eq system-type 'gnu/linux) (zr-org-by-tangle-dir "gpg-agent.conf") "no")
+:END:
+#+begin_src conf
+enable-ssh-support
+#+end_src
 * ssh
 https://incenp.org/notes/2015/gnupg-for-ssh-authentication.html
