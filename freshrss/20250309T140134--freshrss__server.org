@@ -1,0 +1,64 @@
+#+title:      freshrss
+#+date:       [2025-03-09 Sun 14:01]
+#+filetags:   :server:
+#+identifier: 20250309T140134
+* image fix
+:PROPERTIES:
+:header-args:js: :tangle (zr-org-by-tangle-dir "user.js") :mkdirp t
+:CUSTOM_ID: 1ee5c0e2-c3e8-4378-a9b1-93eb330b9064
+:END:
+** db trigger
+#+begin_src sql
+CREATE OR REPLACE FUNCTION fix_xyg688_img()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.link LIKE 'https://www.xyg688.com/post-%' THEN
+        NEW.content := regexp_replace(
+            NEW.content,
+            '(<img[^>]*\s+src=")data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"([^>]*\s+data-src="([^"]+)")',
+            '\1\3"\2',
+            'gi'
+        );
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_fix_xyg688_img
+BEFORE INSERT ON freshrss_kkky_entry
+FOR EACH ROW
+EXECUTE FUNCTION fix_xyg688_img();
+#+end_src
+
+** frontend replace
+#+begin_src js
+function fix_xyg688_img(el) {
+  const need_fix_data_original = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+  if (el.getAttribute('data-original') === need_fix_data_original) {
+    const srcValue = el.getAttribute('data-src');
+    el.setAttribute('data-original', srcValue);
+  }
+}
+#+end_src
+
+#+begin_src js
+document.querySelectorAll('img[data-original]').forEach(fix_xyg688_img);
+
+const observer = new MutationObserver(function(mutationsList) {
+  mutationsList.forEach(function(mutation) {
+    if (mutation.type === 'childList') {
+      mutation.addedNodes.forEach(function(node) {
+        if (node.nodeName === 'IMG' && node.hasAttribute('data-original')) {
+          fix_xyg688_img(node);
+        }
+      });
+    }
+  });
+});
+
+observer.observe(document.body, {
+  childList: true,
+  subtree: true
+});
+#+end_src
