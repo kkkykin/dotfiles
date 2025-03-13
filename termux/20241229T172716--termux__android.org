@@ -248,6 +248,9 @@ case "$1" in
   false)
     tailscale-broadcast "DISCONNECT_VPN"
     ;;
+  stat)
+    tailscale-stat
+    ;;
   toggle)
     if tailscale-stat; then
       action="DISCONNECT_VPN"
@@ -330,4 +333,21 @@ app=$(echo "$(recent-apps)" | head -1)
 termux-toast "Killing ${app}"
 
 rish -c "am stop-app '${app}'"
+#+end_src
+
+** feedme-fetch-and-run
+:PROPERTIES:
+:CUSTOM_ID: 8204b57e-cf95-4e2d-9444-e2452f9bd859
+:END:
+#+begin_src sh :tangle (zr-org-by-tangle-dir "feedme-fetch-and-run")
+function run-feedme() {
+  termux-am start com.seazon.feedme
+}
+
+if zr-tailscale-enable stat; then
+  run-feedme
+else
+  zr-tailscale-enable true
+  run-feedme
+fi
 #+end_src
