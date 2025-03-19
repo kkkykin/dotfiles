@@ -2,12 +2,15 @@
 #+date:       [2025-03-09 Sun 14:01]
 #+filetags:   :server:
 #+identifier: 20250309T140134
-* image fix
+
+* Feed fix
+
+** image fix
 :PROPERTIES:
 :header-args:js: :tangle (zr-org-by-tangle-dir "user.js") :mkdirp t
 :CUSTOM_ID: 1ee5c0e2-c3e8-4378-a9b1-93eb330b9064
 :END:
-** db trigger
+*** db trigger
 #+begin_src sql
 CREATE OR REPLACE FUNCTION fix_xyg688_img()
 RETURNS TRIGGER AS $$
@@ -31,7 +34,7 @@ FOR EACH ROW
 EXECUTE FUNCTION fix_xyg688_img();
 #+end_src
 
-** frontend replace
+*** frontend replace
 #+begin_src js
 function fix_xyg688_img(el) {
   const need_fix_data_original = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
@@ -62,3 +65,28 @@ observer.observe(document.body, {
   subtree: true
 });
 #+end_src
+** link fix
+Wait the commit merge: https://github.com/FreshRSS/FreshRSS/commit/a7361a3e7cd335c8932deba88fe60e8f673c2d40
+
+#+begin_src sql
+CREATE OR REPLACE FUNCTION fix_asmr_one_link()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.link LIKE 'https://api.asmr-200.com/api/%' THEN
+        NEW.link := regexp_replace(
+            NEW.link,
+            '^https://api.asmr-200.com/api',
+            'https://asmr.one/work'
+        );
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_fix_asmr_one_link
+BEFORE INSERT ON freshrss_kkky_entry
+FOR EACH ROW
+EXECUTE FUNCTION fix_asmr_one_link();
+#+end_src
+
