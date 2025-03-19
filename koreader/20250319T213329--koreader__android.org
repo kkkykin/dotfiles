@@ -1,0 +1,55 @@
+#+title:      koreader
+#+date:       [2025-03-19 Wed 21:33]
+#+filetags:   :android:
+#+identifier: 20250319T213329
+#+property: :header-args: :comments no
+
+* tangle
+#+begin_src elisp
+(org-babel-tangle)
+#+end_src
+
+* settings
+
+* patches
+:PROPERTIES:
+:tangle-dir: /storage/emulated/0/koreader/patches
+:CUSTOM_ID: 0fc9e81f-6433-4e73-b443-f545f4e4c87e
+:END:
+
+** hide-curout
+:PROPERTIES:
+:CUSTOM_ID: 13adabbe-183c-4fac-9a20-e8dcd762a921
+:END:
+#+begin_src lua :mkdirp t :tangle (zr-org-by-tangle-dir "10-hide-cutout.lua") :prologue "local screen = require('android').screen" :var screen.height=(string-to-number (replace-regexp-in-string "^Physical size: [[:digit:]]+x\\([[:digit:]]+\\)\n" "\\1" (zr-android-rish-command-to-string "wm size")))
+#+end_src
+
+* terminal
+:PROPERTIES:
+:tangle-dir: /storage/emulated/0/koreader/scripts
+:CUSTOM_ID: d813743c-d2d6-49dc-8655-b17dd74b20ac
+:END:
+#+begin_src sh :tangle (zr-org-by-tangle-dir "profile.user")
+export RISH_APPLICATION_ID="org.koreader.launcher"
+export PRIVATE_BIN_DIR="$TERMINAL_HOME/plugins/terminal.koplugin"
+
+function setup_dex() {
+  SCRIPT_DIR="$TERMINAL_DATA/scripts"
+
+  for file in "$SCRIPT_DIR"/*.dex; do
+    filename=$(basename "$file")
+    mv -f "$file" "$PRIVATE_BIN_DIR/"
+    chmod 400 "$PRIVATE_BIN_DIR/$filename"
+  done
+}
+
+setup_dex
+
+function rish() {
+  /system/bin/app_process -Djava.class.path="$PRIVATE_BIN_DIR/rish_shizuku.dex" /system/bin --nice-name=rish rikka.shizuku.shell.ShizukuShellLoader "$@"
+}
+#+end_src
+
+# Local Variables:
+# org-babel-tangle-use-relative-file-links: nil
+# End:
