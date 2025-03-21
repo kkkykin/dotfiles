@@ -18,7 +18,7 @@ BEGIN
     IF NEW.link LIKE 'https://www.xyg688.com/post-%' THEN
         NEW.content := regexp_replace(
             NEW.content,
-            '(<img[^>]*\s+src=")data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"([^>]*\s+data-src="([^"]+)")',
+            '(<img[^>]*\s+src=")data:image/gif;base64,[A-Za-z0-9+/]+"([^>]*\s+data-src="([^"]+)")',
             '\1\3"\2',
             'gi'
         );
