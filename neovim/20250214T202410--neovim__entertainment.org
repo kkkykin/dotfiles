@@ -39,7 +39,16 @@ if vim.fn.executable('nvim') == 0 then
   vi_program = vim.v.progpath
 end
 #+end_src
-
+** options
+:PROPERTIES:
+:CUSTOM_ID: a6b6f699-fe15-4794-8396-06f8ab43eead
+:END:
+#+begin_src lua
+vim.opt.tabstop = 2
+vim.opt.shiftwidth = 2
+vim.opt.expandtab = true
+vim.opt.smartindent = true
+#+end_src
 ** theme
 :PROPERTIES:
 :CUSTOM_ID: b8635e66-b5f5-4caf-9f0d-cebbc27c6a9c
