@@ -199,6 +199,12 @@ ENDLOCAL
 :PROPERTIES:
 :CUSTOM_ID: e56356f4-7700-435b-b354-55e246a3b53b
 :END:
+
+** skip-online-account
+#+begin_src bat
+reg add HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\OOBE /v BypassNRO /t REG_DWORD /d 1 /f shutdown /r /t 0
+#+end_src
+
 * Custom
 
 ** Explorer Network Driver
