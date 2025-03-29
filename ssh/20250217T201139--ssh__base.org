@@ -13,6 +13,7 @@
 * example
 :PROPERTIES:
 :CUSTOM_ID: f5e58b4d-428d-4730-aa4e-8cfe7a6730b0
+:header-args:conf-space: :tangle (zr-org-by-tangle-dir)
 :END:
 #+name: tty
 #+begin_src conf :tangle no
@@ -20,24 +21,30 @@ RequestTTY yes
 #+end_src
 
 #+name: vim
-#+begin_src conf-space :tangle (zr-org-by-tangle-dir) :mkdirp t :var remote="127.0.0.1:11111" local="127.0.0.1:80"
+#+begin_src conf-space :mkdirp t :var remote="127.0.0.1:11111" local="127.0.0.1:80"
 RemoteForward $remote $local
 <<tty>>
 RemoteCommand /usr/bin/env vim -u NORC -N --cmd "runtime plugin/netrwPlugin.vim" --cmd "source http://$remote/vim" -c terminal -c only -c startinsert
 #+end_src
 
 #+name: nvim
-#+begin_src conf-space :tangle (zr-org-by-tangle-dir)
+#+begin_src conf-space
 <<tty>>
 RemoteCommand /usr/bin/env nvim +te +star
 #+end_src
 
 #+name: github
-#+begin_src conf-space :tangle (zr-org-by-tangle-dir) :var proxy=(cond* ((bind* (proxy (plist-get (cdr (plstore-get zr-local-pls "proxy")) :proxy))) :non-exit) ((executable-find "nc") (format "ProxyCommand nc -v -x %s %%h %%p" proxy)) ((executable-find "ncat") (format "ProxyCommand ncat --proxy %s --proxy-type socks5 %%h %%p" proxy)) (t ""))
+#+begin_src conf-space :var proxy=(cond* ((bind* (proxy (plist-get (cdr (plstore-get zr-local-pls "proxy")) :proxy))) :non-exit) ((executable-find "nc") (format "ProxyCommand nc -v -x %s %%h %%p" proxy)) ((executable-find "ncat") (format "ProxyCommand ncat --proxy %s --proxy-type socks5 %%h %%p" proxy)) (t ""))
 Host github.com
 Hostname ssh.github.com
 User git
 Port 443
 PreferredAuthentications publickey
 $proxy
+#+end_src
+
+#+name: x11
+#+begin_src conf-space
+ForwardX11 yes
+ForwardX11Trusted yes
 #+end_src
