@@ -66,27 +66,41 @@ observer.observe(document.body, {
 });
 #+end_src
 ** link fix
-Wait the commit merge: https://github.com/FreshRSS/FreshRSS/commit/a7361a3e7cd335c8932deba88fe60e8f673c2d40
 
 #+begin_src sql
-CREATE OR REPLACE FUNCTION fix_asmr_one_link()
+CREATE OR REPLACE FUNCTION fix_link()
 RETURNS TRIGGER AS $$
 BEGIN
-    IF NEW.link LIKE 'https://api.asmr-200.com/api/%' THEN
-        NEW.link := regexp_replace(
-            NEW.link,
-            '^https://api.asmr-200.com/api',
-            'https://asmr.one/work'
-        );
-    END IF;
-    
+    <<fix-asmr-one-link>>
+    <<redirect-retroarch-download-link>>
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trigger_fix_asmr_one_link
+CREATE TRIGGER trigger_fix_link
 BEFORE INSERT ON freshrss_kkky_entry
 FOR EACH ROW
-EXECUTE FUNCTION fix_asmr_one_link();
+EXECUTE FUNCTION fix_link();
 #+end_src
 
+*** asmr one
+Wait the commit merge: https://github.com/FreshRSS/FreshRSS/commit/a7361a3e7cd335c8932deba88fe60e8f673c2d40
+
+#+name: fix-asmr-one-link
+#+begin_src sql
+IF NEW.link LIKE 'https://api.asmr-200.com/api/%' THEN
+    NEW.link := regexp_replace(
+        NEW.link,
+        '^https://api.asmr-200.com/api',
+        'https://asmr.one/work'
+    );
+END IF;
+#+end_src
+
+*** retroarch
+#+name: redirect-retroarch-download-link
+#+begin_src sql
+IF NEW.link LIKE 'https://github.com/libretro/RetroArch/releases/%' THEN
+    NEW.link := 'https://www.retroarch.com/?page=platforms#:~:text=Download-,Download%20(64bit),-Download%20(32bit)';
+END IF;
+#+end_src
