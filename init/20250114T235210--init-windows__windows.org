@@ -36,6 +36,16 @@ call :profile_main %1
 timeout /t %1 /nobreak >nul 2>&1
 #+end_src
 
+#+name: set_rclone_env
+#+begin_src bat :var rclone-user=(plist-get (cdr (plstore-get zr-local-pls "rclone")) :user) rclone-pass=(plist-get (cdr (plstore-get zr-local-pls "rclone")) :pass) rclone-addr=(plist-get (cdr (plstore-get zr-local-pls "rclone")) :addr)
+#+end_src
+
+#+name: kill_rclone
+#+begin_src bat
+call :set_rclone_env
+curl "-u%rclone-user%:%rclone-pass%" -XPOST "http://%rclone-addr%/core/quit"
+#+end_src
+
 #+name: kill_process
 #+begin_src bat
 taskkill /f /im %1 >nul 2>&1
@@ -69,9 +79,10 @@ start /b emacs.exe --daemon "--init-directory=%initd%" -l "%profileel%" -l "org-
 #+end_src
 
 #+name: run_rclone
-#+begin_src bat :var rclone-user=(plist-get (cdr (plstore-get zr-local-pls "rclone")) :user) rclone-pass=(plist-get (cdr (plstore-get zr-local-pls "rclone")) :pass)
+#+begin_src bat
 <<check-prog(program="rclone")>>
-start /b rclone rcd "--rc-user=%rclone-user%" "--rc-pass=%rclone-pass%" --rc-addr=127.0.0.1:5572 --no-console
+call :set_rclone_env
+start /b rclone rcd "--rc-serve" "--rc-serve-no-modtime" "--rc-user=%rclone-user%" "--rc-pass=%rclone-pass%" "--rc-addr=%rclone-addr%" --no-console
 #+end_src
 
 #+name: run_ahk
@@ -160,6 +171,10 @@ if /i "%arg%"=="emacs" (
     call :kill_process alist.exe
     call :wait_seconds 1
     call :run_alist
+) else if /i "%arg%"=="rclone" (
+    call :kill_rclone
+    call :wait_seconds 3
+    call :run_rclone
 ) else if /i "%arg%"=="aria2" (
     call :kill_process aria2c.exe
     call :wait_seconds 1
