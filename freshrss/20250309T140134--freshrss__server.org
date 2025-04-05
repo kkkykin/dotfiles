@@ -4,83 +4,36 @@
 #+identifier: 20250309T140134
 
 * Feed fix
-
-** image fix
-:PROPERTIES:
-:header-args:js: :tangle (zr-org-by-tangle-dir "user.js") :mkdirp t
-:CUSTOM_ID: 1ee5c0e2-c3e8-4378-a9b1-93eb330b9064
-:END:
-*** db trigger
 #+begin_src sql
-CREATE OR REPLACE FUNCTION fix_xyg688_img()
+CREATE OR REPLACE FUNCTION fix_entry()
 RETURNS TRIGGER AS $$
 BEGIN
-    IF NEW.link LIKE 'https://www.xyg688.com/post-%' THEN
-        NEW.content := regexp_replace(
-            NEW.content,
-            '(<img[^>]*\s+src=")data:image/gif;base64,[A-Za-z0-9+/]+"([^>]*\s+data-src="([^"]+)")',
-            '\1\3"\2',
-            'gi'
-        );
-    END IF;
-    
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER trigger_fix_xyg688_img
-BEFORE INSERT ON freshrss_kkky_entry
-FOR EACH ROW
-EXECUTE FUNCTION fix_xyg688_img();
-#+end_src
-
-*** frontend replace
-#+begin_src js
-function fix_xyg688_img(el) {
-  const need_fix_data_original = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-  if (el.getAttribute('data-original') === need_fix_data_original) {
-    const srcValue = el.getAttribute('data-src');
-    el.setAttribute('data-original', srcValue);
-  }
-}
-#+end_src
-
-#+begin_src js
-document.querySelectorAll('img[data-original]').forEach(fix_xyg688_img);
-
-const observer = new MutationObserver(function(mutationsList) {
-  mutationsList.forEach(function(mutation) {
-    if (mutation.type === 'childList') {
-      mutation.addedNodes.forEach(function(node) {
-        if (node.nodeName === 'IMG' && node.hasAttribute('data-original')) {
-          fix_xyg688_img(node);
-        }
-      });
-    }
-  });
-});
-
-observer.observe(document.body, {
-  childList: true,
-  subtree: true
-});
-#+end_src
-** link fix
-
-#+begin_src sql
-CREATE OR REPLACE FUNCTION fix_link()
-RETURNS TRIGGER AS $$
-BEGIN
+    <<fix-xyg688-img>>
     <<fix-asmr-one-link>>
     <<redirect-retroarch-download-link>>
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trigger_fix_link
+CREATE TRIGGER trigger_fix_entry
 BEFORE INSERT ON freshrss_kkky_entry
 FOR EACH ROW
-EXECUTE FUNCTION fix_link();
+EXECUTE FUNCTION fix_entry();
+#+end_src
+
+** Feeds
+
+*** xyg688
+#+name: fix-xyg688-img
+#+begin_src sql
+IF NEW.link LIKE 'https://www.xyg688.com/post-%' THEN
+    NEW.content := regexp_replace(
+        NEW.content,
+        '(<img[^>]*\s+src=")data:image/gif;base64,[A-Za-z0-9+/]+("[^>]*\s+data-src="([^"]+)")',
+        '\1\3\2',
+        'g'
+    );
+END IF;
 #+end_src
 
 *** asmr one
@@ -103,4 +56,34 @@ END IF;
 IF NEW.link LIKE 'https://github.com/libretro/RetroArch/releases/%' THEN
     NEW.link := 'https://www.retroarch.com/?page=platforms#:~:text=Download-,Download%20(64bit),-Download%20(32bit)';
 END IF;
+#+end_src
+
+*** south-plus
+#+name: fix-south-plus
+#+begin_src sql
+IF NEW.link LIKE 'https://%-plus.%/read.php?tid=%' THEN
+    NEW.link := regexp_replace(
+        NEW.link,
+        '^https://[a-z.]*(south|snow)-plus\.(net|org)',
+        'https://www.north-plus.net'
+    );
+    NEW.content := regexp_replace(
+        NEW.content,
+        '\[img\](http[^[]+?)\[/img\]',
+        '<img src="\1" loading="lazy">',
+        'g'
+    );
+    NEW.content := regexp_replace(
+        NEW.content,
+        '\[url\](http[^[]+?\.(png|jpg))\[/url\]',
+        '<img src="\1" loading="lazy">',
+        'g'
+    );
+END IF;
+#+end_src
+
+** cleanup
+#+begin_src sql
+drop trigger trigger_fix_entry on freshrss_kkky_entry;
+drop function fix_entry;
 #+end_src
