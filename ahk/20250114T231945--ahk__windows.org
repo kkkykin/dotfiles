@@ -179,6 +179,9 @@ cmdTitle := 'Command Prompt'
 <^Space::^@
 >!`::Run 'wt.exe -w _quake ft'
 
+#HotIf WinActive('ahk_exe WXWork.exe')
+Capslock::WinMinimize
+
 #HotIf not WinActive('ahk_group NoEmacsKeys')
 <^g::clearNumArg
 <!1::setNumArg(1)
