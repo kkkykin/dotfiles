@@ -17,3 +17,7 @@ set-nvim: create-remote-nvim-conf-dir
 install-nvim: set-nvim create-remote-nvim-bin-dir
 	scp -r neovim/_prog/* $(remote):~/.local/bin/nvim/
 	ssh -o "RemoteCommand=chmod u+x ~/.local/bin/nvim/nvim-linux-x86_64/bin/*" $(remote)
+
+download-nvim:
+	curl -Lo ./neovim/_prog/nvim-linux-x86_64.tar.gz \
+      https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz
