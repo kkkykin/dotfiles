@@ -10,6 +10,19 @@
 #+end_src
 
 * settings
+:PROPERTIES:
+:tangle-dir: /storage/emulated/0/koreader/settings
+:END:
+
+** perception_expander
+:PROPERTIES:
+:CUSTOM_ID: 584878ee-97f7-48f3-a508-691b60a1fa63
+:END:
+#+begin_src lua :tangle (zr-org-by-tangle-dir "perception_expander.lua") :mkdirp t
+return {
+  ["is_enabled"] = true,
+}
+#+end_src
 
 * patches
 :PROPERTIES:
@@ -22,6 +35,65 @@
 :CUSTOM_ID: 13adabbe-183c-4fac-9a20-e8dcd762a921
 :END:
 #+begin_src lua :mkdirp t :tangle (zr-org-by-tangle-dir "10-hide-cutout.lua") :prologue "local screen = require('android').screen" :var screen.height=(string-to-number (replace-regexp-in-string "^Physical size: [[:digit:]]+x\\([[:digit:]]+\\)\n" "\\1" (zr-android-rish-command-to-string "wm size")))
+#+end_src
+
+** settings
+:PROPERTIES:
+:CUSTOM_ID: a0ab750b-b797-4535-a6f9-39f856b6a9f6
+:END:
+#+begin_src lua :tangle (zr-org-by-tangle-dir "2-settings.lua")
+local android = require('android')
+local ffi = require("ffi")
+local C = ffi.C
+local DataStorage = require("datastorage")
+
+android.setVolumeKeysIgnored(true)
+-- android.timeout.set(-1)
+G_reader_settings:saveSetting("download_dir", '/storage/emulated/0/Books')
+G_reader_settings:saveSetting("home_dir", G_reader_settings:readSetting("download_dir"))
+G_reader_settings:makeTrue("multiswipes_enabled")
+
+C.setenv("RISH_APPLICATION_ID", 'org.koreader.launcher', 1)
+
+local function shell_quote_argument(arg)
+  return "'" .. arg:gsub("'", "'\"'\"'") .. "'"
+end
+
+local function rish(command, mode)
+  local shell = 'app_process -Djava.class.path="plugins/terminal.koplugin/rish_shizuku.dex" /system/bin --nice-name=rish rikka.shizuku.shell.ShizukuShellLoader'
+  local output
+  local handle
+  local one_shot
+
+  if mode == 'f' then
+    one_shot = shell .. ' ' .. shell_quote_argument(command)
+    mode = 'r'
+  else
+    one_shot = shell .. ' -c ' .. shell_quote_argument(command)
+  end
+
+  if mode == 'e' then
+    output = os.execute(one_shot)
+  elseif mode == 'r' then
+    handle = io.popen(one_shot, 'r')
+    output = handle:read('*a')
+    handle:close()
+  else
+    handle = io.popen(shell, 'w')
+    handle:write(command)
+    handle:close()
+  end
+  return output
+end
+
+local function cur_wifi_name()
+  return rish('dumpsys wifi | grep "^current SSID" | cut -d\\" -f2', 'r')
+end
+
+local function record_log(s)
+  local command = string.format('echo %s > %s/tmp.log', shell_quote_argument(s), DataStorage:getDataDir())
+  os.execute(command)
+end
 #+end_src
 
 * terminal
