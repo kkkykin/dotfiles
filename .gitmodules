@@ -4,3 +4,7 @@
 [submodule "ahk/lib/acc"]
 	path = ahk/lib/acc
 	url = https://github.com/Descolada/Acc-v2.git
+[submodule "ahk/lib/AHK-Macro-Recorder"]
+	path = ahk/lib/AHK-Macro-Recorder
+	url = https://github.com/kkkykin/AHK-Macro-Recorder
+	branch = custom

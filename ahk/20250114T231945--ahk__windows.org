@@ -13,6 +13,14 @@
 :header-args:ahk: :tangle (zr-org-by-tangle-dir "default.ahk")
 :END:
 
+** vars
+#+name: setup-vars
+#+begin_src elisp
+(mapconcat
+ (lambda (var) (format "%s := '%s'\n" (car var) (cdr var)))
+ `(("orgDir" . ,default-directory)))
+#+end_src
+
 ** include
 :PROPERTIES:
 :CUSTOM_ID: 7bfba842-bc68-4665-9af1-a37da905366a
@@ -20,6 +28,8 @@
 #+begin_src ahk
 #Include 'games.ahk'
 #Include 'mouse.ahk'
+
+<<setup-vars()>>
 #+end_src
 
 ** universal-arg
@@ -115,6 +125,50 @@ capturePrintWindow(window := 'A'){
 }
 #+end_src
 
+** Macro
+:PROPERTIES:
+:CUSTOM_ID: b92cbeec-0287-43f2-a102-9114b2590197
+:END:
+#+begin_src ahk
+runMacro(keyName) {
+  ; 获取当前活动窗口信息
+  activeWinTitle := WinGetTitle('A')
+  activeWinClass := WinGetClass('A')
+  activeWinExe := WinGetProcessName('A')
+    
+  dirNames := [activeWinTitle, 'ahk_class ' activeWinClass, 'ahk_exe ' activeWinExe, 'global']
+    
+  for dirName in dirNames {
+    fullPath := orgDir '_macro\' dirName '\' keyName '.ahk'
+    
+    if FileExist(fullPath) {
+      try {
+        Run '"' A_AhkPath '" /restart "' fullPath '"'
+        return  ; 找到并运行后立即返回
+      } catch as e {
+        MsgBox '运行脚本时出错: ' e.Message
+        return
+      }
+    }
+  }
+    
+  switch keyName {
+    case 'F9': WinSetAlwaysOnTop(-1, 'A')
+    case 'F10': Run 'hh.exe "ms-its:' RegExReplace(A_AhkPath, 'UX\\AutoHotkeyUX\.exe$', 'v2\AutoHotkey.chm')  '"', , 'Max'
+    case 'F11': Run A_Programs '\AutoHotkey Window Spy.lnk'
+    case 'F12': Reload
+  }
+  return
+}
+#+end_src
+
+#+begin_src ahk
+startMacroRecorder(){
+  ; MsgBox '运行脚本时出错: '
+  Run '"' A_AhkPath '" "' orgDir 'lib/AHK-Macro-Recorder/Macro Recorder.ahk"'
+}
+#+end_src
+
 ** Bind
 
 *** Global
@@ -128,12 +182,22 @@ capturePrintWindow(window := 'A'){
   myNumArg := 1
 }
 
+Capslock & Space::startMacroRecorder
+Capslock & F1::runMacro('F1')
+Capslock & F2::runMacro('F2')
+Capslock & F3::runMacro('F3')
+Capslock & F4::runMacro('F4')
+Capslock & F5::runMacro('F5')
+Capslock & F6::runMacro('F6')
+Capslock & F7::runMacro('F7')
+Capslock & F8::runMacro('F8')
+Capslock & F9::runMacro('F9')
+Capslock & F10::runMacro('F10')
+Capslock & F11::runMacro('F11')
+Capslock & F12::runMacro('F12')
+
 Capslock::Esc
 Capslock & Esc::SetCapsLockState !GetKeyState('CapsLock', 'T') 
-Capslock & F9::WinSetAlwaysOnTop(-1, 'A')
-Capslock & F10::Run 'hh.exe "ms-its:' RegExReplace(A_AhkPath, 'UX\\AutoHotkeyUX\.exe$', 'v2\AutoHotkey.chm')  '"', , 'Max'
-Capslock & F11::Run A_Programs '\AutoHotkey Window Spy.lnk'
-Capslock & F12::Reload
 Capslock & PrintScreen::capturePrintWindow
 
 <^.::^NumpadDot
