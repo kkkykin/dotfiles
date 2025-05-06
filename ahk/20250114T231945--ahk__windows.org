@@ -143,7 +143,8 @@ runMacro(keyName) {
     
     if FileExist(fullPath) {
       try {
-        Run '"' A_AhkPath '" /restart "' fullPath '"'
+        global myNumArg
+        Run '"' A_AhkPath '" /restart "' fullPath '" ' myNumArg
         return  ; 找到并运行后立即返回
       } catch as e {
         MsgBox '运行脚本时出错: ' e.Message
