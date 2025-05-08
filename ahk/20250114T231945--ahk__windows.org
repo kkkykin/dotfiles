@@ -38,10 +38,6 @@
 :END:
 #+begin_src ahk
 myNumArg := 1
-myNumKeys := []
-Loop 10{
-  myNumKeys.push('<!' A_Index - 1)
-}
 
 findInArray(a, i) {
   Loop a.Length{
@@ -53,12 +49,20 @@ findInArray(a, i) {
 
 setNumArg(n, clear := False){
   global myNumArg
-  if (findInArray(myNumKeys, A_PriorHotkey)){
-    myNumArg := 10 * myNumArg + n
-  }
-  else
-    myNumArg := n
-  if not clear{
+  static myNumKeys := []
+  if clear {
+    myNumArg := 1
+  } else {
+    if (myNumKeys.length = 0) {
+      Loop 10{
+        myNumKeys.push('<!' A_Index - 1)
+      }
+    }
+    if (findInArray(myNumKeys, A_PriorHotkey)){
+      myNumArg := 10 * myNumArg + n
+    }
+    else
+      myNumArg := n
     tooltip(myNumArg)
     SetTimer () => ToolTip(), -1000
     SetTimer clearNumArg, -10000
@@ -68,6 +72,7 @@ setNumArg(n, clear := False){
 clearNumArg(){
   setNumArg(1, True)
   tooltip('Num Clear')
+  SetTimer clearNumArg, 0
   SetTimer () => ToolTip(), -1000
 }
 #+end_src
@@ -79,7 +84,7 @@ clearNumArg(){
 :END:
 #+begin_src ahk
 findEdgeDefaultProfile(edgeWins) {
-  local defaultProfileRegex := ' - Personal - Microsoft​ Edge$'
+  static defaultProfileRegex := ' - Personal - Microsoft​ Edge$'
   Loop edgeWins.Length {
     if RegExMatch(WinGetTitle(edgeWins[A_Index]), defaultProfileRegex)
       return A_Index
@@ -87,8 +92,9 @@ findEdgeDefaultProfile(edgeWins) {
   return False
 }
 
-edgeToggle(index := 1){
-  local edgeWinName := 'ahk_exe msedge.exe'
+edgeToggle(){
+  global myNumArg
+  static edgeWinName := 'ahk_exe msedge.exe'
   if WinActive(edgeWinName) {
     WinMinimize
     return
@@ -100,11 +106,12 @@ edgeToggle(index := 1){
     default:
     {
       local default := findEdgeDefaultProfile(edgeWins)
-      if (index = 1) {
-        WinActivate(edgeWins[default or index])
+      if (myNumArg = 1) {
+        WinActivate(edgeWins[default or myNumArg])
       } else {
         edgeWins.RemoveAt[default]
-        WinActivate(edgeWins[Min(edgeWins.Length, index - 1)])
+        WinActivate(edgeWins[Min(edgeWins.Length, myNumArg - 1)])
+        clearNumArg
       }
     }
   }
@@ -166,7 +173,7 @@ runMacro(keyName) {
 #+begin_src ahk
 startMacroRecorder(){
   ; MsgBox '运行脚本时出错: '
-  Run '"' A_AhkPath '" "' orgDir 'lib/AHK-Macro-Recorder/Macro Recorder.ahk"'
+  Run '"' A_AhkPath '" /restart "' orgDir 'lib/AHK-Macro-Recorder/Macro Recorder.ahk"'
 }
 #+end_src
 
@@ -177,11 +184,7 @@ startMacroRecorder(){
 :CUSTOM_ID: 1a77bcfe-be1a-4b2d-beac-0879b9f7c5e7
 :END:
 #+begin_src ahk
-<#q::{
-  global myNumArg
-  edgeToggle(myNumArg)
-  myNumArg := 1
-}
+<#q::edgeToggle
 
 Capslock & Space::startMacroRecorder
 Capslock & F1::runMacro('F1')
