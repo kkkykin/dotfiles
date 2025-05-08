@@ -46,6 +46,16 @@ findInArray(a, i) {
   return False
 }
 
+tmpMsg(msg, level := 0, timeout := False){
+  if (level = 0) {
+    tooltip(msg)
+    SetTimer () => ToolTip(), (timeout ? -timeout : -1000)
+  } else {
+    TrayTip('AHK', msg, level)
+    SetTimer () => TrayTip(), (timeout ? -timeout : -5000)
+  }
+}
+
 setNumArg(n, clear := False){
   global myNumArg
   static myNumKeys := []
@@ -62,17 +72,15 @@ setNumArg(n, clear := False){
     }
     else
       myNumArg := n
-    tooltip(myNumArg)
-    SetTimer () => ToolTip(), -1000
+    tmpMsg(myNumArg)
     SetTimer clearNumArg, -10000
   }
 }
 
 clearNumArg(){
   setNumArg(1, True)
-  tooltip('Num Clear')
+  tmpMsg('Num Clear')
   SetTimer clearNumArg, 0
-  SetTimer () => ToolTip(), -1000
 }
 #+end_src
 
@@ -150,7 +158,10 @@ runMacro(keyName) {
     if FileExist(fullPath) {
       try {
         global myNumArg
-        Run '"' A_AhkPath '" /restart "' fullPath '" ' myNumArg
+        cnt := myNumArg
+        clearNumArg
+        RunWait '"' A_AhkPath '" /restart "' fullPath '" ' cnt
+        tmpMsg('Macro Finished', 1)
         return  ; 找到并运行后立即返回
       } catch as e {
         MsgBox '运行脚本时出错: ' e.Message
