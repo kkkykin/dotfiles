@@ -39,6 +39,16 @@ if vim.fn.executable('nvim') == 0 then
   vi_program = vim.v.progpath
 end
 #+end_src
+** global-fn
+:PROPERTIES:
+:CUSTOM_ID: 7b8ea0dc-6325-4a16-b39b-ab65c583c1a5
+:END:
+#+begin_src lua
+vim.api.nvim_create_user_command('V64cmd', function(opts)
+  local decoded = vim.trim(vim.base64.decode(opts.args))
+  vim.cmd(decoded)
+end, { nargs = 1 })
+#+end_src
 ** options
 :PROPERTIES:
 :CUSTOM_ID: a6b6f699-fe15-4794-8396-06f8ab43eead
@@ -153,14 +163,20 @@ vim.api.nvim_create_autocmd({ 'BufEnter', 'WinEnter', 'DirChanged' }, {
 :PROPERTIES:
 :CUSTOM_ID: 96b627f6-d3a1-41d9-9413-c73505aca25c
 :END:
-#+begin_src lua
+#+begin_src lua :var my_neovim_default_server=(default-value 'zr-viper-default-nvim-server)
 local cmd_rc = {
   'doskey vi=emacsclient -n $*',
   string.format('set PATH=%s;%%PATH%%', vim.fn.resolve(os.getenv('myvimrc')):gsub('neovim\\_tangle\\.+', 'init\\_tangle', 1)),
 }
 
 local bash_rc = {
+  'history -d -1',
   string.format('vi() { realpath -z -- "$@" | xargs -0 %s --server "$NVIM" --remote-tab; }', vim.fn.shellescape(vi_program)),
+  string.format('nvim-server-port-open-p() { curl -sm1 "http://%s" ; [ ! $? -eq 7 ] ; }', my_neovim_default_server),
+  string.format('nvim-server() { nvim-server-port-open-p || ( %s --listen %s --headless & ) }', vim.fn.shellescape(vi_program), vim.fn.shellescape(my_neovim_default_server)),
+  string.format('nvim-server-cmd() { nvim-server-port-open-p && %s --server %s --remote-expr "execute(\'V64cmd $*\')" || echo "NeoVim not running." ; }', vim.fn.shellescape(vi_program), vim.fn.shellescape(my_neovim_default_server)),
+  'vt() { local cmd=$(echo -n "tab te $*" | base64 -w0) ; nvim-server-cmd "$cmd" ; }',
+  'nvim-server',
   'print_osc7() { printf "\\033]7;file://$HOSTNAME$PWD\\033\\\\"; }',
 }
 #+end_src
