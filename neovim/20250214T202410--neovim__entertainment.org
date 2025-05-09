@@ -172,10 +172,10 @@ local cmd_rc = {
 local bash_rc = {
   'history -d -1',
   string.format('vi() { realpath -z -- "$@" | xargs -0 %s --server "$NVIM" --remote-tab; }', vim.fn.shellescape(vi_program)),
-  string.format('nvim-server-port-open-p() { curl -sm1 "http://%s" ; [ ! $? -eq 7 ] ; }', my_neovim_default_server),
+  string.format('nvim-server-port-open-p() { curl -sm1 "http://%s" ; [ $? -eq 52 ] ; }', my_neovim_default_server), -- http result faster than telnet
   string.format('nvim-server() { nvim-server-port-open-p || ( %s --listen %s --headless & ) }', vim.fn.shellescape(vi_program), vim.fn.shellescape(my_neovim_default_server)),
   string.format('nvim-server-cmd() { nvim-server-port-open-p && %s --server %s --remote-expr "execute(\'V64cmd $*\')" || echo "NeoVim not running." ; }', vim.fn.shellescape(vi_program), vim.fn.shellescape(my_neovim_default_server)),
-  'vt() { local cmd=$(echo -n "tab te $*" | base64 -w0) ; nvim-server-cmd "$cmd" ; }',
+  'vt() { local cmd=$(printf "tabe | tc %s | te %s" "$(pwd)" "$*" | base64 -w0) ; nvim-server-cmd "$cmd" ; }',
   'nvim-server',
   'print_osc7() { printf "\\033]7;file://$HOSTNAME$PWD\\033\\\\"; }',
 }
