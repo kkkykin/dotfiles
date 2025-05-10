@@ -332,27 +332,27 @@ peer-id-prefix=-DE13F0-
 :PROPERTIES:
 :CUSTOM_ID: bf1b44df-ae49-4eb7-b9ac-c6e26f41313a
 :END:
-#+begin_src conf-unix
+#+begin_src conf-unix :var ext=(pcase system-type ('windows-nt "bat") (_ "sh"))
 # 下载停止后执行的命令
 # 从 正在下载 到 删除、错误、完成 时触发。暂停被标记为未开始下载，故与此项无关。
-# on-download-stop=delete.sh
+on-download-stop=scripts/download-stop.$ext
 
 # 下载完成后执行的命令
 # 此项未定义则执行 下载停止后执行的命令 (on-download-stop)
-# on-download-complete=clean.sh
+on-download-complete=scripts/download-complete.$ext
 
 # 下载错误后执行的命令
 # 此项未定义则执行 下载停止后执行的命令 (on-download-stop)
-#on-download-error=
+on-download-error=scripts/download-error.$ext
 
 # 下载暂停后执行的命令
-#on-download-pause=
+on-download-pause=scripts/download-pause.$ext
 
 # 下载开始后执行的命令
-#on-download-start=
+on-download-start=scripts/download-start.$ext
 
 # BT 下载完成后执行的命令
-#on-bt-download-complete=
+on-bt-download-complete=scripts/bt-download-complete.$ext
 #+end_src
 
 *** RPC 设置
@@ -436,4 +436,27 @@ summary-interval=0
 
 # 关闭控制台进度条输出，避免日志里面打印大量空行
 show-console-readout=false
+#+end_src
+
+* scripts
+#+begin_src elisp :var platform='()
+(let ((script-dir "_tangle/scripts/")
+      tpl ext)
+  (pcase (or platform system-type)
+    ('windows-nt
+     (setq tpl "emacsclient -ne \"(zr-aria2-event-handler \"\"%s\"\" \"\"%%1\"\" %%2 \"%%3\")\""
+           ext "bat"))
+    (_
+     (setq tpl "#!/usr/bin/env bash\nenv -C Downloads emacsclient -ne \"(zr-aria2-event-handler \\\"%s\\\" \\\"$1\\\" $2 \\\"$3\\\")\""
+           ext "sh")))
+  (mkdir script-dir t)
+  (dolist (s '("download-stop"
+               "download-complete"
+               "download-error"
+               "download-pause"
+               "download-start"
+               "bt-download-complete"))
+    (let ((path (format "%s%s.%s" script-dir s ext)))
+      (write-region (format tpl s) nil path)
+      (chmod path #o700))))
 #+end_src
