@@ -143,17 +143,27 @@ capturePrintWindow(window := 'A'){
 :PROPERTIES:
 :CUSTOM_ID: b92cbeec-0287-43f2-a102-9114b2590197
 :END:
+
+#+begin_src ahk
+macroDir := orgDir '_macro\'
+macroRecorderPid := 0
+#+end_src
+
+#+begin_src ahk
+getWinMacroDirNames(win){
+  activeWinTitle := WinGetTitle(win)
+  activeWinClass := WinGetClass(win)
+  activeWinExe := WinGetProcessName(win)
+  return [activeWinTitle, 'ahk_class ' activeWinClass, 'ahk_exe ' activeWinExe, 'global']
+}
+#+end_src
+
 #+begin_src ahk
 runMacro(keyName) {
-  ; 获取当前活动窗口信息
-  activeWinTitle := WinGetTitle('A')
-  activeWinClass := WinGetClass('A')
-  activeWinExe := WinGetProcessName('A')
-    
-  dirNames := [activeWinTitle, 'ahk_class ' activeWinClass, 'ahk_exe ' activeWinExe, 'global']
-    
+  dirNames := getWinMacroDirNames('A')
+
   for dirName in dirNames {
-    fullPath := orgDir '_macro\' dirName '\' keyName '.ahk'
+    fullPath := macroDir dirName '\' keyName '.ahk'
     
     if FileExist(fullPath) {
       try {
@@ -169,21 +179,39 @@ runMacro(keyName) {
       }
     }
   }
-    
+
   switch keyName {
     case 'F9': WinSetAlwaysOnTop(-1, 'A')
     case 'F10': Run 'hh.exe "ms-its:' RegExReplace(A_AhkPath, 'UX\\AutoHotkeyUX\.exe$', 'v2\AutoHotkey.chm')  '"', , 'Max'
     case 'F11': Run A_Programs '\AutoHotkey Window Spy.lnk'
-    case 'F12': Reload
+    case 'F12':
+      global macroRecorderPid
+      if (ProcessExist(macroRecorderPid) && 'AutoHotkeyUX.exe' == ProcessGetName(macroRecorderPid)) {
+        ProcessClose macroRecorderPid
+      }
+      Reload
   }
   return
 }
 #+end_src
 
 #+begin_src ahk
-startMacroRecorder(){
-  ; MsgBox '运行脚本时出错: '
-  Run '"' A_AhkPath '" /restart "' orgDir 'lib/AHK-Macro-Recorder/Macro Recorder.ahk"'
+saveMacro(){
+  dirNames := getWinMacroDirNames('A')
+  ; TODO
+}
+#+end_src
+
+#+begin_src ahk
+toggleMacroRecorder(){
+  global macroRecorderPid
+  if (ProcessExist(macroRecorderPid) && 'AutoHotkeyUX.exe' == ProcessGetName(macroRecorderPid)) {
+    ProcessClose macroRecorderPid
+    tmpMsg 'MacroRecorder Stopped.', 1
+  } else {
+    Run '"' A_AhkPath '" /restart "' orgDir 'lib/AHK-Macro-Recorder/Macro Recorder.ahk"',,, &macroRecorderPid
+    tmpMsg 'MacroRecorder Started.', 1
+  }
 }
 #+end_src
 
@@ -196,7 +224,7 @@ startMacroRecorder(){
 #+begin_src ahk
 <#q::edgeToggle
 
-Capslock & Space::startMacroRecorder
+Capslock & Space::toggleMacroRecorder
 Capslock & F1::runMacro('F1')
 Capslock & F2::runMacro('F2')
 Capslock & F3::runMacro('F3')
