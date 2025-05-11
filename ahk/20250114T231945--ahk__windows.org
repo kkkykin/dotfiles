@@ -137,6 +137,29 @@ centerWindow(window := 'A'){
 capturePrintWindow(window := 'A'){
   Run A_ComSpec Format(' /c ""ffmpeg" "-f" "gdigrab" "-framerate" "1" "-i" "title={1}" "-vframes" "1" "-f" "matroska" "-" | "ffplay" "-""', WinGetTitle(window))
 }
+
+winMinimizeAll(win := 'A') {
+  windows := WinGetList(win)
+  
+  for hwnd in windows {
+    try {
+      WinMinimize(hwnd)
+    }
+  }
+}
+
+GroupAdd 'games', 'ahk_exe Game.exe'
+GroupAdd 'games', 'ahk_class UnityWndClass'
+GroupAdd 'games', 'ahk_class UnrealWindow'
+
+GroupAdd 'NSFW', 'ahk_exe mpv.exe'
+GroupAdd 'NSFW', 'ahk_group games'
+
+bossIsComing(){
+  DllCall('SystemParametersInfoW', 'UInt', 0x14, 'UInt', 0, 'Ptr', 0, 'UInt', 2)
+  SoundSetMute 1
+  winMinimizeAll('ahk_group NSFW')
+}
 #+end_src
 
 ** Macro
@@ -224,7 +247,8 @@ toggleMacroRecorder(){
 #+begin_src ahk
 <#q::edgeToggle
 
-Capslock & Space::toggleMacroRecorder
+Capslock & `::toggleMacroRecorder
+Capslock & Space::bossIsComing
 Capslock & F1::runMacro('F1')
 Capslock & F2::runMacro('F2')
 Capslock & F3::runMacro('F3')
@@ -420,9 +444,7 @@ hotGestureRouter(mWin, gesture){
 :END:
 #+begin_src ahk
 GroupAdd 'NoHotGestures', 'ahk_class Emacs'
-GroupAdd 'NoHotGestures', 'ahk_class UnityWndClass'
-GroupAdd 'NoHotGestures', 'ahk_class UnrealWindow'
-GroupAdd 'NoHotGestures', 'ahk_exe Game.exe'
+GroupAdd 'NoHotGestures', 'ahk_group games'
 
 #HotIf not WinActive('ahk_group NoHotGestures')
 $RButton::{
