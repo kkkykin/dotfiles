@@ -159,6 +159,7 @@ bossIsComing(){
   DllCall('SystemParametersInfoW', 'UInt', 0x14, 'UInt', 0, 'Ptr', 0, 'UInt', 2)
   SoundSetMute 1
   winMinimizeAll('ahk_group NSFW')
+  Run 'emacsclient -e "(zr-moyu-quit-window)"',, 'Hide'
 }
 #+end_src
 
