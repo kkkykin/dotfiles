@@ -6,19 +6,19 @@
  ("surfingkeys" :type "serve-file" :secret-path t :secret-alias t)
  ("vim" :type "serve-file" :secret-path t :secret-alias t)
  ("tampermonkey" :type "serve-file" :secret-path t :secret-alias t)
- ("mpv-cors" :secret-cors t))
+ ("mpv-cors" :secret-cors t) ("browse-url-cors" :secret-cors t))
 ;;; secret entries
 "-----BEGIN PGP MESSAGE-----
 
-hF4DhteJcpg+xyQSAQdA9iTtll3OJX0oGUR/KflDWl6KD/g24FpUhnR986xyBCEw
-4Hwa8FQbZbUSrB8G/rbPM6XJrlw0BrJC7u2g2wqkd/OuMrzF5H4AE3m9Rgb/v1PJ
-1MBzAQkCENLuSvUrnp6TsiBX0Ey0abuPvj1CJq4SwtSF8vyyCm6cp+rZtaamsMfC
-XF98e85/CnVqqFFrrzpi5BIrKpzgMtbkHWv9EzCAAIA9Mp22FE3UpEaa9oI8FxAJ
-OizlK21eyCGtT6ymlk0SzA7u7dJOxsyiYR+m72axBlO2axGh5vMYNpuYOzp5Wkk4
-QMdGLJNSW7UWotSPK4egNNKgK/NfZrgTy4So/EgwuHxJA+PN8JzkaQCyOJgcPclb
-aeMBIzFGWemJDfBjVOO0WzpNjwmCeRMldUZCnfgQcDiSsYEUeWEZRb/fXO9nR53Y
-NleyprZZXWSlo8aHM+iFxT3eNhKxV1dsf4BzpvRVi2TenZWgn4fpcCJcwodeTXbZ
-gxCjE8GtW+JiBEILNQKKdLB0txomrg==
-=bBAF
+hF4DhteJcpg+xyQSAQdA8xoaY1elwABC9NtP81vEP884zmkYrugoIpwlnFoIP1Qw
+IN2hji4fRPHWskC22d/S3yYicg09/yZMVrXNGuDXWFA6wSXy+1AazT2j9EtcFzT+
+1MCKAQkCEKU/f93RvzN4HVutJocKfc76vAfJUbmeSCv+/giBpM1jyR2O7kCnyV33
+rUXlQbpCPt28Um9cW+NMY7GATUYdMpFOSZOqV9j+iT41q/jSv2BlweaqTItYLJt2
+8dmAU5ODEKUWfXgyeEA55WpsEiyzs5T20x22YeDqtJPErJGgsh2fJXpGjNh5zAei
+zU9ji1J7YZT/8Qz9uSx1wkzKeJRGR/02yNmsMZmRxsHGM0aLgCJLKPx/yRJ9g9yt
+u4tgDHEKlidbjXzCd31GEHoCjZutI5or7VVukT6KN/NbZPwW2lmWGVdLcXvG68mN
+Znm3U8CB3txmrlXLXBoDQRW1FnDJ2KHQzRN4WhyIcd25UIC2voMdxVqM+AkjMcj3
+Yiu/h/BvZ9flp9gFUJvgknwj+on78KCYqZ7KkBhTa4pWEE3S/2b9LH1SWR/X
+=iYvI
 -----END PGP MESSAGE-----
 "

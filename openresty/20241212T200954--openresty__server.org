@@ -139,7 +139,7 @@ function find_in_array(array, item)
 end
 
 function is_valid_url(url)
-    if url and url:match("^https?://[%w-_%.%?%.:/@%+=&]+$") then
+    if url and url:match("^https?://[%w%-_%.%?%.:/@%+=&]+$") then
         return true
     end
     ngx.status = ngx.HTTP_BAD_REQUEST
@@ -154,6 +154,18 @@ function is_valid_args(s)
     ngx.status = ngx.HTTP_BAD_REQUEST
     ngx.say("Invalid ARGS format")
     return false
+end
+
+function shell_command_and_say(cmd)
+  local handle = io.popen(cmd)
+  if handle then
+      handle:close()
+      ngx.status = ngx.HTTP_OK
+      ngx.say('Successfully!')
+  else
+      ngx.status = ngx.HTTP_INTERNAL_SERVER_ERROR
+      ngx.say('Failed.')
+  end
 end
 #+end_src
 
@@ -238,15 +250,30 @@ else
     mpv_command = mpv_command .. url .. '"'
 end
 
-local handle = io.popen(mpv_command)
-if handle then
-    handle:close()
-    ngx.status = ngx.HTTP_OK
-    ngx.say('Playback started successfully!')
-else
-    ngx.status = ngx.HTTP_INTERNAL_SERVER_ERROR
-    ngx.say('Failed to start playback process.')
+utils.shell_command_and_say(mpv_command)
+#+end_src
+
+**** browse-url
+:PROPERTIES:
+:header-args:lua: :tangle "_tangle/lua-scripts/browse-url.lua" :mkdirp t
+:CUSTOM_ID: ff377d1b-e71c-4971-9200-884e6d1f3290
+:END:
+#+header: :var auth_key=(auth-source-pick-first-password :host "browse-url.nginx.localhost") allowd_headers="url, authorization"
+#+begin_src lua
+local allowd_origin = {<<expand-lua-table(value=(plist-get (cdr (plstore-get zr-local-pls "browse-url-cors")) :cors))>>}
+<<check-auth-and-origin>>
+
+local url = ngx.req.get_headers()['url']
+
+local utils = require('libs.utils')
+
+if not utils.is_valid_url(url) then
+    return
 end
+
+local command = 'explorer "' .. url .. '"'
+
+utils.shell_command_and_say(command)
 #+end_src
 
 *** serve files
