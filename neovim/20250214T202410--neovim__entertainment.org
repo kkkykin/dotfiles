@@ -307,7 +307,7 @@ vim.g.clipboard = {
 :CUSTOM_ID: 21e2f805-abfa-4435-9f15-a72b8281af48
 :END:
 #+begin_src lua :var browse_url_auth=(auth-source-pick-first-password :host "browse-url.nginx.localhost")
-local browse_url_cmd = string.format('curl -H "origin:%s" -H "uri:%%s" -H "authorization:%s" http://127.0.0.1:7780/lua/browse-url', vim.loop.os_gethostname(), browse_url_auth)
+local browse_url_cmd = string.format('curl -H "origin:ssh://%s" -H "url:%%s" -H "authorization:%s" http://127.0.0.1:7780/lua/browse-url', vim.loop.os_gethostname(), browse_url_auth)
 
 vim.keymap.set({ 'n' }, 'gx', function()
   for _, url in ipairs(require('vim.ui')._get_urls()) do
