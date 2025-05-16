@@ -311,7 +311,7 @@ local browse_url_cmd = string.format('curl -H "origin:ssh://%s" -H "url:%%s" -H 
 
 vim.keymap.set({ 'n' }, 'gx', function()
   for _, url in ipairs(require('vim.ui')._get_urls()) do
-    local err = vim.fn.system(browse_url_cmd, url)
+    local err = vim.fn.system(browse_url_cmd:format(url))
     if err then
       vim.notify(err, vim.log.levels.ERROR)
     end
