@@ -114,6 +114,8 @@ location $location {
 :END:
 #+begin_src conf-space :tangle "_tangle/conf/sites-enabled/lua.conf.3"
 location ~ /lua/(.+) {
+  # client_max_body_size 100m;
+  client_body_buffer_size 1m;
   allow 127.0.0.1;
   deny all;
   content_by_lua_file lua-scripts/$1.lua;
@@ -229,28 +231,62 @@ end
 :CUSTOM_ID: 3e5ddb96-3ebf-4af7-aa99-85b2fe03abac
 :END:
 
-#+header: :var auth_key=(auth-source-pick-first-password :host "mpv.nginx.localhost") allowd_headers="url, args, authorization"
+#+header: :var auth_key=(auth-source-pick-first-password :host "mpv.nginx.localhost") allowd_headers="content-type, args, authorization"
 #+begin_src lua
+local content_type = ngx.req.get_headers()['Content-Type']
+local args = ngx.req.get_headers()['args']
+local method = ngx.req.get_method()
 local allowd_origin = {<<expand-lua-table(value=(plist-get (cdr (plstore-get zr-local-pls "mpv-cors")) :cors))>>}
 <<check-auth-and-origin>>
 
-local url = ngx.req.get_headers()['url']
-local args = ngx.req.get_headers()['args']
+if method ~= 'POST'
+  or content_type ~= 'application/vnd.apple.mpegurl' then
+  ngx.log(ngx.ERR, 'Wrong request header')
+  ngx.exit(ngx.HTTP_BAD_REQUEST)
+end
 
-local utils = require('libs.utils')
+ngx.req.read_body()
+local body = ngx.req.get_body_data()
 
-if not utils.is_valid_url(url) or not utils.is_valid_args(args) then
+if not body then
+  ngx.log(ngx.ERR, 'Empty request body')
+  ngx.exit(ngx.HTTP_BAD_REQUEST)
+end
+
+local function run_mpv(premature, body, args)
+  if premature then return end  -- 防止定时器提前触发
+
+  local utils = require('libs.utils')
+
+  local cmd = 'mpv --playlist=- --terminal=no --input-ipc-server=\\\\.\\pipe\\mpv-nginx'
+  if args ~= nil and utils.is_valid_args(args) then
+    cmd = cmd .. ' ' .. args
+  end
+
+  local handle = io.popen(cmd, 'w')
+  if not handle then
+    ngx.log(ngx.ERR, 'Failed to open pipe to mpv')
     return
+  end
+
+  local ok, err = handle:write(body)
+  if not ok then
+    ngx.log(ngx.ERR, 'Failed to write to mpv: ', err)
+    handle:close()
+    return
+  end
+
+  handle:close()
 end
 
-local mpv_command = 'wt.exe -w _quake nt -p "Command Prompt" mpv "'
-if args then
-    mpv_command = mpv_command .. args .. '" "' .. url .. '"'
-else
-    mpv_command = mpv_command .. url .. '"'
+-- 在 HTTP 请求结束后异步执行 mpv
+local ok, err = ngx.timer.at(0, run_mpv, body, args)
+if not ok then
+  ngx.log(ngx.ERR, 'Failed to create timer: ', err)
 end
 
-utils.shell_command_and_say(mpv_command)
+ngx.say('Success.')
+ngx.exit(ngx.HTTP_OK)
 #+end_src
 
 **** browse-url

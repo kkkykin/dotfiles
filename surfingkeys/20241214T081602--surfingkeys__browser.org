@@ -109,15 +109,19 @@ mapkey(',o', 'Open detected links from text in new tab', () => {
 :CUSTOM_ID: 86a568a1-98d2-4357-b9b2-93b0bb510f1b
 :END:
 #+begin_src js :var myLocalAuthKey=(auth-source-pick-first-password :host "mpv.nginx.localhost")
-async function callInternal(app, headers){
+async function callInternal(app, headers, body){
+  let data = {
+    method: 'POST',
+    headers: {
+      ...headers,
+      authorization: myLocalAuthKey
+    }
+  };
+  if (body !== undefined) {
+    data.body = body;
+  }
   try {
-    const res = await fetch('http://127.0.0.1/lua/' + app, {
-      method: 'POST',
-      headers: {
-        ...headers,
-        authorization: myLocalAuthKey
-      }
-    });
+    const res = await fetch('http://127.0.0.1/lua/' + app, data);
     if (!res.ok) {
       throw new Error(`Response status: ${res.status}`)
     }
@@ -138,11 +142,11 @@ function callMpv(url, args){
   const you = /^https:\/\/www.youtube.com\/@[^/]+$/
   if (you.test(url)) {
     url += '/videos'
-  }
+  };
   callInternal('mpv', {
-    url,
+    'content-type': 'application/vnd.apple.mpegurl',
     args: (args === undefined) ? '' : args
-  })
+  }, url);
 }
 #+end_src
 
