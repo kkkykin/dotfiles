@@ -1,0 +1,634 @@
+#+title:      mpv
+#+date:       [2025-05-19 Mon 19:16]
+#+filetags:   :entertainment:
+#+identifier: 20250519T191624
+* tangle
+#+begin_src elisp
+(let ((tangle-dir zr-org-tangle-default-dir))
+  (mkdir (expand-file-name "scripts" tangle-dir) t)
+  (mkdir (expand-file-name "script-opts" tangle-dir) t)
+  (make-symbolic-link (expand-file-name tangle-dir)
+                      (substitute-in-file-name
+                       "$USERPROFILE/scoop/persist/mpv-v3/portable_config")
+                      t)
+  (org-babel-tangle))
+#+end_src
+* conf
+:PROPERTIES:
+:header-args:conf-unix: :tangle "_tangle/mpv.conf"
+:END:
+
+** always
+*** default
+:PROPERTIES:
+:CUSTOM_ID: fcfc81f5-0e48-4f31-bf89-951c30c9fc3a
+:END:
+#+begin_src conf-unix
+watch-later-options=volume,window-scale
+force-seekable=yes
+loop-playlist=inf
+#+end_src
+*** video
+:PROPERTIES:
+:CUSTOM_ID: 7163a856-ee8c-48f9-8660-986236530488
+:END:
+#+begin_src conf-unix
+vo=gpu-next
+icc-profile-auto
+blend-subtitles=video
+gpu-context=d3d11
+gpu-api=d3d11
+d3d11-adapter='NVIDIA GeForce RTX 3070 Laptop GPU'
+#+end_src
+*** audio
+:PROPERTIES:
+:CUSTOM_ID: bb9ed961-9b8e-48f0-ae20-7c91f7c1573c
+:END:
+#+begin_src conf-unix
+ao=wasapi
+audio-file-auto=fuzzy
+alang=eng,en,chi,zh-CN,sc,chs,jpn,ja,jp
+aid=1
+volume=50
+#+end_src
+*** subtitle
+:PROPERTIES:
+:CUSTOM_ID: 529a2b5e-6787-49c6-bdf7-d0ac1dbc6aa0
+:END:
+#+begin_src conf-unix
+sub-auto=fuzzy
+sub-file-paths=subs,字幕
+slang=eng,en,chi,zh-CN,sc,chs
+sub-use-margins=yes
+#+end_src
+*** network
+:PROPERTIES:
+:CUSTOM_ID: b19e7389-e128-4739-bfcc-9337ed2577fa
+:END:
+#+begin_src conf-unix
+hls-bitrate=max
+rtsp-transport=lavf
+user-agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36 Edg/136.0.0.0"
+#+end_src
+**** yt-dlp
+:PROPERTIES:
+:CUSTOM_ID: 606d4c45-3b76-488d-8560-f10b2bc29aab
+:END:
+#+begin_src conf-unix
+ytdl-raw-options=no-check-certificate=,netrc=
+ytdl-format=bv[width<=?2560]+ba/b
+#+end_src
+*** screenshot
+:PROPERTIES:
+:CUSTOM_ID: 33447925-6144-4703-9798-0fce0a337d2f
+:END:
+#+begin_src conf-unix :var dir=(substitute-in-file-name "$USERPROFILE/Pictures/mpv")
+screenshot-directory='$dir'
+screenshot-format=jxl
+screenshot-jxl-distance=0.1
+screenshot-jxl-effort=8
+#+end_src
+*** cache
+:PROPERTIES:
+:CUSTOM_ID: 2a08636d-8495-49f8-9d79-2e3255e3016e
+:END:
+#+begin_src conf-unix
+cache=yes
+cache-on-disk=no
+demuxer-max-bytes=400MiB
+demuxer-max-back-bytes=150MiB
+#+end_src
+*** display
+:PROPERTIES:
+:CUSTOM_ID: 6c3730e1-d6d9-4cbb-96ca-1b8129eb65eb
+:END:
+#+begin_src conf-unix
+autofit-larger=100%x95%
+cursor-autohide-fs-only
+cursor-autohide=1000
+video-output-levels=full
+#+end_src
+*** window
+:PROPERTIES:
+:CUSTOM_ID: d3d06537-b3b2-4147-b7d2-b7fafcc60cb2
+:END:
+#+begin_src conf-unix
+image-display-duration=inf
+keep-open
+# no-border
+no-title-bar
+snap-window
+#+end_src
+** profile
+*** manual
+:PROPERTIES:
+:CUSTOM_ID: 557be9cd-0f22-40ad-8f49-a4c03e5663bc
+:END:
+#+begin_src conf-unix
+[mini]
+profile-desc='mini player ontop'
+ontop
+autofit=30%
+shuffle
+#+end_src
+**** prefetch
+:PROPERTIES:
+:CUSTOM_ID: c46ed5d2-29bf-4b05-a65d-fff1495759d3
+:END:
+#+begin_src conf-unix
+[prefetch]
+profile-desc=prefetch for network
+cache=yes
+prefetch-playlist
+demuxer-max-bytes=1G
+demuxer-readahead-secs=20
+#+end_src
+**** proxy
+:PROPERTIES:
+:CUSTOM_ID: 570a656b-1bdf-4e69-b734-3abe3e2ed8fa
+:END:
+#+begin_src conf-unix :var server=(replace-regexp-in-string "^SOCKS5 " "http://" (zr-net-match-proxy-rule nil "google.com") t)
+[proxy]
+http-proxy=$server
+#+end_src
+
+*** auto
+**** gpu
+:PROPERTIES:
+:CUSTOM_ID: 7dd763c3-70ee-4767-9201-7d0948db2b1d
+:END:
+#+begin_src conf-unix
+[gpu]
+profile-desc=my high quality
+profile-cond=fullscreen
+profile-restore=copy
+profile=gpu-hq
+scale=ewa_lanczos4sharpest
+scale-blur=0.981251
+video-sync=display-resample
+interpolation
+tscale=oversample
+vd-lavc-dr=yes
+# hwdec=d3d11va-copy,auto-copy
+hwdec=d3d11va,auto
+hwdec-codecs=all
+#+end_src
+**** dolby
+#+begin_src conf-unix :tangle no
+[dolby]
+profile-desc="For Dolby Vision"
+profile-cond=p.display_names[1] == "\\\\.\\DISPLAY1"
+profile-restore=copy
+vf=format:dolbyvision=yes #杜比视界滤镜
+d3d11-output-csp=pq
+target-colorspace-hint
+#+end_src
+**** mov-text
+:PROPERTIES:
+:CUSTOM_ID: 77dac732-5ff9-4f3d-a686-ac401a2fd674
+:END:
+#+begin_src conf-unix
+[mov_text]
+profile-desc='mov_text stylish in mp4'
+profile-cond=p['current-tracks/sub/codec'] == 'mov_text'
+sub-font-size=44
+#+end_src
+**** image
+:PROPERTIES:
+:CUSTOM_ID: 7aac8967-4623-4ecf-83d1-4fa3d50655a2
+:END:
+#+begin_src conf-unix
+[images]
+profile-desc="Playing images"
+profile-cond=p.estimated_frame_count == 0
+prefetch-playlist
+hr-seek=yes
+image-display-duration=inf
+loop-playlist=inf
+loop-file=inf
+reset-on-next-file=mute,video-pan-x,video-pan-y,video-zoom
+#+end_src
+**** alist
+***** baidu
+:PROPERTIES:
+:CUSTOM_ID: 411b30f4-2e32-411c-a539-282378e9c3d0
+:END:
+#+begin_src conf-unix
+[baidupan]
+profile-desc="BaiduPan"
+profile-cond=path:find('^http://192.168.[0-9.]+:5244/d/baidu/')
+profile=prefetch
+user-agent='netdisk'
+#+end_src
+***** ftp
+:PROPERTIES:
+:CUSTOM_ID: c34f8d25-ed32-4f87-a222-bd434bb4564d
+:END:
+#+begin_src conf-unix
+[ftp]
+profile-desc="alist.kkky.fun cache error"
+profile-cond=path:find('^http://192.168.[0-9.]+:5244/d/ftp/')
+cache-on-disk
+demuxer-cache-dir="~~\\cache\\"
+demuxer-cache-unlink-files=whendone
+#+end_src
+***** local
+:PROPERTIES:
+:CUSTOM_ID: f6fe4302-3818-4f8e-b877-b7a428459bdb
+:END:
+#+begin_src conf-unix
+[local]
+profile-desc='local config'
+profile-cond=path:find('^http://192.168.[0-9.]+:5244/d/local/')
+http-proxy=no
+ytdl=no
+#+end_src
+**** bilibili
+:PROPERTIES:
+:CUSTOM_ID: eb72ecbb-c34b-4185-b972-f2400ee5ac57
+:END:
+#+begin_src conf-unix
+[bili]
+profile-cond=path:find("^https://www.bilibili.com/")
+referrer=https://www.bilibili.com/&apos
+ytdl-raw-options-append=cookies-from-browser=firefox
+#+end_src
+**** youtube
+:PROPERTIES:
+:CUSTOM_ID: b5fc1e77-59ba-4b15-b574-8da0ae323e78
+:END:
+#+begin_src conf-unix
+[youtube]
+profile-cond=path:find("^https://www.youtube.com/") or path:find('^https://[^.]+%.googlevideo.com/')
+ytdl-raw-options-append=cookies-from-browser=firefox
+profile=proxy
+profile=prefetch
+#+end_src
+* scripts
+:PROPERTIES:
+:tangle-dir: _tangle/scripts
+:END:
+** code
+
+*** main
+:PROPERTIES:
+:CUSTOM_ID: 57407e82-97f0-4ca4-ba6d-547ce0bd1676
+:END:
+#+header: :var osc_lua=(expand-file-name "libs/thumbfast-osc/player/lua/osc.lua")
+#+header: :var thumbfast_lua=(expand-file-name "libs/thumbfast/thumbfast.lua")
+#+begin_src lua :tangle (zr-org-by-tangle-dir "main.lua")
+mp.commandv("load-script", thumbfast_lua)
+mp.commandv("load-script", osc_lua)
+#+end_src
+*** sub
+**** autovsr
+:PROPERTIES:
+:CUSTOM_ID: bc6a80b4-1ad7-47a4-8d34-4e19b49ac3fd
+:END:
+https://github.com/mpv-player/mpv/pull/14698#issuecomment-2298643736
+#+begin_src lua :tangle (zr-org-by-tangle-dir "autovsr.lua")
+function autovsr()
+    display_width = mp.get_property_native("display-width")
+    video_width = mp.get_property_native("width")
+    display_height = mp.get_property_native("display-height")
+    video_height = mp.get_property_native("height")
+    mp.set_property_native("vf","")
+    pixfmt = mp.get_property_native("video-params/hw-pixelformat") or mp.get_property_native("video-params/pixelformat")
+    if video_width ~= nil and display_width ~= nil then 
+        scale = math.max(display_width,display_height) / math.max(video_width,video_height)
+        scale = scale - scale % 0.1
+        if scale > 1 then
+            if pixfmt == "nv12" then
+                mp.set_property_native("vf","d3d11vpp:scaling-mode=nvidia:scale="..scale)
+            elseif pixfmt == "yuv420p" then
+                mp.set_property_native("vf","format=nv12,format=d3d11,d3d11vpp:scaling-mode=nvidia:scale="..scale)
+            end
+        end
+    end
+end
+mp.observe_property("video-params/pixelformat", "native", autovsr)
+#+end_src
+**** shadow-shadow
+:PROPERTIES:
+:CUSTOM_ID: bd222aba-8236-4e43-9f96-22e881149b6c
+:END:
+#+begin_src lua :tangle (zr-org-by-tangle-dir "shadow-shadow.lua")
+local lavfi_complex_bak = ''
+local lavfi_complex_hstack = ''
+
+local function lets_shadow()
+    mp.commandv('show-text', 'Hstack show')
+    lavfi_complex_bak = mp.get_property('lavfi-complex')
+    mp.set_property('lavfi-complex', lavfi_complex_hstack)
+end
+
+local function shadow_shadow()
+    local dw = mp.get_property('display-width')
+    local w = mp.get_property_number('width')
+    local h = mp.get_property_number('height')
+    if dw and w < h and mp.get_property_number('estimated-frame-count') ~= 0 then
+        print('display-width: ' .. dw)
+        print('width: ' .. w)
+        print('height: ' .. h)
+        lavfi_complex_hstack = "[vid1] split=3 [v1][v2][v3] ; [v1][v2][v3] hstack=inputs=3,scale=w='min(" .. dw .. ",iw)':h=-1 [vo]"
+        lets_shadow()
+    end
+end
+
+local function light_light()
+    if mp.get_property('lavfi-complex') == lavfi_complex_hstack then
+        mp.set_property('lavfi-complex', lavfi_complex_bak)
+    end
+end
+
+-- mp.register_event('file-loaded', shadow_shadow)
+-- mp.register_event('start-file', light_light)
+
+#+end_src
+**** ontop
+:PROPERTIES:
+:CUSTOM_ID: 1f2b9d6c-a183-44e0-b3dc-72587851e541
+:END:
+https://github.com/wishyu/mpv-ontop-window
+#+begin_src lua :tangle (zr-org-by-tangle-dir "ontop.lua")
+local was_ontop = false
+
+local function my_auto_ontop(name, value)
+    local ontop = mp.get_property_bool('ontop')
+    if value then
+        if ontop then
+            mp.set_property_bool('ontop', false)
+            was_ontop = true
+        end
+    else
+        if was_ontop and not ontop then
+            mp.set_property_bool('ontop', true)
+        end
+        was_ontop = false
+    end
+end
+
+mp.observe_property('fullscreen', 'bool', my_auto_ontop)
+mp.observe_property('pause', 'bool', my_auto_ontop)
+#+end_src
+**** ytdl-prefetch
+:PROPERTIES:
+:CUSTOM_ID: 16c623cd-d921-44ea-9ab8-0ad25f0421df
+:END:
+#+begin_src lua :tangle (zr-org-by-tangle-dir "ytdl-prefetch.lua") :var python_path=(executable-find "python")
+local utils = require 'mp.utils'
+
+local ytdl_videos = {
+    ['^https://www.youtube.com/watch'] = {
+        '--cookies-from-browser', 'firefox'
+    }
+}
+
+local playlist_patterns = {
+    '^https://www.youtube.com/(@|playlist%?)',
+    '%.m3u8?$'
+}
+
+function flatten_array(arr)
+    local flat = {}
+    for _, v in ipairs(arr) do
+        if type(v) == 'table' then
+            for _, nested_v in ipairs(v) do
+                table.insert(flat, nested_v)
+            end
+        else
+            table.insert(flat, v)
+        end
+    end
+    return flat
+end
+
+local function get_nth_index(n)
+    local nth_index = mp.get_property_number('playlist-pos') + n
+    local max_index_1 = mp.get_property_number('playlist-count')
+    if nth_index >= max_index_1 then
+        nth_index = nth_index - max_index_1
+    elseif nth_index < 0 then
+        nth_index = nth_index + max_index_1
+    end
+    return nth_index
+end
+
+local function get_index_filename(index)
+    return mp.get_property_osd('playlist/' .. index .. '/filename')
+end
+
+local function get_index_id(index)
+    return mp.get_property('playlist/' .. index .. '/id')
+end
+
+local function replace_file_at(url, index, options)
+	mp.commandv('loadfile', url, 'insert-at', index, options or '')
+	mp.commandv('playlist_remove', index + 1)
+end
+
+local function prefetch_url(index, file, args)
+    local res = mp.command_native({
+        name = 'subprocess',
+        capture_stdout = true,
+        capture_stderr = true,
+        args = flatten_array({python_path, '-X', 'utf8', '-m', 'yt_dlp', '-egf', mp.get_property('ytdl-format'), args, file})
+    })
+    if res.status <= 0 then
+	    local lines = {}
+	    for s in res.stdout:gmatch('[^\r\n]+') do
+		    table.insert(lines, s)
+	    end
+	    local audioURL = ''
+	    if lines[3] then 
+		    audioURL = ',audio-file=['..lines[3]..']'
+	    end
+	    if lines[1] and lines[2] then
+            replace_file_at(lines[2], index, 'force-media-title=[' .. lines[1] .. ']' .. audioURL)
+	    end
+    else
+        print(res.stderr)
+    end
+end
+
+local function get_ytdl_args(str, patterns)
+    for pattern, args in pairs(patterns) do
+        if string.match(str, pattern) then
+            return args
+        end
+    end
+    return false
+end
+
+local function playlist_p(str)
+    for _, pattern in ipairs(playlist_patterns) do
+        if string.match(str, pattern) then
+            return true
+        end
+    end
+    return false
+end
+
+local replaced_files = {}
+local replaced_files_size = 0
+
+local function restore_prev(n)
+    for i = 1, n do
+        local prev_index = get_nth_index(-n)
+        local prev_id = get_index_id(prev_index)
+        if replaced_files[prev_id] then
+            replace_file_at(replaced_files[prev_id], prev_index)
+            replaced_files[prev_id] = nil
+            replaced_files_size = replaced_files_size - 1
+        end
+    end
+end
+
+local function prefetch_next(n)
+    for i = 1, n do
+        local index = get_nth_index(i)
+        local file = get_index_filename(index)
+
+        if playlist_p(file) then
+            return
+        end
+
+        local ytdl_args = get_ytdl_args(file, ytdl_videos)
+	    if ytdl_args then
+            prefetch_url(index, file, ytdl_args)
+            local id = get_index_id(index)
+            replaced_files[id] = file
+            replaced_files_size = replaced_files_size + 1
+	    end
+    end
+end
+
+local function prefetch_worker(fetch_number)
+    if mp.get_property_bool('options/prefetch-playlist') then
+        prefetch_next(fetch_number)
+    end
+end
+
+-- local function print_info(info)
+--     print(mp.get_time() .. ' info: ' .. utils.to_string(info))
+--     print(mp.get_time() .. ' pos: ' .. mp.get_property('playlist-pos'))
+--     print(mp.get_time() .. ' count: ' .. mp.get_property('playlist-count'))
+-- end
+
+local function is_windows_p()
+    for _, e in ipairs(utils.get_env_list()) do
+        if e == 'OS=Windows_NT' then
+            return true
+        end
+    end
+    return false
+end
+local is_windows = is_windows_p()
+
+local function browse_url()
+    local index = mp.get_property('playlist-pos')
+    local id = get_index_id(index)
+    local url = mp.get_property('path')
+    if replaced_files[id] then
+        url = replaced_files[id]
+    end
+    if is_windows then
+        mp.commandv('run', 'C:\\Windows\\system32\\cmd.exe', '/c', 'start ' .. url)
+    end
+end
+
+local function observe(info)
+
+    local list_count = mp.get_property_number('playlist-count')
+    if list_count > 1 and mp.get_property_bool('options/prefetch-playlist') then
+
+        local fetch_number = 1
+        if list_count > 3 then
+            fetch_number = 3
+        elseif list_count > 2 then
+            fetch_number = 2
+        end
+
+        if info.event == 'start-file' then
+            local cur_file = mp.get_property_osd('filename')
+            if playlist_p(cur_file) then
+                return
+            end
+
+            prefetch_next(fetch_number)
+            mp.unregister_event(observe)
+            mp.register_event('end-file', observe)
+
+        elseif info.reason == 'eof' or info.reason == 'stop' then
+            restore_prev(math.min(fetch_number, replaced_files_size - fetch_number))
+            prefetch_next(fetch_number)
+        end
+    end
+end
+
+mp.register_event('start-file', observe)
+mp.add_key_binding('ctrl+o', 'Browse-url', browse_url)
+#+end_src
+** opts
+:PROPERTIES:
+:tangle-dir: _tangle/script-opts
+:END:
+*** console
+:PROPERTIES:
+:CUSTOM_ID: 4be9b535-8895-426a-acc9-4de9cd77563e
+:END:
+#+begin_src conf-unix :tangle (zr-org-by-tangle-dir "console.conf")
+font_size=24
+#+end_src
+*** thumbfast
+:PROPERTIES:
+:CUSTOM_ID: 1511bd4c-a641-45b1-8c7e-b56f31f74dda
+:END:
+#+begin_src conf-unix :tangle (zr-org-by-tangle-dir "thumbfast.conf")
+# Socket path (leave empty for auto)
+socket=
+
+# Thumbnail path (leave empty for auto)
+thumbnail=
+
+# Maximum thumbnail size in pixels (scaled down to fit)
+# Values are scaled when hidpi is enabled
+max_height=200
+max_width=200
+
+# Apply tone-mapping, no to disable
+tone_mapping=auto
+
+# Overlay id
+overlay_id=42
+
+# Spawn thumbnailer on file load for faster initial thumbnails
+spawn_first=no
+
+# Close thumbnailer process after an inactivity period in seconds, 0 to disable
+quit_after_inactivity=0
+
+# Enable on network playback
+network=yes
+
+# Enable on audio playback
+audio=yes
+
+# Enable hardware decoding
+hwdec=yes
+
+# Windows only: use native Windows API to write to pipe (requires LuaJIT)
+direct_io=yes
+
+# Custom path to the mpv executable
+mpv_path=mpv
+#+end_src
+* input
+:PROPERTIES:
+:header-args: :tangle "_tangle/input.conf"
+:CUSTOM_ID: 1dd7a8a0-4a76-48e5-bbae-ba42bb0fd52a
+:END:
+#+begin_src conf-unix
+n playlist-next
+p playlist-prev
+#+end_src

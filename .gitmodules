@@ -8,3 +8,10 @@
 	path = ahk/lib/AHK-Macro-Recorder
 	url = https://github.com/kkkykin/AHK-Macro-Recorder
 	branch = custom
+[submodule "mpv/libs/thumbfast-osc"]
+	path = mpv/libs/thumbfast-osc
+	url = https://github.com/po5/thumbfast.git
+	branch = vanilla-osc
+[submodule "mpv/libs/thumbfast"]
+	path = mpv/libs/thumbfast
+	url = https://github.com/po5/thumbfast.git
