@@ -4,12 +4,12 @@
 #+identifier: 20250214T202410
 * tangle
 #+begin_src elisp
-(org-babel-tangle)
-
-(let ((dir (pcase system-type
-            ('windows-nt
-             (substitute-in-file-name "$LOCALAPPDATA/nvim"))
-            (_ (expand-file-name "~/.config/nvim")))))
+(let ((zr-local-pls (plstore-open "neovim.pls"))
+      (dir (pcase system-type
+             ('windows-nt
+              (substitute-in-file-name "$LOCALAPPDATA/nvim"))
+             (_ (expand-file-name "~/.config/nvim")))))
+  (org-babel-tangle)
   (make-symbolic-link (expand-file-name "_tangle") dir t))
 #+end_src
 * init
@@ -58,6 +58,7 @@ vim.opt.tabstop = 2
 vim.opt.shiftwidth = 2
 vim.opt.expandtab = true
 vim.opt.smartindent = true
+vim.opt.autochdir = true
 #+end_src
 ** theme
 :PROPERTIES:
@@ -132,25 +133,28 @@ local function get_buffer_dir()
   if vim.b.osc7_dir and vim.fn.isdirectory(vim.b.osc7_dir) == 1 then
     return vim.b.osc7_dir
   end
-  local current_file_path = vim.fn.expand('%:p')
-  return vim.fn.fnamemodify(current_file_path, ':h')
+  local current_path = vim.fn.expand('%:p')
+  if vim.fn.isdirectory(current_path) == 0 then
+    current_path = vim.fn.fnamemodify(current_path, ':h')
+  end
+  return current_path
 end
 #+end_src
 
 #+begin_src lua
-local function cd_to_buffer_dir(force)
+local function lcd_to_buffer_dir(force)
   if force == 1 or vim.o.autochdir then
-    vim.cmd.cd(get_buffer_dir())
+    vim.cmd.lcd(get_buffer_dir())
   end
 end
 
-vim.keymap.set('n', '<Leader>c', function() cd_to_buffer_dir(1) end)
+vim.keymap.set('n', '<Leader>c', function() lcd_to_buffer_dir(1) end)
 #+end_src
 
 #+begin_src lua
 vim.api.nvim_create_autocmd({ 'BufEnter', 'WinEnter', 'DirChanged' }, {
   group = my_augroup,
-  callback = cd_to_buffer_dir,
+  callback = lcd_to_buffer_dir,
 })
 #+end_src
 
@@ -319,6 +323,98 @@ vim.keymap.set({ 'n' }, 'gx', function()
 end, { noremap = true })
 #+end_src
 
+*** browse-media
+:PROPERTIES:
+:CUSTOM_ID: f2bcf8c1-a7a6-463c-96dd-bc6fbc0b553c
+:END:
+
+#+name: expand-lua-kv-table
+#+begin_src elisp :var value='(("a" . "b"))
+(mapconcat (lambda (s) (format "['%s'] = '%s'," (car s) (cdr s))) value "\n")
+#+end_src
+
+#+begin_src lua :var mpv_auth=(auth-source-pick-first-password :host "mpv.nginx.localhost")
+local file_transform_table = {
+  <<expand-lua-kv-table(value=(plist-get (cdr (plstore-get zr-local-pls "file-transform")) :tbl))>>
+}
+
+local function transform_file_path(file)
+  local transformed = file
+  for orig, replacement in pairs(file_transform_table) do
+    transformed = vim.fn.substitute(
+      transformed,
+      orig,
+      vim.fn.substitute(
+        replacement, '{{{HOSTNAME}}}', vim.loop.os_gethostname(), 'g'), 'g')
+  end
+  return transformed
+end
+
+local function mpv_play_files(files)
+  if #files == 0 then
+    print('No files to play')
+    return
+  end
+    
+  local cmd = {
+    'curl',
+    '-H', 'content-type:application/vnd.apple.mpegurl',
+    '-H', 'origin:ssh://' .. vim.loop.os_gethostname(),
+    '-H', 'authorization:' .. mpv_auth,
+    '--data-binary', '@-',
+    'http://127.0.0.1:7780/lua/mpv'
+  }
+
+  local job = vim.fn.jobstart(cmd, {
+    on_exit = function(_, code, _)
+      if code ~= 0 then
+        print('Failed to send to mpv (code '..code..')')
+      end
+    end,
+    stdin = 'pipe',
+  })
+
+  vim.fn.chansend(job, files)
+  vim.fn.chanclose(job, 'stdin')
+end
+
+local function transform_files_path(paths)
+  local files = {}
+  for _, path in ipairs(paths) do
+    path = vim.fn.fnamemodify(path, ':p')
+    if vim.fn.isdirectory(path) == 1 then
+      for _, file in ipairs(vim.fn.globpath(path, '**/*', 1, 1)) do
+        if vim.fn.isdirectory(file) == 0 then
+          table.insert(files, transform_file_path(file))
+        end
+      end
+    else
+      table.insert(files, transform_file_path(path))
+    end
+  end
+  return files
+end
+
+vim.api.nvim_create_user_command(
+  'Mpv',
+  function(opts)
+    local paths
+    if opts.args ~= '' then
+      paths = opts.args
+    elseif vim.bo.filetype == 'netrw' then
+      vim.cmd.lcd(vim.b.netrw_curdir)
+      paths = vim.fn['netrw#Expose']('netrwmarkfilelist_' .. vim.api.nvim_get_current_buf())
+      if paths == 'n/a' then
+        paths = {vim.fn.expand('<cfile>:p')}
+      end
+    else
+      paths = {vim.fn.expand('%:p')}
+    end
+
+    mpv_play_files(table.concat(transform_files_path(paths), '\n'))
+  end, { nargs = '*' })
+#+end_src
+
 *** end
 :PROPERTIES:
 :CUSTOM_ID: bbf6df13-a341-489c-92be-22d3c37679f1
@@ -333,6 +429,8 @@ end
 :CUSTOM_ID: 0c6f9751-5296-4199-879d-dd91d0e9d278
 :END:
 #+begin_src lua
+vim.g.netrw_keepdir = 0
+
 if archive_7z_program then
   vim.g.netrw_decompress = {
     ['.zip'] = archive_7z_program .. ' x -otmp-zip',
@@ -352,7 +450,6 @@ end
 
 vim.keymap.set('n', '<Leader>d', netrw_buffer_dir, { noremap = true })
 #+end_src
-
 ** sudo
 :PROPERTIES:
 :CUSTOM_ID: a905f861-9fb1-4a8d-ad2d-94b8d94fa7a7
