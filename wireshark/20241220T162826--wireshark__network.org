@@ -10,18 +10,16 @@
       org-babel-pre-tangle-hook
       org-confirm-babel-evaluate)
   (plstore-close zr-local-pls)
-  (org-babel-tangle))
+  (org-babel-tangle nil nil "^lua$")
+  (let ((coding-system-for-write 'cp936-dos))
+    (org-babel-tangle nil nil "^bat$")))
 
 (mkdir "_prefs/profiles/dummy" t)
 
 (let ((lua-dir (pcase system-type
-                 ('gnu/linux (expand-file-name "~/.local/lib/wireshark/plugins/"))
-                 ('windows-nt (expand-file-name "plugins/" (getenv "WIRESHARK_DATA_DIR"))))))
-  (make-directory lua-dir t)
-  (dolist (f (directory-files "_tangle/lua-plugins" t "^[^.]" t))
-    (unless (file-symlink-p
-             (expand-file-name (file-name-nondirectory f) lua-dir))
-      (make-symbolic-link f lua-dir t))))
+                 ('gnu/linux (expand-file-name "~/.local/lib/wireshark/plugins"))
+                 ('windows-nt (expand-file-name "plugins" (getenv "WIRESHARK_DATA_DIR"))))))
+  (make-symbolic-link (expand-file-name "_tangle/lua-plugins") lua-dir t))
 
 (org-babel-remove-result-one-or-many '(4))
 (save-buffer)
@@ -95,46 +93,17 @@ https://www.wireshark.org/docs/wsug_html_chunked/ChCustCommandLine.html
     (apply #'start-process (concat "wireshark-" name) nil (executable-find "wireshark") "-P" "persconf:_prefs" "-C" profile "-ki" interface "-f" cfilter "-Y" dfilter (append pref args))))
 #+end_src
 
-* plugins
-** socks5 proxy
+* lua
+
+** plugins
 :PROPERTIES:
-:CUSTOM_ID: dbdca4b8-733b-4c14-a9f7-ca7e403f711a
+:tangle-dir: _tangle/lua-plugins
 :END:
-Check which domains pass through the proxy port.
-#+begin_src lua :tangle "_tangle/lua-scripts/socks5.lua" :mkdirp t :var proxy_port=(zr-org-table-select "%d,1" "key-value-pair" ",0" "proxy-port")
-local socks5 = Proto("socks5", "SOCKS5")
-
-local f_socks5_domain_name = ProtoField.string("socks5.domain_name", "SOCKS5 Domain Name")
-
-socks5.fields = {f_socks5_domain_name}
-
-function socks5.dissector(buffer, pinfo, tree)
-    if buffer:len() == 0 then return end
-
-    if buffer(0, 4):uint() == 0x05010003 then
-        local domain_len = buffer(4, 1):uint()
-        if buffer:len() >= 5 + domain_len then
-            local domain_name = buffer(5, domain_len):string()
-
-            local subtree = tree:add(socks5, buffer(), "SOCKS5 Proxy Protocol")
-            subtree:add(f_socks5_domain_name, buffer(5, domain_len))
-
-            pinfo.cols.protocol = "SOCKS5"
-            pinfo.cols.info:set("SOCKS5 CONNECT to " .. domain_name)
-        end
-    else
-        Dissector.get("http"):call(buffer, pinfo, tree)
-    end
-end
-
-local tcp_port = DissectorTable.get("tcp.port")
-tcp_port:add(proxy_port, socks5)
-#+end_src
-** port query
+*** port query
 :PROPERTIES:
 :CUSTOM_ID: 0d8189e3-d090-4ea8-a252-63630fe5926a
 :END:
-#+begin_src lua :tangle "_tangle/lua-plugins/port-query.lua" :mkdirp t
+#+begin_src lua :tangle "port-query.lua" :mkdirp t
 local port_query_proto = Proto('port_query', 'Port Query Plugin')
 
 -- 全局变量存储窗口实例
@@ -357,6 +326,163 @@ end
 
 register_packet_menu('Query Port Program', query_port_program)
 #+end_src
+** scripts
+:PROPERTIES:
+:tangle-dir: _tangle/lua-scripts
+:END:
+*** socks5 proxy
+:PROPERTIES:
+:CUSTOM_ID: dbdca4b8-733b-4c14-a9f7-ca7e403f711a
+:END:
+Check which domains pass through the proxy port.
+#+begin_src lua :tangle "socks5.lua" :mkdirp t :var proxy_port=(plist-get (cdr (plstore-get zr-local-pls "proxy-port")) :port)
+local socks5 = Proto("socks5", "SOCKS5")
+
+local f_socks5_domain_name = ProtoField.string("socks5.domain_name", "SOCKS5 Domain Name")
+
+socks5.fields = {f_socks5_domain_name}
+
+function socks5.dissector(buffer, pinfo, tree)
+    if buffer:len() == 0 then return end
+
+    if buffer(0, 4):uint() == 0x05010003 then
+        local domain_len = buffer(4, 1):uint()
+        if buffer:len() >= 5 + domain_len then
+            local domain_name = buffer(5, domain_len):string()
+
+            local subtree = tree:add(socks5, buffer(), "SOCKS5 Proxy Protocol")
+            subtree:add(f_socks5_domain_name, buffer(5, domain_len))
+
+            pinfo.cols.protocol = "SOCKS5"
+            pinfo.cols.info:set("SOCKS5 CONNECT to " .. domain_name)
+        end
+    else
+        Dissector.get("http"):call(buffer, pinfo, tree)
+    end
+end
+
+local tcp_port = DissectorTable.get("tcp.port")
+tcp_port:add(proxy_port, socks5)
+#+end_src
+
+* bat
+:PROPERTIES:
+:tangle-dir: _tangle/bat
+:CUSTOM_ID: db3364bf-7b63-47de-86b9-18b1354153ae
+:END:
+
+#+begin_src bat :mkdirp t :tangle (zr-org-by-tangle-dir "cap.bat")
+@echo off
+setlocal
+
+:: 检查参数是否提供
+if "%~1"=="" (
+    echo 用法: %~nx0 -ip <IP地址> -port <端口>
+    goto :eof
+)
+
+:: 解析命令行参数
+set ip=
+set port=
+
+:parse_args
+if "%~1"=="" goto :args_parsed
+if "%~1"=="-ip" (
+    set ip=%~2
+    shift /2
+    goto :parse_args
+)
+if "%~1"=="-port" (
+    set port=%~2
+    shift /2
+    goto :parse_args
+)
+shift
+goto :parse_args
+
+:args_parsed
+
+:: 检查IP和端口是否已设置
+if not defined ip (
+    echo 错误: 未指定IP地址
+    goto :eof
+)
+if not defined port (
+    echo 错误: 未指定端口
+    goto :eof
+)
+
+:: 尝试定位 dumpcap.exe
+set dumpcap_path=
+where dumpcap >nul 2>&1 && set dumpcap_path=dumpcap
+
+if not defined dumpcap_path (
+    if exist "C:\Program Files\Wireshark\dumpcap.exe" (
+        set dumpcap_path="C:\Program Files\Wireshark\dumpcap.exe"
+    ) else if exist "D:\wireshark\dumpcap.exe" (
+        set dumpcap_path="D:\wireshark\dumpcap.exe"
+    ) else if exist "D:\app\WiresharkPortable64\App\Wireshark\dumpcap.exe" (
+        set dumpcap_path="D:\app\WiresharkPortable64\App\Wireshark\dumpcap.exe"
+    ) else if exist "D:\app\wireshark\dumpcap.exe" (
+        set dumpcap_path="D:\app\wireshark\dumpcap.exe"
+    ) else if exist "%ProgramFiles%\Wireshark\dumpcap.exe" (
+        set dumpcap_path="%ProgramFiles%\Wireshark\dumpcap.exe"
+    )
+)
+
+if not defined dumpcap_path (
+    echo 错误: 找不到 dumpcap.exe
+    echo 请确保 Wireshark 已安装，或手动指定 dumpcap.exe 路径
+    goto :eof
+)
+
+:: 设置抓包过滤器（基于IP和端口）
+set filter=host %ip% and port %port%
+
+:: 设置抓包持续时间（10分钟=600秒）
+set duration=600
+
+set pcap_path="%cd%\cap.pcap"
+
+:: 获取当前时间
+for /f "tokens=1-3 delims=:." %%a in ("%time%") do (
+    set /a hour=%%a
+    set /a minute=%%b
+    set /a second=%%c
+)
+
+:: 计算总秒数并转换为小时、分钟、秒
+set /a total_seconds=hour*3600 + minute*60 + second + duration
+
+:: 计算新的小时、分钟、秒
+set /a hour=total_seconds/3600 %% 24
+set /a minute=(total_seconds %% 3600)/60
+set /a second=total_seconds %% 60
+
+:: 格式化时间（确保两位数显示）
+if %hour% lss 10 set hour=0%hour%
+if %minute% lss 10 set minute=0%minute%
+if %second% lss 10 set second=0%second%
+
+set end_time=%hour%:%minute%:%second%
+
+echo 正在抓包: %ip%:%port%，持续 %duration% 秒...
+echo 预计结束时间: %end_time%
+echo 结束前可以做任何事，但暂时不要关闭该窗口
+%dumpcap_path% -i "VPN - VPN Client" -f "%filter%" -a duration:%duration% -w %pcap_path%
+
+powershell -command "Add-Type -AssemblyName System.Windows.Forms; $global:balloon = New-Object System.Windows.Forms.NotifyIcon; $balloon.Icon = [System.Drawing.SystemIcons]::Information; $balloon.BalloonTipIcon = [System.Windows.Forms.ToolTipIcon]::Info; $balloon.BalloonTipText = '抓包已完成，结果保存在 %pcap_path%'; $balloon.BalloonTipTitle = '抓包完成'; $balloon.Visible = $true; $balloon.ShowBalloonTip(5000); Start-Sleep -Seconds 5; $balloon.Dispose()"
+
+echo 抓包完成，结果保存在 %pcap_path%
+echo 有时间可以把该文件发给我，按任意键用资源管理器找到该文件
+pause
+explorer /select,%pcap_path%
+
+echo 可以随时关闭该窗口
+pause
+endlocal
+#+end_src
+
 * local variables
 
 # Local Variables:
