@@ -13,22 +13,30 @@
 :header-args:ahk: :tangle (zr-org-by-tangle-dir "default.ahk")
 :END:
 
-** vars
-#+name: setup-vars
-#+begin_src elisp
-(mapconcat
- (lambda (var) (format "%s := '%s'\n" (car var) (cdr var)))
- `(("orgDir" . ,default-directory)))
-#+end_src
-
 ** include
 :PROPERTIES:
 :CUSTOM_ID: 7bfba842-bc68-4665-9af1-a37da905366a
 :END:
 #+begin_src ahk
 #Include 'mouse.ahk'
+#+end_src
 
+** vars
+:PROPERTIES:
+:CUSTOM_ID: 60239ccb-cc1a-41e3-b25e-76ca74830f16
+:END:
+#+name: setup-vars
+#+begin_src elisp
+(mapconcat
+ (lambda (var) (format "%s := '%s'\n" (car var) (cdr var)))
+ `(("orgDir" . ,default-directory)
+   ("macroDir" . ,(expand-file-name "_macro"))))
+#+end_src
+
+#+begin_src ahk
 <<setup-vars()>>
+macroRecorderPid := 0
+macroRunningPid := 0
 #+end_src
 
 ** universal-arg
@@ -147,19 +155,11 @@ winMinimizeAll(win := 'A') {
     }
   }
 }
+#+end_src
 
-GroupAdd 'games', 'ahk_exe Game.exe'
-GroupAdd 'games', 'ahk_class UnityWndClass'
-GroupAdd 'games', 'ahk_class UnrealWindow'
-
-GroupAdd 'NSFW', 'ahk_exe mpv.exe'
-GroupAdd 'NSFW', 'ahk_group games'
-
-bossIsComing(){
-  DllCall('SystemParametersInfoW', 'UInt', 0x14, 'UInt', 0, 'Ptr', 0, 'UInt', 2)
-  SoundSetMute 1
-  winMinimizeAll('ahk_group NSFW')
-  Run 'emacsclient -e "(zr-moyu-quit-window)"',, 'Hide'
+#+begin_src ahk
+processLiveP(pid, pname){
+  return ProcessExist(pid) && pname == ProcessGetName(pid)
 }
 #+end_src
 
@@ -167,11 +167,6 @@ bossIsComing(){
 :PROPERTIES:
 :CUSTOM_ID: b92cbeec-0287-43f2-a102-9114b2590197
 :END:
-
-#+begin_src ahk
-macroDir := orgDir '_macro\'
-macroRecorderPid := 0
-#+end_src
 
 #+begin_src ahk
 getWinMacroDirNames(win){
@@ -183,19 +178,31 @@ getWinMacroDirNames(win){
 #+end_src
 
 #+begin_src ahk
+clearMacroStatus(){
+  global macroRunningPid
+  if processLiveP(macroRunningPid, 'AutoHotkeyUX.exe') {
+    ProcessClose macroRecorderPid
+    tmpMsg('Macro Stopped', 1)
+  }
+  macroRunningPid := 0
+}
+#+end_src
+
+#+begin_src ahk
 runMacro(keyName) {
   dirNames := getWinMacroDirNames('A')
 
   for dirName in dirNames {
-    fullPath := macroDir dirName '\' keyName '.ahk'
+    fullPath := macroDir '\' dirName '\' keyName '.ahk'
     
     if FileExist(fullPath) {
       try {
+        global macroRunningPid
         global myNumArg
         cnt := myNumArg
         clearNumArg
-        RunWait '"' A_AhkPath '" /restart "' fullPath '" ' cnt
-        tmpMsg('Macro Finished', 1)
+        RunWait '"' A_AhkPath '" /restart "' fullPath '" ' cnt ,,, &macroRunningPid
+        clearMacroStatus
         return  ; 找到并运行后立即返回
       } catch as e {
         MsgBox '运行脚本时出错: ' e.Message
@@ -210,7 +217,11 @@ runMacro(keyName) {
     case 'F11': Run A_Programs '\AutoHotkey Window Spy.lnk'
     case 'F12':
       global macroRecorderPid
-      if (ProcessExist(macroRecorderPid) && 'AutoHotkeyUX.exe' == ProcessGetName(macroRecorderPid)) {
+      global macroRunningPid
+      if processLiveP(macroRunningPid, 'AutoHotkeyUX.exe') {
+        clearMacroStatus
+      }
+      if processLiveP(macroRecorderPid, 'AutoHotkeyUX.exe') {
         ProcessClose macroRecorderPid
       }
       Reload
@@ -227,15 +238,39 @@ saveMacro(){
 #+end_src
 
 #+begin_src ahk
-toggleMacroRecorder(){
+macroManager(){
   global macroRecorderPid
-  if (ProcessExist(macroRecorderPid) && 'AutoHotkeyUX.exe' == ProcessGetName(macroRecorderPid)) {
+  global macroRunningPid
+  if processLiveP(macroRunningPid, 'AutoHotkeyUX.exe') {
+    clearMacroStatus
+  } else if processLiveP(macroRecorderPid, 'AutoHotkeyUX.exe') {
     ProcessClose macroRecorderPid
     tmpMsg 'MacroRecorder Stopped.', 1
   } else {
     Run '"' A_AhkPath '" /restart "' orgDir 'lib/AHK-Macro-Recorder/Macro Recorder.ahk"',,, &macroRecorderPid
     tmpMsg 'MacroRecorder Started.', 1
   }
+}
+#+end_src
+
+** Post
+:PROPERTIES:
+:CUSTOM_ID: 6976a1ae-848d-44e4-9102-0b6141b09b39
+:END:
+#+begin_src ahk
+GroupAdd 'games', 'ahk_exe Game.exe'
+GroupAdd 'games', 'ahk_class UnityWndClass'
+GroupAdd 'games', 'ahk_class UnrealWindow'
+
+GroupAdd 'NSFW', 'ahk_exe mpv.exe'
+GroupAdd 'NSFW', 'ahk_group games'
+
+bossIsComing(){
+  clearMacroStatus
+  DllCall('SystemParametersInfoW', 'UInt', 0x14, 'UInt', 0, 'Ptr', 0, 'UInt', 2)
+  SoundSetMute 1
+  winMinimizeAll('ahk_group NSFW')
+  Run 'emacsclient -e "(zr-moyu-quit-window)"',, 'Hide'
 }
 #+end_src
 
@@ -248,7 +283,7 @@ toggleMacroRecorder(){
 #+begin_src ahk
 <#q::edgeToggle
 
-Capslock & `::toggleMacroRecorder
+Capslock & `::macroManager
 Capslock & Space::bossIsComing
 Capslock & F1::runMacro('F1')
 Capslock & F2::runMacro('F2')
