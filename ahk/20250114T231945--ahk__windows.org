@@ -196,7 +196,7 @@ getWinMacroDirNames(win){
 clearMacroStatus(){
   global macroRunningPid
   if processLiveP(macroRunningPid, 'AutoHotkeyUX.exe') {
-    ProcessClose macroRecorderPid
+    ProcessClose macroRunningPid
     tmpMsg('Macro Stopped', 1)
   }
   macroRunningPid := 0
