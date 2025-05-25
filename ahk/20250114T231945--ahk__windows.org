@@ -37,6 +37,7 @@
 <<setup-vars()>>
 macroRecorderPid := 0
 macroRunningPid := 0
+rapidFireEnable := False
 #+end_src
 
 ** universal-arg
@@ -162,7 +163,21 @@ processLiveP(pid, pname){
   return ProcessExist(pid) && pname == ProcessGetName(pid)
 }
 #+end_src
-
+** rapid-fire
+:PROPERTIES:
+:CUSTOM_ID: acdfba9b-92d1-4a70-b670-aac0364019c8
+:END:
+#+begin_src ahk
+RapidFire(key_send, key_hold := False, delay := 25){
+  SetKeyDelay delay, delay
+  if !key_hold {
+    key_hold := key_send
+  }
+  While GetKeyState(key_hold, "P") {
+    SendEvent '{' key_send '}'
+  }
+}
+#+end_src
 ** Macro
 :PROPERTIES:
 :CUSTOM_ID: b92cbeec-0287-43f2-a102-9114b2590197
@@ -303,6 +318,13 @@ Capslock & Esc::SetCapsLockState !GetKeyState('CapsLock', 'T')
 Capslock & PrintScreen::capturePrintWindow
 
 <^.::^NumpadDot
+
+Capslock & r::{
+  global rapidFireEnable := !rapidFireEnable
+  SoundBeep 1000 + 500 * rapidFireEnable
+  status := rapidFireEnable ? 'On' : 'Off'
+  tmpMsg 'Rapid Fire ' status
+}
 #+end_src
 
 *** Local
@@ -360,6 +382,17 @@ Capslock::WinMinimize
 <!8::setNumArg(8)
 <!9::setNumArg(9)
 <!0::setNumArg(0)
+#HotIf
+#+end_src
+
+**** rapid-fire
+:PROPERTIES:
+:CUSTOM_ID: 1fbfe4a2-b591-478c-8e2d-bb5043cbac8e
+:END:
+#+begin_src ahk
+#HotIf rapidFireEnable
+LButton::RapidFire(ThisHotkey)
+Space::RapidFire(ThisHotkey)
 #HotIf
 #+end_src
 
