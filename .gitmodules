@@ -4,10 +4,6 @@
 [submodule "ahk/lib/acc"]
 	path = ahk/lib/acc
 	url = https://github.com/Descolada/Acc-v2.git
-[submodule "ahk/lib/AHK-Macro-Recorder"]
-	path = ahk/lib/AHK-Macro-Recorder
-	url = https://github.com/kkkykin/AHK-Macro-Recorder
-	branch = custom
 [submodule "mpv/libs/thumbfast-osc"]
 	path = mpv/libs/thumbfast-osc
 	url = https://github.com/po5/thumbfast.git
@@ -15,3 +11,6 @@
 [submodule "mpv/libs/thumbfast"]
 	path = mpv/libs/thumbfast
 	url = https://github.com/po5/thumbfast.git
+[submodule "ahk/lib/AHK-Macro-Recorder"]
+	path = ahk/lib/AHK-Macro-Recorder
+	url = https://github.com/raeleus/AHK-Macro-Recorder.git

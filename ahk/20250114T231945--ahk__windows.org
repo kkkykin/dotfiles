@@ -203,22 +203,25 @@ clearMacroStatus(){
 }
 #+end_src
 
+#+name: run-macro
 #+begin_src ahk
 runMacro(keyName) {
   dirNames := getWinMacroDirNames('A')
 
   for dirName in dirNames {
-    fullPath := gMacroDir '\' dirName '\' keyName '.ahk'
+    pattern := gMacroDir '\' dirName '\' keyName '__*.ahk'
     
-    if FileExist(fullPath) {
+    if FileExist(pattern) {
       try {
         global macroRunningPid
         global myNumArg
         cnt := myNumArg
         clearNumArg
-        RunWait '"' A_AhkPath '" /restart "' fullPath '" ' cnt ,,, &macroRunningPid
-        clearMacroStatus
-        return  ; 找到并运行后立即返回
+        Loop Files, pattern, 'F' {
+          RunWait '"' A_AhkPath '" /restart "' A_LoopFileFullPath '" ' cnt ,,, &macroRunningPid
+          clearMacroStatus
+          return
+        }
       } catch as e {
         MsgBox '运行脚本时出错: ' e.Message
         return
@@ -246,19 +249,50 @@ runMacro(keyName) {
 #+end_src
 
 #+begin_src ahk
+UpdateMacroSetting(pSource, pDst, pSleep){
+  sourceFile := FileOpen(pSource, 'r')
+  dstFile := FileOpen(pDst, 'w')
+
+  static prologue := 'if (A_Args.Length < 1) {`nA_Args.Push("1")`n}`n'
+  dstFile.Write(prologue)
+
+  while !sourceFile.AtEOF {
+    line := sourceFile.ReadLine()
+    if RegExMatch(line, '^ExitApp\(\)$'){
+      break
+    } else if RegExMatch(line, '^(StartingValue := 0|i := RegRead|RegWrite)'){
+      continue
+    } else {
+      modLine := RegExReplace(line, '^Loop\(1\)', 'Loop(A_args[1])')
+      if pSleep = 1{
+        modLine := RegExReplace(modLine, '^;Sleep\(', 'Sleep(')
+      }
+      dstFile.Writeline modLine
+    }
+  }
+
+  sourceFile.Close()
+  dstFile.Close()
+}
+#+end_src
+
+#+begin_src ahk
 SaveMacroInternal(pMacro, pDir, pKey){
   
-  descGui := Gui()
-  descGui.Title := '输入宏描述'
-  descGui.Add('Text',, '请输入宏描述:')
-  descEdit := descGui.Add('Edit', 'w200 vdesc')
-  descGui.Add('Button', 'default', 'OK').OnEvent('Click', SaveWithDescription)
-  descGui.OnEvent('Close', (*) => descGui.Destroy())
+  myGui := Gui()
+  myGui.Title := '输入宏描述'
+  myGui.Add('Text',, '请输入宏描述:')
+  descObj := myGui.Add('Edit', 'w200 vdesc')
+  sleepObj := myGui.Add("CheckBox", "vsleep", "Sleep?")
+  myGui.Add('Button', 'default', 'OK').OnEvent('Click', SaveWithDescription)
+  myGui.OnEvent('Close', (*) => myGui.Destroy())
+  myGui.OnEvent('Escape', (*) => myGui.Destroy())
   
-  descGui.Show()
+  myGui.Show()
   
   SaveWithDescription(*) {
-    desc := descEdit.Value
+    desc := descObj.Value
+    sleep := sleepObj.Value
     if (desc = '') {
       MsgBox '描述不能为空'
       return
@@ -269,16 +303,17 @@ SaveMacroInternal(pMacro, pDir, pKey){
     DirCreate pDir
     FileRecycle pDir '/F' pKey '__*.ahk'
     newFileName := pDir '/' 'F' pKey '__' desc '.ahk'
-    FileCopy pMacro, newFileName
+    UpdateMacroSetting pMacro, newFileName, sleep
     
     MsgBox '宏已保存为: ' newFileName
-    descGui.Destroy()
+    myGui.Destroy()
   }
 }
+#+end_src
 
-SaveMacro() {
-  static sLastRecordedMacroFile := A_Temp '/~Record1.ahk'
-  if not FileExist(sLastRecordedMacroFile){
+#+begin_src ahk
+SaveMacro(pLastRecordedMacroFile) {
+  if not FileExist(pLastRecordedMacroFile){
     MsgBox 'Macro file not found.'
     return
   }
@@ -319,11 +354,14 @@ SaveMacro() {
   
   ProcessUserInput(*) {
     Saved := MyGui.Submit()
+    dir := Saved.dir
     selectedRow := keyLV.GetNext()
-    if selectedRow {
+    if dir = ''{
+      FileDelete(pLastRecordedMacroFile)
+      tmpMsg 'Macro Deleted.'
+    } else if selectedRow {
       key := keyLV.GetText(selectedRow)
-      dir := gMacroDir '/' Saved.dir
-      SaveMacroInternal sLastRecordedMacroFile, dir, key
+      SaveMacroInternal pLastRecordedMacroFile, gMacroDir '/' dir, key
     } else {
       MsgBox '请先选择一个宏键'
     }
@@ -335,17 +373,41 @@ SaveMacro() {
 }
 #+end_src
 
+#+name: macro-manager
 #+begin_src ahk
-macroManager(){
+macroManager(pAction?){
   global macroRecorderPid
   global macroRunningPid
+  static sRecordMacroFilename :=  '~Record1.ahk'
+  if IsSet(pAction){
+    Switch pAction{
+      case 'stopMacro': ClearMacroStatus
+      case 'stopRecorder': StopRecorder
+      case 'saveMacro': SaveMacro1
+      case 'startRecorder': StartRecorder
+    }
+    return
+  }
+
   if processLiveP(macroRunningPid, 'AutoHotkeyUX.exe') {
     clearMacroStatus
   } else if processLiveP(macroRecorderPid, 'AutoHotkeyUX.exe') {
+    StopRecorder
+  } else if FileExist(A_Temp '/' sRecordMacroFilename) {
+    SaveMacro1
+  } else {
+    StartRecorder
+  }
+
+  StopRecorder(){
     ProcessClose macroRecorderPid
     tmpMsg 'MacroRecorder Stopped.', 1
-  } else {
-    Run '"' A_AhkPath '" /restart "' gOrgDir 'lib/AHK-Macro-Recorder/Macro Recorder.ahk"',,, &macroRecorderPid
+  }
+  SaveMacro1(){
+    SaveMacro(A_Temp '/' sRecordMacroFilename)
+  }
+  StartRecorder(){
+    Run '"' A_AhkPath '" /restart "' gOrgDir 'lib/AHK-Macro-Recorder/Macro Recorder.ahk" "' sRecordMacroFilename '" "F1"' ,,, &macroRecorderPid
     tmpMsg 'MacroRecorder Started.', 1
   }
 }
