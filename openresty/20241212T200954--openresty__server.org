@@ -141,7 +141,7 @@ function find_in_array(array, item)
 end
 
 function is_valid_url(url)
-    if url and url:match("^https?://[%w%-%%_.?:/@+=&]+$") then
+    if url and url:match("^https?://[%w%-%%_.?:/@#+=&]+$") then
         return true
     end
     ngx.status = ngx.HTTP_BAD_REQUEST
