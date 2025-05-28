@@ -29,8 +29,8 @@
 #+begin_src elisp
 (mapconcat
  (lambda (var) (format "%s := '%s'\n" (car var) (cdr var)))
- `(("orgDir" . ,default-directory)
-   ("macroDir" . ,(expand-file-name "_macro"))))
+ `(("gOrgDir" . ,default-directory)
+   ("gMacroDir" . ,(expand-file-name "_macro"))))
 #+end_src
 
 #+begin_src ahk
@@ -208,7 +208,7 @@ runMacro(keyName) {
   dirNames := getWinMacroDirNames('A')
 
   for dirName in dirNames {
-    fullPath := macroDir '\' dirName '\' keyName '.ahk'
+    fullPath := gMacroDir '\' dirName '\' keyName '.ahk'
     
     if FileExist(fullPath) {
       try {
@@ -246,9 +246,92 @@ runMacro(keyName) {
 #+end_src
 
 #+begin_src ahk
-saveMacro(){
-  dirNames := getWinMacroDirNames('A')
-  ; TODO
+SaveMacroInternal(pMacro, pDir, pKey){
+  
+  descGui := Gui()
+  descGui.Title := '输入宏描述'
+  descGui.Add('Text',, '请输入宏描述:')
+  descEdit := descGui.Add('Edit', 'w200 vdesc')
+  descGui.Add('Button', 'default', 'OK').OnEvent('Click', SaveWithDescription)
+  descGui.OnEvent('Close', (*) => descGui.Destroy())
+  
+  descGui.Show()
+  
+  SaveWithDescription(*) {
+    desc := descEdit.Value
+    if (desc = '') {
+      MsgBox '描述不能为空'
+      return
+    }
+    
+    desc := RegExReplace(desc, '[\\/:*?"<>|]', '')
+    
+    DirCreate pDir
+    FileRecycle pDir '/F' pKey '__*.ahk'
+    newFileName := pDir '/' 'F' pKey '__' desc '.ahk'
+    FileCopy pMacro, newFileName
+    
+    MsgBox '宏已保存为: ' newFileName
+    descGui.Destroy()
+  }
+}
+
+SaveMacro() {
+  static sLastRecordedMacroFile := A_Temp '/~Record1.ahk'
+  if not FileExist(sLastRecordedMacroFile){
+    MsgBox 'Macro file not found.'
+    return
+  }
+
+  static sMacroKeys := [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+  MyGui := Gui()
+  MyGui.Opt('+Resize +MinSize250x150')
+  
+  dirDDL := MyGui.Add('DropDownList', 'vdir w200', GetWinMacroDirNames('A'))
+  dirDDL.OnEvent('Change', ShowKeyStatus)
+  
+  keyLV := MyGui.Add('ListView', 'vkey r12 w200 -Multi', ['键', '状态', '描述'])
+  keyLV.ModifyCol(1, 30)
+  keyLV.ModifyCol(2, 50)
+  keyLV.ModifyCol(3, 100)
+  
+  MyGui.Add('Button', 'default', 'OK').OnEvent('Click', ProcessUserInput)
+  MyGui.OnEvent('Escape', DestroyWindow)
+  MyGui.OnEvent('Close', DestroyWindow)
+  
+  MyGui.Show()
+  
+  ShowKeyStatus(obj, *) {
+    dir := obj.Text
+    keyLV.Delete()
+    
+    for i, key in sMacroKeys {
+      pattern := gMacroDir '/' dir '/F' key '__*.ahk'
+      if FileExist(pattern) {
+        Loop Files, pattern, 'F' {
+          keyLV.Add(, key, '已存在', RegExReplace(A_LoopFileName, '^F\d+\__(.+).ahk$', '$1'))
+        }
+      } else {
+        keyLV.Add(, key, '可用')
+      }
+    }
+  }
+  
+  ProcessUserInput(*) {
+    Saved := MyGui.Submit()
+    selectedRow := keyLV.GetNext()
+    if selectedRow {
+      key := keyLV.GetText(selectedRow)
+      dir := gMacroDir '/' Saved.dir
+      SaveMacroInternal sLastRecordedMacroFile, dir, key
+    } else {
+      MsgBox '请先选择一个宏键'
+    }
+  }
+  
+  DestroyWindow(*) {
+    MyGui.Destroy()
+  }
 }
 #+end_src
 
@@ -262,7 +345,7 @@ macroManager(){
     ProcessClose macroRecorderPid
     tmpMsg 'MacroRecorder Stopped.', 1
   } else {
-    Run '"' A_AhkPath '" /restart "' orgDir 'lib/AHK-Macro-Recorder/Macro Recorder.ahk"',,, &macroRecorderPid
+    Run '"' A_AhkPath '" /restart "' gOrgDir 'lib/AHK-Macro-Recorder/Macro Recorder.ahk"',,, &macroRecorderPid
     tmpMsg 'MacroRecorder Started.', 1
   }
 }
