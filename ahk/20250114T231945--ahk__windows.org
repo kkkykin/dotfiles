@@ -228,22 +228,6 @@ runMacro(keyName) {
       }
     }
   }
-
-  switch keyName {
-    case 'F9': WinSetAlwaysOnTop(-1, 'A')
-    case 'F10': Run 'hh.exe "ms-its:' RegExReplace(A_AhkPath, 'UX\\AutoHotkeyUX\.exe$', 'v2\AutoHotkey.chm')  '"', , 'Max'
-    case 'F11': Run A_Programs '\AutoHotkey Window Spy.lnk'
-    case 'F12':
-      global macroRecorderPid
-      global macroRunningPid
-      if processLiveP(macroRunningPid, 'AutoHotkeyUX.exe') {
-        clearMacroStatus
-      }
-      if processLiveP(macroRecorderPid, 'AutoHotkeyUX.exe') {
-        ProcessClose macroRecorderPid
-      }
-      Reload
-  }
   return
 }
 #+end_src
@@ -463,6 +447,21 @@ Capslock & Esc::SetCapsLockState !GetKeyState('CapsLock', 'T')
 Capslock & PrintScreen::capturePrintWindow
 
 <^.::^NumpadDot
+
+Capslock & t::WinSetAlwaysOnTop(-1, 'A')
+Capslock & d::Run 'hh.exe "ms-its:' RegExReplace(A_AhkPath, 'UX\\AutoHotkeyUX\.exe$', 'v2\AutoHotkey.chm')  '"', , 'Max'
+Capslock & s::Run A_Programs '\AutoHotkey Window Spy.lnk'
+Capslock & p::{
+  global macroRecorderPid
+  global macroRunningPid
+  if processLiveP(macroRunningPid, 'AutoHotkeyUX.exe') {
+    clearMacroStatus
+  }
+  if processLiveP(macroRecorderPid, 'AutoHotkeyUX.exe') {
+    ProcessClose macroRecorderPid
+  }
+  Reload
+}
 
 Capslock & r::{
   global rapidFireEnable := !rapidFireEnable
