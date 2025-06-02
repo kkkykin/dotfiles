@@ -19,6 +19,7 @@
 :END:
 #+begin_src ahk
 #Include 'mouse.ahk'
+#Include '*i %A_ScriptDir%/../_local.ahk'
 #+end_src
 
 ** vars
