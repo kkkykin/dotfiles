@@ -144,7 +144,10 @@ end
 #+begin_src lua
 local function lcd_to_buffer_dir(force)
   if force == 1 or vim.o.autochdir then
-    vim.cmd.lcd(get_buffer_dir())
+    local dir = get_buffer_dir()
+    if not dir:match('^term://') then
+      vim.cmd.lcd(dir)
+    end
   end
 end
 
@@ -172,6 +175,7 @@ local cmd_rc = {
   'doskey vi=emacsclient -n $*',
   string.format('set PATH=%s;%%PATH%%', vim.fn.resolve(os.getenv('myvimrc')):gsub('neovim\\_tangle\\.+', 'init\\_tangle', 1)),
   'set DISPLAY=127.0.0.1:0',
+  string.format('set PAGER=%s\\scoop\\shims\\more.exe', os.getenv('USERPROFILE')),
 }
 
 local bash_rc = {
