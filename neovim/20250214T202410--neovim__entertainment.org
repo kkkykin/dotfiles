@@ -59,6 +59,7 @@ vim.opt.shiftwidth = 2
 vim.opt.expandtab = true
 vim.opt.smartindent = true
 vim.opt.autochdir = true
+vim.opt.mouse = ''
 #+end_src
 ** theme
 :PROPERTIES:
