@@ -175,7 +175,7 @@ local cmd_rc = {
   'doskey vi=emacsclient -n $*',
   string.format('set PATH=%s;%%PATH%%', vim.fn.resolve(os.getenv('myvimrc')):gsub('neovim\\_tangle\\.+', 'init\\_tangle', 1)),
   'set DISPLAY=127.0.0.1:0',
-  string.format('set PAGER=%s\\scoop\\shims\\more.exe', os.getenv('USERPROFILE')),
+  'set PAGER=more.exe',
 }
 
 local bash_rc = {
