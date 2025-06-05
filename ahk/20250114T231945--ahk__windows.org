@@ -38,7 +38,7 @@
 <<setup-vars()>>
 macroRecorderPid := 0
 macroRunningPid := 0
-rapidFireEnable := False
+rapidFireEnable := 0
 #+end_src
 
 ** universal-arg
@@ -176,6 +176,10 @@ RapidFire(key_send, key_hold := False, delay := 25){
   }
   While GetKeyState(key_hold, "P") {
     SendEvent '{' key_send '}'
+  }
+  global rapidFireEnable
+  if (rapidFireEnable = 1) {
+    rapidFireEnable  := 0
   }
 }
 #+end_src
@@ -465,9 +469,20 @@ Capslock & p::{
 }
 
 Capslock & r::{
-  global rapidFireEnable := !rapidFireEnable
+  global rapidFireEnable
+  status := 'Off'
+  Switch rapidFireEnable{
+    Case 0:
+    rapidFireEnable := 1
+    status := 'once'
+    
+    Case 1:
+    rapidFireEnable := 2
+    status := 'On'
+
+    Default: rapidFireEnable := 0
+  }
   SoundBeep 1000 + 500 * rapidFireEnable
-  status := rapidFireEnable ? 'On' : 'Off'
   tmpMsg 'Rapid Fire ' status
 }
 #+end_src
