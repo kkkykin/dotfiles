@@ -9,8 +9,9 @@
 (org-babel-tangle)
 
 (let ((rc (expand-file-name "home/.bashrc" zr-termux-root-directory)))
-  (unless (file-symlink-p rc)
-    (rename-file rc (concat rc ".bak")))
+  (when (file-exists-p rc)
+    (unless (file-symlink-p rc)
+      (rename-file rc (concat rc ".bak"))))
   (make-symbolic-link (expand-file-name "_tangle/rc/general") rc t))
 #+end_src
 

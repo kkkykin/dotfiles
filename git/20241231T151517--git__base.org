@@ -9,10 +9,10 @@
       (coding-system-for-write 'utf-8-unix)
       (zr-local-pls (plstore-open "git.pls")))
   (org-babel-tangle)
-  (unless (file-symlink-p conf)
-    (when (file-exists-p conf)
-      (rename-file conf (concat conf ".bak")))
-    (make-symbolic-link (expand-file-name "_tangle/gitconfig") conf))
+  (when (file-exists-p conf)
+    (unless (file-symlink-p conf)
+      (rename-file conf (concat conf ".bak"))))
+  (make-symbolic-link (expand-file-name "_tangle/gitconfig") conf t)
   (plstore-close zr-local-pls))
 #+end_src
 
