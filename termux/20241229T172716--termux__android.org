@@ -45,7 +45,7 @@ pm grant "$pkg" android.permission.PACKAGE_USAGE_STATS
 :PROPERTIES:
 :CUSTOM_ID: 3bb71465-c2e2-4dc1-8987-6997f6d6f9a6
 :END:
-#+begin_src conf :tangle (zr-org-by-tangle-dir "termux.properties")
+#+begin_src conf :mkdirp t :tangle (zr-org-by-tangle-dir "termux.properties")
 allow-external-apps = true
 extra-keys = [[ESC, CTRL, ALT, LEFT, DOWN, UP, RIGHT, KEYBOARD]]
 #+end_src
