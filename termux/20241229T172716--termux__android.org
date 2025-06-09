@@ -85,53 +85,46 @@ export EMACS_SOCKET_NAME
 :PROPERTIES:
 :CUSTOM_ID: 34639262-73f0-4ab5-bfda-f1567abe017f
 :END:
+#+header: :var jobs_running_dir=(expand-file-name "home/running_jobs" zr-termux-root-directory)
+#+header: :var data_source_dir=(expand-file-name "_tangle/data")
 #+begin_src sh :tangle (zr-org-by-tangle-dir "zr-wifi-manage")
-cur_info=$(termux-wifi-connectioninfo)
-cur_ssid=$(echo "$cur_info" | jq -r .ssid)
+wifi_job_id=999
+wifi_data_file="$data_source_dir/wifi.json"
 
 function get-ssid-location() {
+  local cur_ssid=$(termux-wifi-connectioninfo | jq -r .ssid)
   if [ "$cur_ssid" = '<unknown ssid>' ]; then
     return 1
   else
-    local loc
-    loc=$(emacsclient -e "(zr-android-where-am-i \"$cur_ssid\")")
-    if [ "$loc" = 'nil' ]; then
-      return 1
-    else
-      echo "${loc:1:-1}"
-    fi
+    local exp=".ssid[\"$cur_ssid\"].location"
+    jq -er "$exp" "$wifi_data_file"
   fi
 }
 
 function near_known_wifi_p() {
-  local near_wifi
-  near_wifi=$(termux-wifi-scaninfo | jq -r '.[].ssid')
-  local result
-  result=$(emacsclient -e "(zr-android-near-known-wifi-p \"$near_wifi\")")
-  if [ "$result" = 'nil' ]; then
-    return 1
-  else
-    return 0
-  fi
+  grep -Fxf <(termux-wifi-scaninfo | jq -r '.[].ssid') <(jq -r '.ssid | keys[]' "$wifi_data_file")
 }
 
 function try-remove-wifi() {
   if near_known_wifi_p; then
     rish -c "cmd wifi remove-suggestion \"$1\""
-    emacsclient -e "(zr-android-wifi-set-timer 0)"
+    termux-job-scheduler --cancel --job-id $wifi_job_id
   fi
 }
 
 function try-connect-wifi() {
   local cur_state
-  cur_state=$(echo "$cur_info" | jq -r .supplicant_state)
+  cur_state=$(termux-wifi-connectioninfo | jq -r .supplicant_state)
   case $cur_state in
     COMPLETED)
-      emacsclient -e "(zr-android-wifi-set-timer 5 \"remove\" \"$1\")"
       try-remove-wifi "$1"
       ;;
     DISCONNECTED)
-      emacsclient -e "(zr-android-wifi-set-timer 5 \"remove\" \"$1\")"
+      local script_name="remove-metered-wifi.sh"
+      local job_script="$jobs_running_dir/$script_name"
+      zr-job-script-generate "wifi_name=$1" "$script_name" > "$job_script"
+      chmod u+x "$job_script"
+      termux-job-scheduler --job-id "$wifi_job_id" --period-ms "$((1000 * 60 * 15))" --battery-not-low 0 -s "$job_script"
       rish -c "cmd wifi add-suggestion \"$1\" wpa2 ${@:2}"
       ;;
     *)
@@ -156,6 +149,42 @@ case "$1" in
     echo "Wrong argument."
     ;;
 esac
+#+end_src
+
+** job-script-generate
+:PROPERTIES:
+:CUSTOM_ID: ee0414ff-ad03-462c-bec9-5136f8b8a093
+:END:
+#+header: :var jobs_source_dir=(expand-file-name "_tangle/jobs")
+#+begin_src sh :tangle (zr-org-by-tangle-dir "zr-job-script-generate")
+if [ $# -lt 1 ]; then
+  echo "Usage: $0 [key=value ...] filename" >&2
+  exit 1
+fi
+
+filename="$jobs_source_dir/${@: -1}"
+
+if [ ! -f "$filename" ]; then
+  filename="${@: -1}"
+fi
+
+echo "#!/data/data/com.termux/files/usr/bin/bash"
+echo
+
+for arg in "${@:1:$#-1}"; do
+  if [[ "$arg" == *=* ]]; then
+    key="${arg%%=*}"
+    value="${arg#*=}"
+    # 使用 printf "%q" 自动转义 value
+    printf -v escaped_value "%q" "$value"
+    printf "%s=%s\n" "$key" "$escaped_value"
+  else
+    echo "Warning: Ignoring invalid argument '$arg'" >&2
+  fi
+done
+
+echo
+echo ". $(printf "%q" "$filename")"
 #+end_src
 
 ** audio-manage
