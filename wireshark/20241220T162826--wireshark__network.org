@@ -371,36 +371,77 @@ tcp_port:add(proxy_port, socks5)
 :CUSTOM_ID: db3364bf-7b63-47de-86b9-18b1354153ae
 :END:
 
+** env
+:PROPERTIES:
+:CUSTOM_ID: 3967b0e5-dcce-4ad8-aa68-45b64ef002a8
+:END:
+#+begin_src bat :mkdirp t :tangle (zr-org-by-tangle-dir "env.bat") :prologue :epilogue
+set BASE_DIR=%~dp0
+set "CONFIG_FILE=%BASE_DIR%\config.bat"
+
+if exist "%CONFIG_FILE%" (
+  call "%CONFIG_FILE%"
+)
+
+:: 设置抓包过滤器（基于IP和端口）
+if not defined filter (
+  set filter=host %ip% and tcp port %port%
+)
+
+:: 设置抓包持续时间（10分钟=600秒）
+if not defined duration (
+  set /a duration=60 * 10
+)
+
+:: 设置每个抓包文件大小（900 MB）
+if not defined filesize (
+  set /a filesize=1024 * 900
+)
+
+rem 设置抓包网卡
+rem 可以通过 netsh interface show interface 查看
+if not defined interface (
+  set interface=VPN - VPN Client
+)
+
+if not defined hostname (
+  set hostname=%COMPUTERNAME%
+)
+
+rem 可在下面添加合适的路径
+where dumpcap >nul 2>&1 && set dumpcap_path=dumpcap || (
+    for %%d in (
+        "C:\Program Files\Wireshark\dumpcap.exe"
+        "D:\wireshark\dumpcap.exe"
+        "D:\app\WiresharkPortable64\App\Wireshark\dumpcap.exe"
+        "D:\app\wireshark\dumpcap.exe"
+        "%ProgramFiles%\Wireshark\dumpcap.exe"
+    ) do if exist %%d set "dumpcap_path=%%~d" && goto found
+)
+:found
+#+end_src
+
+#+name: parse-bat-env
+#+begin_src bat :prologue :epilogue
+set "ENV_FILE=%~dp0\env.bat"
+
+if exist "%ENV_FILE%" (
+  call "%ENV_FILE%"
+) else (
+  echo 没找到 env.bat 文件
+  goto :eof
+)
+#+end_src
+
+** cap
+:PROPERTIES:
+:CUSTOM_ID: b249be79-7d0f-4b50-9397-1c17175eb00e
+:END:
 #+begin_src bat :mkdirp t :tangle (zr-org-by-tangle-dir "cap.bat")
 @echo off
 setlocal
 
-:: 检查参数是否提供
-if "%~1"=="" (
-    echo 用法: %~nx0 -ip <IP地址> -port <端口>
-    goto :eof
-)
-
-:: 解析命令行参数
-set ip=
-set port=
-
-:parse_args
-if "%~1"=="" goto :args_parsed
-if "%~1"=="-ip" (
-    set ip=%~2
-    shift /2
-    goto :parse_args
-)
-if "%~1"=="-port" (
-    set port=%~2
-    shift /2
-    goto :parse_args
-)
-shift
-goto :parse_args
-
-:args_parsed
+<<parse-bat-env>>
 
 :: 检查IP和端口是否已设置
 if not defined ip (
@@ -412,37 +453,11 @@ if not defined port (
     goto :eof
 )
 
-:: 尝试定位 dumpcap.exe
-set dumpcap_path=
-where dumpcap >nul 2>&1 && set dumpcap_path=dumpcap
-
-if not defined dumpcap_path (
-    if exist "C:\Program Files\Wireshark\dumpcap.exe" (
-        set dumpcap_path="C:\Program Files\Wireshark\dumpcap.exe"
-    ) else if exist "D:\wireshark\dumpcap.exe" (
-        set dumpcap_path="D:\wireshark\dumpcap.exe"
-    ) else if exist "D:\app\WiresharkPortable64\App\Wireshark\dumpcap.exe" (
-        set dumpcap_path="D:\app\WiresharkPortable64\App\Wireshark\dumpcap.exe"
-    ) else if exist "D:\app\wireshark\dumpcap.exe" (
-        set dumpcap_path="D:\app\wireshark\dumpcap.exe"
-    ) else if exist "%ProgramFiles%\Wireshark\dumpcap.exe" (
-        set dumpcap_path="%ProgramFiles%\Wireshark\dumpcap.exe"
-    )
-)
-
 if not defined dumpcap_path (
     echo 错误: 找不到 dumpcap.exe
     echo 请确保 Wireshark 已安装，或手动指定 dumpcap.exe 路径
     goto :eof
 )
-
-:: 设置抓包过滤器（基于IP和端口）
-set filter=host %ip% and port %port%
-
-:: 设置抓包持续时间（10分钟=600秒）
-set duration=600
-
-set pcap_path="%cd%\cap.pcap"
 
 :: 获取当前时间
 for /f "tokens=1-3 delims=:." %%a in ("%time%") do (
@@ -450,6 +465,8 @@ for /f "tokens=1-3 delims=:." %%a in ("%time%") do (
     set /a minute=%%b
     set /a second=%%c
 )
+
+set pcap_name=%hostname%-%time::=-%.pcap
 
 :: 计算总秒数并转换为小时、分钟、秒
 set /a total_seconds=hour*3600 + minute*60 + second + duration
@@ -469,18 +486,41 @@ set end_time=%hour%:%minute%:%second%
 echo 正在抓包: %ip%:%port%，持续 %duration% 秒...
 echo 预计结束时间: %end_time%
 echo 结束前可以做任何事，但暂时不要关闭该窗口
-%dumpcap_path% -i "VPN - VPN Client" -f "%filter%" -a duration:%duration% -w %pcap_path%
+"%dumpcap_path%" -i "%interface%" -f "%filter%" -a duration:%duration% -w "%BASE_DIR%\%pcap_name%"
 
-powershell -command "Add-Type -AssemblyName System.Windows.Forms; $global:balloon = New-Object System.Windows.Forms.NotifyIcon; $balloon.Icon = [System.Drawing.SystemIcons]::Information; $balloon.BalloonTipIcon = [System.Windows.Forms.ToolTipIcon]::Info; $balloon.BalloonTipText = '抓包已完成，结果保存在 %pcap_path%'; $balloon.BalloonTipTitle = '抓包完成'; $balloon.Visible = $true; $balloon.ShowBalloonTip(5000); Start-Sleep -Seconds 5; $balloon.Dispose()"
+set CAPS_DIR=%BASE_DIR%caps
+if not exist %CAPS_DIR% (
+  md %CAPS_DIR%
+)
+set final_pcap_path=%CAPS_DIR%\%pcap_name%
 
-echo 抓包完成，结果保存在 %pcap_path%
+move "%BASE_DIR%\%pcap_name%" "%final_pcap_path%"
+
+powershell -command "Add-Type -AssemblyName System.Windows.Forms; $global:balloon = New-Object System.Windows.Forms.NotifyIcon; $balloon.Icon = [System.Drawing.SystemIcons]::Information; $balloon.BalloonTipIcon = [System.Windows.Forms.ToolTipIcon]::Info; $balloon.BalloonTipText = '抓包已完成，结果保存在 %final_pcap_path%'; $balloon.BalloonTipTitle = '抓包完成'; $balloon.Visible = $true; $balloon.ShowBalloonTip(5000); Start-Sleep -Seconds 5; $balloon.Dispose()"
+
+echo 抓包完成，结果保存在 %final_pcap_path%
 echo 有时间可以把该文件发给我，按任意键用资源管理器找到该文件
 pause
-explorer /select,%pcap_path%
+explorer /select,%final_pcap_path%
 
 echo 可以随时关闭该窗口
 pause
 endlocal
+#+end_src
+
+** ring
+:PROPERTIES:
+:CUSTOM_ID: 022803ac-a59b-4a28-8216-1177a91df368
+:END:
+#+begin_src bat :tangle (zr-org-by-tangle-dir "ring.bat")
+<<parse-bat-env>>
+
+set dir=ring
+if not exist %dir% (
+  md %dir%
+)
+"%dumpcap_path%" -i "%interface%" -f "%filter%" -b filesize:%filesize% -w "%dir%\%hostname%.pcap"
+pause
 #+end_src
 
 * local variables
