@@ -1,0 +1,84 @@
+#+title:      scapy
+#+date:       [2025-06-12 Thu 17:14]
+#+filetags:   :network:
+#+identifier: 20250612T171432
+
+* tangle
+#+begin_src elisp
+(let ((zr-local-pls (plstore-open "scapy.pls")))
+  (plstore-close zr-local-pls)
+  (org-babel-tangle))
+#+end_src
+
+* scripts
+** proxy log
+:PROPERTIES:
+:CUSTOM_ID: d4ff5118-3258-4c8f-9b92-c38a673640c0
+:END:
+#+begin_src python :tangle (zr-org-by-tangle-dir "proxy-log.py") :mkdirp t :var proxy_port=(plist-get (cdr (plstore-get zr-local-pls "proxy-port")) :port)
+def parse_proxy_packet(packet):
+    SOCKS5_VERSION = 0x05
+    SOCKS5_CMD_CONNECT = 0x01
+    SOCKS5_ATYP_DOMAINNAME = 0x03
+    from datetime import datetime
+    
+    try:
+        if 'TCP' not in packet or not packet['TCP'].payload:
+            return
+            
+        payload = bytes(packet['TCP'].payload)
+        timestamp = datetime.fromtimestamp(packet.time).strftime('%H:%M:%S.%f')[:-3]
+        
+        # Process name detection logic (inlined)
+        process_name = "Unknown"
+        if packet['IP'].src == "127.0.0.1":
+            try:
+                import psutil
+                src_port = packet['TCP'].sport
+                for conn in psutil.net_connections(kind='inet'):
+                    if hasattr(conn, 'laddr') and conn.laddr.port == src_port and conn.status == 'ESTABLISHED':
+                        try:
+                            p = psutil.Process(conn.pid)
+                            process_name = p.name()[:15]  # Limit to 15 chars
+                            break
+                        except (psutil.NoSuchProcess, psutil.AccessDenied):
+                            pass
+            except Exception:
+                pass
+            src_str = f"[{process_name:<15}]"  # 15 chars for process name
+        else:
+            src_str = ""
+        
+        # Check for SOCKS5
+        if len(payload) >= 5:
+            if (payload[0] == SOCKS5_VERSION and 
+                payload[1] == SOCKS5_CMD_CONNECT and 
+                payload[3] == SOCKS5_ATYP_DOMAINNAME):
+                
+                domain_len = payload[4]
+                if len(payload) >= 5 + domain_len:
+                    domain = payload[5:5+domain_len].decode('ascii', errors='ignore')
+                    print(f"{timestamp} {src_str} SOCKS5 CONNECT {domain}")
+                    return
+        
+        # Check for HTTP CONNECT
+        try:
+            http = payload.decode('ascii', errors='ignore')
+            if http.startswith('CONNECT '):
+                host = http.split()[1]
+                print(f"{timestamp} {src_str} HTTP  CONNECT  {host}")
+        except:
+            pass
+            
+    except Exception as e:
+        print(f"Error processing packet: {e}")
+
+# Start sniffing
+sniff(
+    iface='Software Loopback Interface 1',
+    filter=f'tcp dst port {proxy_port}',
+    store=False,
+    prn=parse_proxy_packet
+)
+quit()
+#+end_src
