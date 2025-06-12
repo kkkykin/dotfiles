@@ -364,7 +364,272 @@ end
 local tcp_port = DissectorTable.get("tcp.port")
 tcp_port:add(proxy_port, socks5)
 #+end_src
+*** http full timing analyzer
+:PROPERTIES:
+:CUSTOM_ID: ccf22f9f-06b8-49c2-90e8-677e80445854
+:END:
+#+begin_src lua :tangle (zr-org-by-tangle-dir "http_full_timing.lua")
+-- ** HTTP Full Timing Analyzer **
+-- Measures TOTAL time for each HTTP request including TCP/SSL handshake and file upload
+-- Not support multiple HTTP requests in single TCP stream
+-- Usage: 
+-- For specific URI: tshark -q -n -X lua_script:http_full_timing.lua -X lua_script1:'uri=/your/uri' -r capture.pcapng
+-- For all URIs: tshark -q -n -X lua_script:http_full_timing.lua -r capture.pcapng
 
+-- Default values
+local DEFAULT_URI = nil
+local DEFAULT_SHOW_TCP_DETAILS = false
+
+-- Parse command line arguments
+local args = {...}
+local TARGET_URI = DEFAULT_URI
+local SHOW_TCP_DETAILS = DEFAULT_SHOW_TCP_DETAILS
+
+for _, arg in ipairs(args) do
+  if arg:match("^uri=") then
+    TARGET_URI = arg:sub(5)
+    SHOW_TCP_DETAILS = true  -- Set to true if URI is provided
+  end
+end
+
+-- Safe field initialization
+local function get_field(field_name)
+  local ok, field = pcall(Field.new, field_name)
+  return ok and field or nil
+end
+
+-- Essential fields
+local tcp_stream = get_field("tcp.stream") or error("Missing tcp.stream field")
+local tcp_flags = get_field("tcp.flags") or error("Missing tcp.flags field")
+local ip_src = get_field("ip.src") or get_field("ipv6.src")
+local ip_dst = get_field("ip.dst") or get_field("ipv6.dst")
+
+-- HTTP/SSL fields (optional)
+local http_request = get_field("http.request")
+local http_request_uri = get_field("http.request.uri")
+local http_response = get_field("http.response")
+local http_response_in = get_field("http.response_in")
+local ssl_handshake = get_field("ssl.handshake")
+
+-- Data structures
+local streams = {}       -- TCP stream information
+local http_requests = {} -- Individual HTTP requests tracking
+local uri_stats = {}     -- Statistics grouped by URI when analyzing all URIs
+
+-- Main tap for TCP packets
+local tap_tcp = Listener.new("tcp", "tcp")
+
+function tap_tcp.packet(pinfo, tvb)
+  local stream = tcp_stream() and tcp_stream().value
+  if not stream then return end
+    
+  -- Initialize stream info if not exists
+  if not streams[stream] then
+    streams[stream] = {
+      stream_id = stream,
+      src = ip_src and tostring(ip_src()) or tostring(pinfo.src),
+      src_port = pinfo.src_port,
+      dst = ip_dst and tostring(ip_dst()) or tostring(pinfo.dst),
+      dst_port = pinfo.dst_port,
+      syn_time = nil,
+      syn_ack_time = nil,
+      ssl_handshake_complete = false,
+      current_http_request = nil,
+      requests = {}
+    }
+  end
+    
+  local s = streams[stream]
+  local flags = tcp_flags() and tcp_flags().value or 0
+    
+  -- Track TCP handshake
+  if (flags & 0x02) ~= 0 then  -- SYN flag
+    if (flags & 0x10) == 0 then  -- SYN packet
+      s.syn_time = pinfo.rel_ts
+    else  -- SYN-ACK packet
+      s.syn_ack_time = pinfo.rel_ts
+    end
+  end
+    
+  -- Track SSL/TLS handshake
+  if ssl_handshake and ssl_handshake() then
+    s.ssl_handshake_complete = true
+  end
+    
+  -- Track HTTP requests
+  if http_request and http_request() and http_request().value and http_request_uri and http_request_uri() then
+    local uri = http_request_uri().value
+    if TARGET_URI == nil or uri == TARGET_URI then
+      local req = {
+        stream_id = stream,
+        request_frame = pinfo.number,
+        request_time = pinfo.rel_ts,
+        response_frame = nil,
+        response_time = nil,
+        uri = uri,
+        start_time = s.syn_time or pinfo.rel_ts,  -- Fallback to request time if no SYN
+        end_time = nil
+      }
+      table.insert(s.requests, req)
+      s.current_http_request = req
+      table.insert(http_requests, req)
+      
+      -- Initialize URI stats if not exists
+      if TARGET_URI == nil and uri_stats[uri] == nil then
+        uri_stats[uri] = {
+          count = 0,
+          total_duration = 0,
+          min_duration = math.huge,
+          max_duration = 0,
+          requests = {}
+        }
+      end
+    end
+  end
+    
+  -- Track HTTP responses
+  if http_response and http_response() and http_response().value then
+    -- Try to match response to request using http.response_in
+    local response_in = http_response_in and http_response_in()
+    if response_in then
+      for _, req in ipairs(s.requests) do
+        if req.request_frame == response_in.value then
+          req.response_frame = pinfo.number
+          req.response_time = pinfo.rel_ts
+          break
+        end
+      end
+    elseif s.current_http_request and not s.current_http_request.response_frame then
+      s.current_http_request.response_frame = pinfo.number
+      s.current_http_request.response_time = pinfo.rel_ts
+    end
+  end
+    
+  -- Update end time for all ongoing requests in this stream
+  for _, req in ipairs(s.requests) do
+    if not req.response_time or pinfo.rel_ts > req.response_time then
+      req.end_time = pinfo.rel_ts
+      
+      -- Update URI stats when request is complete
+      if TARGET_URI == nil and req.start_time and req.end_time then
+        local duration = req.end_time - req.start_time
+        local uri = req.uri
+        if uri_stats[uri] then
+          uri_stats[uri].count = uri_stats[uri].count + 1
+          uri_stats[uri].total_duration = uri_stats[uri].total_duration + duration
+          uri_stats[uri].min_duration = math.min(uri_stats[uri].min_duration, duration)
+          uri_stats[uri].max_duration = math.max(uri_stats[uri].max_duration, duration)
+          table.insert(uri_stats[uri].requests, req)
+        end
+      end
+    end
+  end
+end
+
+function calculate_stats()
+  local stats = {
+    count = 0,
+    total_duration = 0,
+    avg_duration = 0,
+    min_duration = math.huge,
+    max_duration = 0,
+    requests = {}
+  }
+    
+  for _, req in ipairs(http_requests) do
+    if req.start_time and req.end_time then
+      local duration = req.end_time - req.start_time
+      stats.count = stats.count + 1
+      stats.total_duration = stats.total_duration + duration
+      stats.min_duration = math.min(stats.min_duration, duration)
+      stats.max_duration = math.max(stats.max_duration, duration)
+            
+      local req_stats = {
+        stream_id = req.stream_id,
+        duration = duration,
+        request_frame = req.request_frame,
+        response_frame = req.response_frame,
+        tcp_handshake_time = (streams[req.stream_id].syn_ack_time and 
+        (streams[req.stream_id].syn_ack_time - streams[req.stream_id].syn_time)) or 0,
+        ssl_handshake = streams[req.stream_id].ssl_handshake_complete and "Yes" or "No",
+        uri = req.uri
+      }
+      table.insert(stats.requests, req_stats)
+    end
+  end
+    
+  if stats.count > 0 then
+    stats.avg_duration = stats.total_duration / stats.count
+  end
+    
+  return stats
+end
+
+function print_uri_stats()
+  print("\n=== Detailed Statistics by URI ===")
+  for uri, stats in pairs(uri_stats) do
+    local avg_duration = stats.count > 0 and (stats.total_duration / stats.count) or 0
+    print(string.format("\nURI: %s", uri))
+    print(string.format("  Total requests: %d", stats.count))
+    print(string.format("  Total time (all requests): %.3f sec", stats.total_duration))
+    print(string.format("  Average time per request: %.3f sec", avg_duration))
+    print(string.format("  Minimum request time: %.3f sec", stats.min_duration))
+    print(string.format("  Maximum request time: %.3f sec", stats.max_duration))
+    
+    if SHOW_TCP_DETAILS then
+      for i, req in ipairs(stats.requests) do
+        print(string.format(
+          "  Request #%d (Stream %d) | Total: %.3f sec | TCP Handshake: %.3f sec | SSL: %s",
+          i, req.stream_id, (req.end_time - req.start_time), 
+          (streams[req.stream_id].syn_ack_time and 
+            (streams[req.stream_id].syn_ack_time - streams[req.stream_id].syn_time)) or 0,
+          streams[req.stream_id].ssl_handshake_complete and "Yes" or "No"
+        ))
+        print(string.format(
+          "    Request frame: %d | Response frame: %d",
+        req.request_frame, req.response_frame or 0
+        ))
+      end
+    end
+  end
+end
+
+function tap_tcp.draw()
+  print("\n=== HTTP File Upload Timing Report (Multi-Request Support) ===")
+  
+  if TARGET_URI then
+    -- Single URI analysis
+    local stats = calculate_stats()
+    print(string.format("Target URI: %s", TARGET_URI))
+    print(string.format("Total requests: %d", stats.count))
+    print(string.format("Total time (all requests): %.3f sec", stats.total_duration))
+    if stats.count > 0 then
+      print(string.format("Average time per request: %.3f sec", stats.avg_duration))
+      print(string.format("Minimum request time: %.3f sec", stats.min_duration))
+      print(string.format("Maximum request time: %.3f sec", stats.max_duration))
+    end
+    
+    if SHOW_TCP_DETAILS and stats.count > 0 then
+      print("\n=== Detailed Request Times ===")
+      for i, req in ipairs(stats.requests) do
+        print(string.format(
+          "\nRequest #%d (Stream %d) | Total: %.3f sec | TCP Handshake: %.3f sec | SSL: %s",
+          i, req.stream_id, req.duration, req.tcp_handshake_time, req.ssl_handshake
+        ))
+        print(string.format(
+          "  Request frame: %d | Response frame: %d",
+        req.request_frame, req.response_frame or 0
+        ))
+      end
+    end
+  else
+    -- All URIs analysis
+    print("Target URI: ALL URIs (no filter)")
+    print_uri_stats()
+  end
+end
+
+#+end_src
 * bat
 :PROPERTIES:
 :tangle-dir: _tangle/bat
@@ -419,6 +684,18 @@ where dumpcap >nul 2>&1 && set dumpcap_path=dumpcap || (
     ) do if exist %%d set "dumpcap_path=%%~d" && goto found
 )
 :found
+
+echo %dumpcap_path% | findstr /C:"\" >nul
+if %errorlevel% equ 0 (
+    for %%F in ("%dumpcap_path%") do set "wireshark_dir=%%~dpF"
+    set tshark_path=%wireshark_dir%tshark.exe
+    set wireshark_path=%wireshark_dir%wireshark.exe
+    set mergecap_path=%wireshark_dir%mergecap.exe
+) else (
+    set tshark_path=tshark
+    set wireshark_path=wireshark
+    set mergecap_path=mergecap
+)
 #+end_src
 
 #+name: parse-bat-env
@@ -513,6 +790,7 @@ endlocal
 :CUSTOM_ID: 022803ac-a59b-4a28-8216-1177a91df368
 :END:
 #+begin_src bat :tangle (zr-org-by-tangle-dir "ring.bat")
+@echo off
 <<parse-bat-env>>
 
 set dir=ring
@@ -521,6 +799,96 @@ if not exist %dir% (
 )
 "%dumpcap_path%" -i "%interface%" -f "%filter%" -b filesize:%filesize% -w "%dir%\%hostname%.pcap"
 pause
+#+end_src
+
+** parse
+:PROPERTIES:
+:CUSTOM_ID: 16cba8ab-2fba-477b-ad4e-f30b37a497fb
+:END:
+#+begin_src bat :tangle (zr-org-by-tangle-dir "parse.bat")
+@echo off
+<<parse-bat-env>>
+
+setlocal enabledelayedexpansion
+
+set "file_list="
+set "file_count=0"
+set "uri="
+
+:: 处理所有参数
+:process_args
+if "%~1"=="" goto :args_done
+
+:: 检查参数是否以/开头
+set "arg=%~1"
+if "!arg:~0,1!"=="/" (
+    set "uri=!arg!"
+) else (
+    if %file_count%==0 (
+        set file_list="!arg!"
+    ) else (
+        set "file_list=!file_list! "!arg!""
+    )
+    set /a file_count=%file_count% + 1
+)
+
+shift
+goto :process_args
+
+:args_done
+
+:: 检查是否找到文件参数
+if not defined file_list (
+    echo 错误：未提供任何输入文件
+    pause
+    exit /b 1
+)
+
+if %file_count% gtr 1 (
+  set readfile=merged.pcap
+  echo merge files: !file_list!
+  %mergecap_path% -w "!readfile!" !file_list!
+) else (
+  set readfile=!file_list!
+)
+
+set args="%readfile%"
+set wireshark_enable=
+if not "!uri!"=="" (
+  set args=%args% -X "lua_script1:uri=%uri%"
+  set wireshark_enable=true
+)
+
+"%tshark_path%" -qnX "lua_script:%BASE_DIR%\http_full_timing.lua" -r %args%
+
+if not defined wireshark_enable (
+  goto exit
+)
+
+:examine-stream
+set /p "input=stream no (input 'q' to exit): "
+
+REM 检查用户是否输入 q 退出
+if "%input%"=="q" (
+    goto exit
+)
+
+REM 检查输入是否为数字（简单验证）
+echo %input%| findstr /r "^[0-9][0-9]*$" >nul
+if errorlevel 1 (
+    echo not a valid number, input again please.
+    goto examine-stream
+)
+
+"%wireshark_path%" -r "%readfile%" -Y "tcp.stream eq %input%"
+
+REM 继续循环
+goto examine-stream
+
+:exit
+pause
+
+endlocal
 #+end_src
 
 * local variables
