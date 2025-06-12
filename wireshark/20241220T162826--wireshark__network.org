@@ -739,17 +739,15 @@ where dumpcap >nul 2>&1 && set dumpcap_path=dumpcap || (
 )
 :found
 
-echo %dumpcap_path% | findstr /C:"\" >nul
+echo %dumpcap_path% | findstr /C:"\\" >nul
 if %errorlevel% equ 0 (
-    for %%F in ("%dumpcap_path%") do set "wireshark_dir=%%~dpF"
-    set tshark_path=%wireshark_dir%tshark.exe
-    set wireshark_path=%wireshark_dir%wireshark.exe
-    set mergecap_path=%wireshark_dir%mergecap.exe
+  for %%F in ("%dumpcap_path%") do set wireshark_dir=%%~dpF
 ) else (
-    set tshark_path=tshark
-    set wireshark_path=wireshark
-    set mergecap_path=mergecap
+  set wireshark_dir=
 )
+set "tshark_path=%wireshark_dir%tshark.exe"
+set "wireshark_path=%wireshark_dir%wireshark.exe"
+set "mergecap_path=%wireshark_dir%mergecap.exe"
 #+end_src
 
 #+name: parse-bat-env
