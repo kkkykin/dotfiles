@@ -573,8 +573,36 @@ function print_uri_stats()
     print(string.format("  Total requests: %d", stats.count))
     print(string.format("  Total time (all requests): %.3f sec", stats.total_duration))
     print(string.format("  Average time per request: %.3f sec", avg_duration))
-    print(string.format("  Minimum request time: %.3f sec", stats.min_duration))
-    print(string.format("  Maximum request time: %.3f sec", stats.max_duration))
+    
+    -- Find min and max duration requests
+    local min_req, max_req
+    for _, req in ipairs(stats.requests) do
+      local duration = req.end_time - req.start_time
+      if not min_req or duration < (min_req.end_time - min_req.start_time) then
+        min_req = req
+      end
+      if not max_req or duration > (max_req.end_time - max_req.start_time) then
+        max_req = req
+      end
+    end
+    
+    if min_req then
+      print(string.format("  Minimum request time: %.3f sec (Stream %d, Req Frame %d, Resp Frame %d)",
+        min_req.end_time - min_req.start_time,
+        min_req.stream_id,
+        min_req.request_frame,
+        min_req.response_frame or 0
+      ))
+    end
+    
+    if max_req then
+      print(string.format("  Maximum request time: %.3f sec (Stream %d, Req Frame %d, Resp Frame %d)",
+        max_req.end_time - max_req.start_time,
+        max_req.stream_id,
+        max_req.request_frame,
+        max_req.response_frame or 0
+      ))
+    end
     
     if SHOW_TCP_DETAILS then
       for i, req in ipairs(stats.requests) do
@@ -605,8 +633,35 @@ function tap_tcp.draw()
     print(string.format("Total time (all requests): %.3f sec", stats.total_duration))
     if stats.count > 0 then
       print(string.format("Average time per request: %.3f sec", stats.avg_duration))
-      print(string.format("Minimum request time: %.3f sec", stats.min_duration))
-      print(string.format("Maximum request time: %.3f sec", stats.max_duration))
+      
+      -- Find min and max duration requests
+      local min_req, max_req
+      for _, req in ipairs(stats.requests) do
+        if not min_req or req.duration < min_req.duration then
+          min_req = req
+        end
+        if not max_req or req.duration > max_req.duration then
+          max_req = req
+        end
+      end
+      
+      if min_req then
+        print(string.format("Minimum request time: %.3f sec (Stream %d, Req Frame %d, Resp Frame %d)",
+          min_req.duration,
+          min_req.stream_id,
+          min_req.request_frame,
+          min_req.response_frame or 0
+        ))
+      end
+      
+      if max_req then
+        print(string.format("Maximum request time: %.3f sec (Stream %d, Req Frame %d, Resp Frame %d)",
+          max_req.duration,
+          max_req.stream_id,
+          max_req.request_frame,
+          max_req.response_frame or 0
+        ))
+      end
     end
     
     if SHOW_TCP_DETAILS and stats.count > 0 then
@@ -628,7 +683,6 @@ function tap_tcp.draw()
     print_uri_stats()
   end
 end
-
 #+end_src
 * bat
 :PROPERTIES:
@@ -853,17 +907,11 @@ if %file_count% gtr 1 (
 )
 
 set args="%readfile%"
-set wireshark_enable=
 if not "!uri!"=="" (
   set args=%args% -X "lua_script1:uri=%uri%"
-  set wireshark_enable=true
 )
 
 "%tshark_path%" -qnX "lua_script:%BASE_DIR%\http_full_timing.lua" -r %args%
-
-if not defined wireshark_enable (
-  goto exit
-)
 
 :examine-stream
 set /p "input=stream no (input 'q' to exit): "
