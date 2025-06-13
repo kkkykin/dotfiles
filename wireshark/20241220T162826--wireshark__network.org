@@ -748,6 +748,7 @@ if %errorlevel% equ 0 (
 set "tshark_path=%wireshark_dir%tshark.exe"
 set "wireshark_path=%wireshark_dir%wireshark.exe"
 set "mergecap_path=%wireshark_dir%mergecap.exe"
+set "editcap_path=%wireshark_dir%editcap.exe"
 #+end_src
 
 #+name: parse-bat-env
@@ -899,7 +900,7 @@ if not defined file_list (
 if %file_count% gtr 1 (
   set readfile=merged.pcap
   echo merge files: !file_list!
-  %mergecap_path% -w "!readfile!" !file_list!
+  "%mergecap_path%" -w "!readfile!" !file_list!
 ) else (
   set readfile=!file_list!
 )
@@ -935,6 +936,17 @@ goto examine-stream
 pause
 
 endlocal
+#+end_src
+
+** edit
+:PROPERTIES:
+:CUSTOM_ID: 3a82048e-7a6c-473d-9c2a-050db0033796
+:END:
+#+begin_src bat :tangle (zr-org-by-tangle-dir "edit.bat")
+@echo off
+<<parse-bat-env>>
+
+"%editcap_path%" %*
 #+end_src
 
 * local variables
