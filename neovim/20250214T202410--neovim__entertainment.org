@@ -85,6 +85,53 @@ end
 vim.keymap.set('n', '<Leader>e', open_with_emacsclient, { noremap = true, silent = true })
 #+end_src
 
+*** eval
+:PROPERTIES:
+:CUSTOM_ID: 149a8156-b704-4bbc-933d-7924b01b1c09
+:END:
+#+begin_src lua
+local function emacs_eval(sexp)
+  vim.fn.system('emacsclient -ne ' .. vim.fn.shellescape(sexp))
+end
+#+end_src
+
+*** org
+
+**** tangle
+:PROPERTIES:
+:CUSTOM_ID: a0f3be67-39aa-484d-9f3e-f4adf322076a
+:END:
+#+begin_src lua
+vim.api.nvim_create_user_command(
+  'Tangle',
+  function()
+    local fmt = '(let (org-confirm-babel-evaluate) (zr-org-exec-link-or-babel-nearby \'(4) "%s"))'
+    local file = vim.fn.expand('%:p')
+    if is_windows then
+      file = file:gsub('\\', '/')
+    end
+    local cmd = fmt:format(file)
+    emacs_eval(cmd)
+  end, {})
+#+end_src
+**** detangle
+:PROPERTIES:
+:CUSTOM_ID: 992c50bd-519c-4231-af71-f2088449408a
+:END:
+#+begin_src lua
+vim.api.nvim_create_user_command(
+  'Detangle',
+  function()
+    local fmt = '(let ((zr-org-babel-confirm-replace-tangle t)) (zr-org-babel-detangle "%s"))'
+    local file = vim.fn.expand('%:p')
+    if is_windows then
+      file = file:gsub('\\', '/')
+    end
+    local cmd = fmt:format(file)
+    emacs_eval(cmd)
+  end, {})
+#+end_src
+
 ** terminal
 
 *** map
@@ -341,7 +388,7 @@ end, { noremap = true })
 
 #+begin_src lua :var mpv_auth=(auth-source-pick-first-password :host "mpv.nginx.localhost")
 local file_transform_table = {
-  <<expand-lua-kv-table(value=(plist-get (cdr (plstore-get zr-local-pls "file-transform")) :tbl))>>
+  <<expand-lua-kv-table(value=(and zr-local-pls (plist-get (cdr (plstore-get zr-local-pls "file-transform")) :tbl)))>>
 }
 
 local function transform_file_path(file)
