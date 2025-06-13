@@ -158,9 +158,24 @@ esac
 #+header: :var jobs_source_dir=(expand-file-name "_tangle/jobs")
 #+begin_src sh :tangle (zr-org-by-tangle-dir "zr-job-script-generate")
 if [ $# -lt 1 ]; then
-  echo "Usage: $0 [key=value ...] filename" >&2
+  echo "Usage: $0 [key=value ...] [-- command...] filename" >&2
   exit 1
 fi
+
+echo "#!/data/data/com.termux/files/usr/bin/bash"
+echo
+
+for (( i=1; i<=$#-1; i++ )); do
+  if [[ "${!i}" == *=* ]]; then
+    printf "%q\n" "${!i}"
+  elif [ "${!i}" = "--" ]; then
+    printf "%q " "${@:$i+1}"
+    printf "\n"
+    exit 0
+  else
+    echo "Warning: Ignoring invalid argument '${!i}'" >&2
+  fi
+done
 
 filename="$jobs_source_dir/${@: -1}"
 
@@ -168,23 +183,7 @@ if [ ! -f "$filename" ]; then
   filename="${@: -1}"
 fi
 
-echo "#!/data/data/com.termux/files/usr/bin/bash"
-echo
-
-for arg in "${@:1:$#-1}"; do
-  if [[ "$arg" == *=* ]]; then
-    key="${arg%%=*}"
-    value="${arg#*=}"
-    # 使用 printf "%q" 自动转义 value
-    printf -v escaped_value "%q" "$value"
-    printf "%s=%s\n" "$key" "$escaped_value"
-  else
-    echo "Warning: Ignoring invalid argument '$arg'" >&2
-  fi
-done
-
-echo
-echo ". $(printf "%q" "$filename")"
+printf ". %q\n" "$filename"
 #+end_src
 
 ** audio-manage
