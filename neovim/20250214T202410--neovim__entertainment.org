@@ -224,6 +224,7 @@ local cmd_rc = {
   string.format('set PATH=%s;%%PATH%%', vim.fn.resolve(os.getenv('myvimrc')):gsub('neovim\\_tangle\\.+', 'init\\_tangle', 1)),
   'set DISPLAY=127.0.0.1:0',
   'set PAGER=more.exe',
+  'set EDITOR=emacsclient',
 }
 
 local bash_rc = {
