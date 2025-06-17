@@ -846,7 +846,7 @@ endlocal
 @echo off
 <<parse-bat-env>>
 
-set dir=ring
+set dir="%BASE_DIR%\ring"
 if not exist %dir% (
   md %dir%
 )
