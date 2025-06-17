@@ -1,0 +1,76 @@
+#+title:      usql
+#+date:       [2025-06-17 Tue 15:01]
+#+filetags:   :db:
+#+identifier: 20250617T150125
+
+* tangle
+#+begin_src elisp
+(let ((cfg-dir
+       (pcase system-type
+         ('windows-nt (substitute-in-file-name "$AppData/usql"))
+         (_ "~/.config/usql")))
+      (tangle-dir (expand-file-name zr-org-tangle-default-dir))
+      org-confirm-babel-evaluate)
+  (mkdir tangle-dir t)
+  (let ((default-directory tangle-dir))
+    (dolist (d '("in" "out"))
+      (mkdir d t)))
+  (org-babel-tangle nil (zr-org-by-tangle-dir "config.yaml") "^yml$")
+  (make-symbolic-link tangle-dir cfg-dir t))
+#+end_src
+
+* config
+
+** connections
+:PROPERTIES:
+:CUSTOM_ID: 0df0f4af-3a5f-4b7e-b0cd-6b390b2b02b2
+:END:
+#+name: import-connections
+#+begin_src elisp
+(mapconcat
+ (lambda (db)
+   (format "%s: %s"
+           (subst-char-in-string ?- ?_ (car db))
+           (let ((url (url-parse-make-urlobj
+                       (symbol-name (cadadr (assoc 'sql-product db)))
+                       (car-safe (alist-get 'sql-user db))
+                       (car-safe (alist-get 'sql-password db))
+                       (car-safe (alist-get 'sql-server db))
+                       (car-safe (alist-get 'sql-port db))
+                       (when-let* ((db (car-safe (alist-get 'sql-database db))))
+                         (concat "/" db))
+                       nil nil t)))
+             (url-recreate-url url))))
+ sql-connection-alist
+ "\n")
+#+end_src
+
+#+begin_src yml
+connections:
+  <<import-connections()>>
+#+end_src
+
+** init
+:PROPERTIES:
+:CUSTOM_ID: d081e613-7128-4cfe-9314-3662603a9d53
+:END:
+#+begin_src yml :var dir=(expand-file-name zr-org-tangle-default-dir)
+init: |
+  \cd '$dir'
+#+end_src
+
+** local
+:PROPERTIES:
+:CUSTOM_ID: 691cc39a-9187-42b3-964f-849d0a281b12
+:END:
+#+name: import-local-config
+#+begin_src elisp
+(let ((local-cfg (expand-file-name "_local.yml")))
+  (if (file-exists-p local-cfg)
+      (org-file-contents local-cfg)
+    ""))
+#+end_src
+
+#+begin_src yml
+<<import-local-config()>>
+#+end_src
