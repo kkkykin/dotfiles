@@ -171,17 +171,6 @@ local function term_last_matching_proc()
 end
 #+end_src
 
-#+begin_src lua
-local function term_chdir(path)
-  if path and vim.fn.isdirectory(path) then
-    vim.api.nvim_buf_set_var(0, 'osc7_dir', path)
-    if vim.o.autochdir then
-      vim.fn.chdir(path)
-    end
-  end
-end
-#+end_src
-
 *** map
 :PROPERTIES:
 :CUSTOM_ID: cba672ec-fabe-426d-9967-5d11342b607b
@@ -211,13 +200,6 @@ vim.keymap.set('t', '<C-w>gT', '<C-\\><C-o>gT')
 local term_keymaps = {
   ['cmd.exe'] =
    {
-     ['<C-w>n'] = function()
-       vim.cmd.stopinsert()
-       local proc = term_last_matching_proc()
-       if proc then
-         term_chdir(proc.match[2])
-       end
-     end,
      ['<C-p>'] = '<Up>',
      ['<C-n>'] = '<Down>',
      ['<C-f>'] = '<Right>',
@@ -234,10 +216,6 @@ local term_keymaps = {
      ['<M-b>'] = '<C-Left>',
      ['<M-f>'] = '<C-Right>',
    },
-  ['usql'] =
-   {
-     ['<C-w>n'] = '<C-\\><C-n>',
-   }
 }
 
 local function term_map_key(key)
@@ -268,35 +246,31 @@ end
 :END:
 
 #+begin_src lua
-local function get_buffer_dir()
-  if vim.b.osc7_dir and vim.fn.isdirectory(vim.b.osc7_dir) == 1 then
-    return vim.b.osc7_dir
-  end
-  local current_path = vim.fn.expand('%:p')
-  if vim.fn.isdirectory(current_path) == 0 then
-    current_path = vim.fn.fnamemodify(current_path, ':h')
-  end
-  return current_path
-end
+local ns = vim.api.nvim_create_namespace('my.terminal.dirtrack')
 #+end_src
 
 #+begin_src lua
-local function lcd_to_buffer_dir(force)
-  if force == 1 or vim.o.autochdir then
-    local dir = get_buffer_dir()
-    if not dir:match('^term://') then
-      vim.cmd.lcd(dir)
-    end
-  end
-end
-
-vim.keymap.set('n', '<Leader>c', function() lcd_to_buffer_dir(1) end)
-#+end_src
-
-#+begin_src lua
-vim.api.nvim_create_autocmd({ 'BufEnter', 'WinEnter', 'DirChanged' }, {
+vim.api.nvim_create_autocmd('TermRequest', {
   group = my_augroup,
-  callback = lcd_to_buffer_dir,
+  desc = 'OSC 133: Prompt marks & Dirtrack',
+  callback = function(args)
+    local data = args.data
+    local seq = data.sequence
+    if seq:match('^]133;A') then
+      local cursor = data.cursor
+      -- 在提示符行添加标记
+      vim.api.nvim_buf_set_extmark(args.buf, ns, cursor[1], 0, {
+        sign_text = '▶',
+        sign_hl_group = 'SpecialChar',
+      })
+    elseif seq:match('^]1337;CurrentDir=') then
+      local cwd = seq:match('^]1337;CurrentDir=(.+)')
+      if cwd then
+        vim.api.nvim_buf_set_var(args.buf, 'terminal_cwd', cwd)
+        vim.fn.chdir(cwd)
+      end
+    end
+  end,
 })
 #+end_src
 
@@ -316,6 +290,7 @@ local cmd_rc = {
   'set DISPLAY=127.0.0.1:0',
   'set PAGER=more.exe',
   'set EDITOR=emacsclient',
+  'PROMPT $e]133;D$e\\$e]133;A$e\\$e]1337;CurrentDir=$P$e\\%PROMPT%$e]133;B$e\\',
 }
 
 local bash_rc = {
@@ -326,7 +301,7 @@ local bash_rc = {
   string.format('nvim-server-cmd() { nvim-server-port-open-p && %s --server %s --remote-expr "execute(\'V64cmd $*\')" || echo "NeoVim not running." ; }', vim.fn.shellescape(vi_program), vim.fn.shellescape(my_neovim_default_server)),
   'vt() { local cmd=$(printf "tabe | tc %s | te %s" "$(pwd)" "$*" | base64 -w0) ; nvim-server-cmd "$cmd" ; }',
   'nvim-server',
-  'print_osc7() { printf "\\033]7;file://$HOSTNAME$PWD\\033\\\\"; }',
+  'print_osc133() { printf "\\033]1337;CurrentDir=$PWD\\033\\\\"; }'
 }
 #+end_src
 
@@ -380,11 +355,14 @@ end
 #+end_src
 
 #+begin_src lua
-local function setup_terminal()
-  local bufname = vim.api.nvim_buf_get_name(0)
+local function setup_terminal(args)
+  command = 'setlocal signcolumn=auto'
+  local buf = args.buf
+  vim.api.nvim_buf_set_var(buf, 'terminal_cwd', vim.fn.getcwd())
+  local bufname = vim.api.nvim_buf_get_name(buf)
   if bufname:match('^term://') then
     local cmd = bufname:match('([%w.]+)$')
-    vim.api.nvim_buf_set_var(0, 'term_key_cache', {
+    vim.api.nvim_buf_set_var(buf, 'term_key_cache', {
       ['proc'] = cmd,
       ['line_num'] = 1,
     })
@@ -393,7 +371,7 @@ local function setup_terminal()
       for key, _ in pairs(map) do
         vim.keymap.set('t', key, function()
                                    term_map_key(key)
-                                 end, { noremap = true, buffer = 0 })
+                                 end, { noremap = true, buffer = buf })
       end
     end
     if cmd == 'cmd.exe' then
@@ -656,5 +634,5 @@ vim.api.nvim_create_user_command('Sudoedit', sudo_edit, { nargs = '*' })
 :CUSTOM_ID: e9ab948e-c8d6-4f2c-ab8f-d225b27d9114
 :END:
 #+begin_src lua
-table.insert(bash_rc, 'PROMPT_COMMAND=print_osc7')
+table.insert(bash_rc, 'PROMPT_COMMAND=print_osc133')
 #+end_src
