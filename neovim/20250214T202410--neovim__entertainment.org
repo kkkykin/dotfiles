@@ -388,10 +388,13 @@ local function setup_terminal()
       ['proc'] = cmd,
       ['line_num'] = 1,
     })
-    for key, _ in pairs(term_keymaps[cmd]) do
-      vim.keymap.set('t', key, function()
-                                 term_map_key(key)
-                               end, { noremap = true, buffer = 0 })
+    local map = term_keymaps[cmd]
+    if map then
+      for key, _ in pairs(map) do
+        vim.keymap.set('t', key, function()
+                                   term_map_key(key)
+                                 end, { noremap = true, buffer = 0 })
+      end
     end
     if cmd == 'cmd.exe' then
       setup_terminal_cmd()
