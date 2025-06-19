@@ -21,7 +21,8 @@
 :CUSTOM_ID: 2cfb18d0-fbfe-43d3-b1ff-6498eba627d3
 :END:
 #+name: config
-#+begin_src json :var nvim-path=(executable-find "nvim") nvim-server=(concat zr-viper-default-nvim-server)
+#+header: :var nvim-path=(executable-find "nvim") nvim-server=(concat zr-viper-default-nvim-server)
+#+begin_src json :var start-dir=(subst-char-in-string ?\\ ?/ (getenv "USERPROFILE"))
 {
   "$help": "https://aka.ms/terminal-documentation",
   "$schema": "https://aka.ms/terminal-profiles-schema",
@@ -95,7 +96,8 @@
       {
         "commandline": "$nvim-path --listen $nvim-server +te +star",
         "guid": "{34b338b4-6df1-431f-8ece-cdab6925fb75}",
-        "name": "nvim"
+        "name": "nvim",
+        "startingDirectory": "$start-dir"
       }
     ]
   },
