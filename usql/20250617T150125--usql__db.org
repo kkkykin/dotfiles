@@ -54,9 +54,15 @@ connections:
 :PROPERTIES:
 :CUSTOM_ID: d081e613-7128-4cfe-9314-3662603a9d53
 :END:
-#+begin_src yml :var dir=(expand-file-name zr-org-tangle-default-dir)
+[[https://github.com/xo/usql/blob/fe0d3cd0fc4972744460d79f936fb3fb025480c4/handler/handler.go#L491][prompt document]]
+#+begin_src yml :var dir=(expand-file-name zr-org-tangle-default-dir) prompt="%N%M%>%~%x%R%#"
 init: |
   \cd '$dir'
+  \x auto
+  \set base_prompt '$prompt '
+  \set red_prompt '\033[31m$prompt\033[0m '
+  \set green_prompt '\033[32m$prompt\033[0m '
+  \set PROMPT1 :base_prompt
 #+end_src
 
 ** local
