@@ -77,8 +77,9 @@
   "profiles": {
     "defaults": {
       "closeOnExit": "graceful",
+      "colorScheme": "Vintage",
       "cursorShape": "filledBox",
-      "opacity": 80,
+      "opacity": 65,
       "showMarksOnScrollbar": true,
       "useAcrylic": true
     },
@@ -102,6 +103,7 @@
     ]
   },
   "schemes": [],
+  "tabWidthMode": "compact",
   "theme": "system",
   "themes": [],
   "useAcrylicInTabRow": true,
