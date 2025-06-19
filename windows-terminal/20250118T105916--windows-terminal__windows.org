@@ -6,6 +6,13 @@
 
 * tangle
 #+begin_src elisp
+(let ((pos (org-babel-find-named-block "config")))
+  (save-excursion
+    (goto-char pos)
+    (forward-line)
+    (let ((begin (point)))
+      (forward-sexp)
+      (json-pretty-print-ordered begin (point)))))
 (org-babel-tangle nil wt-settings-path "^json$")
 #+end_src
 
@@ -13,94 +20,89 @@
 :PROPERTIES:
 :CUSTOM_ID: 2cfb18d0-fbfe-43d3-b1ff-6498eba627d3
 :END:
+#+name: config
 #+begin_src json :var nvim-path=(executable-find "nvim") nvim-server=(concat zr-viper-default-nvim-server)
 {
   "$help": "https://aka.ms/terminal-documentation",
   "$schema": "https://aka.ms/terminal-profiles-schema",
-  "actions": 
-    [
-      {
-        "command": 
-            {
-              "action": "copy",
-              "singleLine": false
-            },
-        "id": "User.copy.644BA8F2"
+  "actions": [
+    {
+      "command": {
+        "action": "copy",
+        "singleLine": false
       },
-      {
-        "command": "paste",
-        "id": "User.paste"
+      "id": "User.copy.644BA8F2"
+    },
+    {
+      "command": "paste",
+      "id": "User.paste"
+    },
+    {
+      "command": {
+        "action": "splitPane",
+        "split": "auto",
+        "splitMode": "duplicate"
       },
-      {
-        "command": 
-            {
-              "action": "splitPane",
-              "split": "auto",
-              "splitMode": "duplicate"
-            },
-        "id": "User.splitPane.A6751878"
-      },
-      {
-        "command": "find",
-        "id": "User.find"
-      }
-    ],
+      "id": "User.splitPane.A6751878"
+    },
+    {
+      "command": "find",
+      "id": "User.find"
+    }
+  ],
   "copyFormatting": "none",
   "copyOnSelect": false,
   "defaultInputScope": "alphanumericHalfWidth",
   "defaultProfile": "{0caa0dad-35be-5f56-a8ff-afceeeaa6101}",
-  "keybindings": 
-    [
+  "disabledProfileSources": [
+    "Windows.Terminal.Azure"
+  ],
+  "keybindings": [
+    {
+      "id": "User.find",
+      "keys": "ctrl+shift+f"
+    },
+    {
+      "id": "User.splitPane.A6751878",
+      "keys": "alt+shift+d"
+    }
+  ],
+  "language": "en-US",
+  "newTabMenu": [
+    {
+      "type": "remainingProfiles"
+    }
+  ],
+  "profiles": {
+    "defaults": {
+      "closeOnExit": "graceful",
+      "cursorShape": "filledBox",
+      "opacity": 80,
+      "showMarksOnScrollbar": true,
+      "useAcrylic": true
+    },
+    "list": [
       {
-        "id": "User.find",
-        "keys": "ctrl+shift+f"
+        "commandline": "%SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+        "guid": "{61c54bbd-c2c6-5271-96e7-009a87ff44bf}",
+        "name": "Windows PowerShell"
       },
       {
-        "id": "User.splitPane.A6751878",
-        "keys": "alt+shift+d"
-      }
-    ],
-  "language": "en-US",
-  "newTabMenu": 
-    [
+        "commandline": "%SystemRoot%\\System32\\cmd.exe",
+        "guid": "{0caa0dad-35be-5f56-a8ff-afceeeaa6101}",
+        "name": "Command Prompt"
+      },
       {
-        "type": "remainingProfiles"
+        "commandline": "$nvim-path --listen $nvim-server +te +star",
+        "guid": "{34b338b4-6df1-431f-8ece-cdab6925fb75}",
+        "name": "nvim"
       }
-    ],
-  "profiles": 
-    {
-      "defaults": 
-        {
-          "cursorShape": "filledBox",
-          "opacity": 80,
-          "useAcrylic": true
-        },
-      "list": 
-        [
-          {
-            "commandline": "%SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
-            "guid": "{61c54bbd-c2c6-5271-96e7-009a87ff44bf}",
-            "name": "Windows PowerShell"
-          },
-          {
-            "commandline": "%SystemRoot%\\System32\\cmd.exe",
-            "guid": "{0caa0dad-35be-5f56-a8ff-afceeeaa6101}",
-            "name": "Command Prompt"
-          },
-          {
-            "commandline": "$nvim-path --listen $nvim-server +te +star",
-            "guid": "{34b338b4-6df1-431f-8ece-cdab6925fb75}",
-            "name": "nvim"
-          }
-        ]
-    },
+    ]
+  },
   "schemes": [],
   "theme": "system",
   "themes": [],
   "useAcrylicInTabRow": true,
-  "windowingBehavior": "useExisting",
-  "disabledProfileSources": [
-    "Windows.Terminal.Azure"
-  ]
+  "windowingBehavior": "useExisting"
 }
 #+end_src
