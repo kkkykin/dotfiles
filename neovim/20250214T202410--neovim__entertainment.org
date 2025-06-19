@@ -141,7 +141,8 @@ vim.api.nvim_create_user_command(
 #+begin_src lua
 local function term_last_matching_proc()
   local cursor_pos = vim.api.nvim_win_get_cursor(0)
-  if cursor_pos[1] == vim.b.term_key_cache.line_num then
+  local cursor_line = cursor_pos[1]
+  if cursor_line == vim.b.term_key_cache.line_num then
     return vim.b.term_key_cache
   end
 
@@ -150,10 +151,12 @@ local function term_last_matching_proc()
     ['^PS \\([a-zA-Z]:\\[^>]*\\)>'] = 'powershell',
     ['^\\(\\S\\+@\\S\\+:\\d\\+\\)\\?[=-]> \\?'] = 'usql',
   }
-  local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
+  local start_line = vim.b.term_key_cache.line_num - 1
+  local lines = vim.api.nvim_buf_get_lines(0, start_line, cursor_line, false)
 
   for i = #lines, 1, -1 do
     local line = lines[i]
+    local actual_line_num = start_line + i
 
     for pattern, proc in pairs(proc_prompt_regexp) do
       local matches = vim.fn.matchlist(line, pattern)
@@ -161,7 +164,7 @@ local function term_last_matching_proc()
         return {
           proc = proc,
           match = matches,
-          line_num = i,
+          line_num = actual_line_num,
           line_content = line,
         }
       end
