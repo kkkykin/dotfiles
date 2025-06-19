@@ -18,6 +18,7 @@
 :CUSTOM_ID: 7bfba842-bc68-4665-9af1-a37da905366a
 :END:
 #+begin_src ahk
+#SingleInstance Force
 #Include 'mouse.ahk'
 #Include '*i %A_ScriptDir%/../_local.ahk'
 #+end_src
