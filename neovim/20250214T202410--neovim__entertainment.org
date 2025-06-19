@@ -148,7 +148,7 @@ local function term_last_matching_proc()
   local proc_prompt_regexp = {
     ['^\\([a-zA-Z]:[^>]*\\)>'] = 'cmd.exe',
     ['^PS \\([a-zA-Z]:\\[^>]*\\)>'] = 'powershell',
-    ['^\\(\\([a-z]\\+:[a-z@/0-9]\\+\\)\\|\\((not connected)\\)\\)[=-]>'] = 'usql',
+    ['^\\(\\S\\+@\\S\\+:\\d\\+\\)\\?[=-]> \\?'] = 'usql',
   }
   local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
 
