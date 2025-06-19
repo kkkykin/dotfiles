@@ -6,103 +6,101 @@
 
 * tangle
 #+begin_src elisp
-(let ((setting-path (expand-file-name "_output/settings.json")))
-  (make-directory (file-name-directory setting-path) t)
-  (zr-org-babel-execute-named-src-block
-   "gen-settings" `((:results . "file silent")
-                    (:file . ,setting-path)))
-
-  (unless (file-symlink-p wt-settings-path)
-    (when (file-exists-p wt-settings-path)
-      (rename-file wt-settings-path (concat setting-path ".bak") t))
-    ;; gui cannot modify settings anymore.
-    (make-symbolic-link setting-path wt-settings-path)))
+(org-babel-tangle nil wt-settings-path "^json$")
 #+end_src
 
-* settings
-#+name: profile-order
-| name               | wd                                               | cli                                                                                        | if                        |
-|--------------------+--------------------------------------------------+--------------------------------------------------------------------------------------------+---------------------------|
-| Windows PowerShell |                                                  |                                                                                            |                           |
-| Command Prompt     |                                                  |                                                                                            |                           |
-| nvim               | (getenv "USERPROFILE")                           | (format "%s --listen %s +te +star" (executable-find "nvim") zr-viper-default-nvim-server ) | (executable-find "nvim")  |
-| UCRT64             | (file-name-concat msys2-dir "home" "%USERNAME%") | (concat msys2-dir msys2-common-cli "ucrt64")                                               | (file-exists-p msys2-dir) |
-| CLANG64            | (file-name-concat msys2-dir "home" "%USERNAME%") | (concat msys2-dir msys2-common-cli "clang64")                                              | (file-exists-p msys2-dir) |
-| MINGW64            | (file-name-concat msys2-dir "home" "%USERNAME%") | (concat msys2-dir msys2-common-cli "mingw64")                                              | (file-exists-p msys2-dir) |
-| Alpine             |                                                  |                                                                                            |                           |
-| nixos              |                                                  |                                                                                            |                           |
-
-#+name: profile-alias
-| base           | alias      |
-|----------------+------------|
-| Command Prompt | 命令提示符 |
-
-#+name: gen-settings
-#+header: :var msys2-dir=(substitute-in-file-name "$USERPROFILE/scoop/apps/msys2/current") msys2-common-cli="/msys2_shell.cmd -defterm -here -no-start -"
-#+begin_src elisp :var profile-order=profile-order[] profile-alias=profile-alias[]
-(with-temp-buffer
-  (insert-file-contents wt-settings-path)
-  (goto-char (point-min))
-  (let* ((conf (json-parse-buffer :object-type 'alist))
-         (profiles (alist-get 'profiles conf))
-         (list (alist-get 'list profiles)))
-    (let ((visible (make-vector (length profile-order) (aref list 0)))
-          hidden available available-index)
-      (seq-do-indexed
-       (lambda (sh i)
-         (let* ((name (nth 0 sh))
-                (wd (nth 1 sh))
-                (cli (nth 2 sh))
-                (raw-sexp (nth 3 sh))
-                (profile (cl-find-if
-                          (lambda (p)
-                            (string= name (alist-get 'name p)))
-                          list))
-                new-prof)
-           (unless profile
-             (setq profile
-                   (cl-loop for (base alias) in profile-alias
-                            if (string= base name)
-                            return (cl-find-if
-                                    (lambda (p)
-                                      (string= alias (alist-get 'name p)))
-                                    list))))
-           (cond
-            (profile
-             (push name available)
-             (unless (string-empty-p cli)
-               (push (cons 'commandline (zr-org-string-maybe-eval cli))
-                     profile))
-             (unless (string-empty-p wd)
-               (push (cons 'startingDirectory
-                           (zr-org-string-maybe-eval wd))
-                     profile))
-             (push i available-index)
-             (aset visible i profile))
-            ((and (not (string-empty-p cli))
-                  (string-match-p (rx bos ?( (+ anychar) ?) eos)
-                                  raw-sexp)
-                  (zr-org-string-eval raw-sexp))
-             (setq new-prof (list (cons 'commandline
-                                        (zr-org-string-maybe-eval cli))
-                                  (cons 'name name)
-                                  (cons 'guid (concat "{" (org-id-new) "}"))))
-             (unless (string-empty-p wd)
-               (push (cons 'startingDirectory
-                           (zr-org-string-maybe-eval wd))
-                     new-prof))
-             (push name available)
-             (aset visible i new-prof))
-            (t
-             (let ((dummy (aref visible i)))
-               (push (cons 'guid (concat "{" (org-id-new) "}")) dummy)
-               (aset visible i dummy))))))
-       profile-order)
-      (seq-do-indexed
-       (lambda (p i)
-         (unless (member i available-index)
-           (push (push (cons 'hidden t) p) hidden)))
-       list)
-      (push (cons 'list (vconcat visible hidden)) profiles))
-    (json-serialize (push (cons 'profiles profiles) conf))))
+* config
+:PROPERTIES:
+:CUSTOM_ID: 2cfb18d0-fbfe-43d3-b1ff-6498eba627d3
+:END:
+#+begin_src json :var nvim-path=(executable-find "nvim") nvim-server=(concat zr-viper-default-nvim-server)
+{
+  "$help": "https://aka.ms/terminal-documentation",
+  "$schema": "https://aka.ms/terminal-profiles-schema",
+  "actions": 
+    [
+      {
+        "command": 
+            {
+              "action": "copy",
+              "singleLine": false
+            },
+        "id": "User.copy.644BA8F2"
+      },
+      {
+        "command": "paste",
+        "id": "User.paste"
+      },
+      {
+        "command": 
+            {
+              "action": "splitPane",
+              "split": "auto",
+              "splitMode": "duplicate"
+            },
+        "id": "User.splitPane.A6751878"
+      },
+      {
+        "command": "find",
+        "id": "User.find"
+      }
+    ],
+  "copyFormatting": "none",
+  "copyOnSelect": false,
+  "defaultInputScope": "alphanumericHalfWidth",
+  "defaultProfile": "{0caa0dad-35be-5f56-a8ff-afceeeaa6101}",
+  "keybindings": 
+    [
+      {
+        "id": "User.find",
+        "keys": "ctrl+shift+f"
+      },
+      {
+        "id": "User.splitPane.A6751878",
+        "keys": "alt+shift+d"
+      }
+    ],
+  "language": "en-US",
+  "newTabMenu": 
+    [
+      {
+        "type": "remainingProfiles"
+      }
+    ],
+  "profiles": 
+    {
+      "defaults": 
+        {
+          "cursorShape": "filledBox",
+          "opacity": 80,
+          "useAcrylic": true
+        },
+      "list": 
+        [
+          {
+            "commandline": "%SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+            "guid": "{61c54bbd-c2c6-5271-96e7-009a87ff44bf}",
+            "name": "Windows PowerShell"
+          },
+          {
+            "commandline": "%SystemRoot%\\System32\\cmd.exe",
+            "guid": "{0caa0dad-35be-5f56-a8ff-afceeeaa6101}",
+            "name": "Command Prompt"
+          },
+          {
+            "commandline": "$nvim-path --listen $nvim-server +te +star",
+            "guid": "{34b338b4-6df1-431f-8ece-cdab6925fb75}",
+            "name": "nvim"
+          }
+        ]
+    },
+  "schemes": [],
+  "theme": "system",
+  "themes": [],
+  "useAcrylicInTabRow": true,
+  "windowingBehavior": "useExisting",
+  "disabledProfileSources": [
+    "Windows.Terminal.Azure"
+  ]
+}
 #+end_src
