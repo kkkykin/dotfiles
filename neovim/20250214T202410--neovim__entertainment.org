@@ -632,7 +632,102 @@ end
 
 vim.api.nvim_create_user_command('Sudoedit', sudo_edit, { nargs = '*' })
 #+end_src
+** plugins
+:PROPERTIES:
+:CUSTOM_ID: 1261a50d-da5b-4dcb-9eb1-911c6c6ab5c9
+:END:
+#+begin_src lua
+local lazypath = vim.fn.stdpath('data') .. '/lazy/lazy.nvim'
+#+end_src
 
+#+begin_src lua
+vim.api.nvim_create_user_command(
+  'InstallLazy',
+  function()
+    local lazyrepo = 'https://github.com/folke/lazy.nvim.git'
+  
+    if vim.fn.isdirectory(lazypath) == 1 then
+      vim.api.nvim_echo(
+        {
+          { 'lazy.nvim is already installed at:\n', 'WarningMsg' },
+          { lazypath .. '\n', 'Normal' },
+          { 'Skipping installation...\n' },
+        }, true, {})
+      return
+    end
+
+    vim.fn.mkdir(vim.fn.stdpath('data') .. '/lazy', 'p')
+
+    local out = vim.fn.system({ 'git', 'clone', '--filter=blob:none', '--branch=stable', lazyrepo, lazypath })
+    if vim.v.shell_error ~= 0 then
+      vim.api.nvim_echo(
+        {
+          { 'Failed to clone lazy.nvim:\n', 'ErrorMsg' },
+          { out, 'WarningMsg' },
+          { '\nPress any key to exit...' },
+        }, true, {})
+      vim.fn.getchar()
+      os.exit(1)
+    else
+      vim.api.nvim_echo(
+        {
+          { 'Successfully installed lazy.nvim to:\n', 'MoreMsg' },
+          { lazypath .. '\n', 'Normal' },
+        }, true, {})
+    end
+  end, {
+  desc = 'Install lazy.nvim plugin manager',
+})
+#+end_src
+
+#+begin_src lua
+if (vim.uv or vim.loop).fs_stat(lazypath) then
+  vim.opt.rtp:prepend(lazypath)
+  vim.g.mapleader = ' '
+  vim.g.maplocalleader = '\\'
+
+  -- Setup lazy.nvim
+  require('lazy').setup({
+    spec = {
+      <<plug-orgmode>>
+      -- add your plugins here
+    },
+    -- Configure any other settings here. See the documentation for more details.
+    -- colorscheme that will be used when installing plugins.
+    install = {
+      -- colorscheme = { 'habamax' }
+    },
+    -- automatically check for plugin updates
+    checker = { enabled = true },
+  })
+end
+#+end_src
+*** sub
+:PROPERTIES:
+:header-args:lua: :tangle no
+:END:
+#+name: plug-orgmode
+#+begin_src lua
+{
+  'nvim-orgmode/orgmode',
+  event = 'VeryLazy',
+  ft = { 'org' },
+  config = function()
+    -- Setup orgmode
+    require('orgmode').setup({
+      org_agenda_files = '~/orgfiles/**/*',
+      org_default_notes_file = '~/orgfiles/refile.org',
+    })
+
+    -- NOTE: If you are using nvim-treesitter with ~ensure_installed = "all"~ option
+    -- add ~org~ to ignore_install
+    -- require('nvim-treesitter.configs').setup({
+    --   ensure_installed = 'all',
+    --   ignore_install = { 'org' },
+    -- })
+  end,
+},
+#+end_src
 ** post
 :PROPERTIES:
 :CUSTOM_ID: e9ab948e-c8d6-4f2c-ab8f-d225b27d9114
