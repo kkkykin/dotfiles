@@ -299,11 +299,11 @@ local cmd_rc = {
 local bash_rc = {
   'history -d -1',
   string.format('vi() { realpath -z -- "$@" | xargs -0 %s --server "$NVIM" --remote-tab; }', vim.fn.shellescape(vi_program)),
-  string.format('nvim-server-port-open-p() { curl -sm1 "http://%s" ; [ $? -eq 52 ] ; }', my_neovim_default_server), -- http result faster than telnet
-  string.format('nvim-server() { nvim-server-port-open-p || ( %s --listen %s --headless & ) }', vim.fn.shellescape(vi_program), vim.fn.shellescape(my_neovim_default_server)),
-  string.format('nvim-server-cmd() { nvim-server-port-open-p && %s --server %s --remote-expr "execute(\'V64cmd $*\')" || echo "NeoVim not running." ; }', vim.fn.shellescape(vi_program), vim.fn.shellescape(my_neovim_default_server)),
-  'vt() { local cmd=$(printf "tabe | tc %s | te %s" "$(pwd)" "$*" | base64 -w0) ; nvim-server-cmd "$cmd" ; }',
-  'nvim-server',
+  -- string.format('nvim-server-port-open-p() { curl -sm1 "http://%s" ; [ $? -eq 52 ] ; }', my_neovim_default_server), -- http result faster than telnet
+  -- string.format('nvim-server() { nvim-server-port-open-p || ( %s --listen %s --headless & ) }', vim.fn.shellescape(vi_program), vim.fn.shellescape(my_neovim_default_server)),
+  -- string.format('nvim-server-cmd() { nvim-server-port-open-p && %s --server %s --remote-expr "execute(\'V64cmd $*\')" || echo "NeoVim not running." ; }', vim.fn.shellescape(vi_program), vim.fn.shellescape(my_neovim_default_server)),
+  -- 'vt() { local cmd=$(printf "tabe | tc %s | te %s" "$(pwd)" "$*" | base64 -w0) ; nvim-server-cmd "$cmd" ; }',
+  -- 'nvim-server',
   'print_osc133() { printf "\\033]1337;CurrentDir=$PWD\\033\\\\"; }',
   'PS1="\\e]133;D;\\a\\e]133;A;\\a${PS1}\\e]133;B;\\a"',
 }
@@ -410,21 +410,80 @@ if os.getenv('SSH_TTY') then
 :CUSTOM_ID: cc4bceeb-422b-4b35-8ec7-a8563dc18cec
 :END:
 #+begin_src lua
-table.insert(bash_rc, 'clip() { printf "\\033]52;c;%s\\a" "$(base64 -w0)" > "$SSH_TTY"; }')
-
 local osc52 = require('vim.ui.clipboard.osc52')
+
+local latest_ui_chan = nil
+
+vim.api.nvim_create_autocmd('UIEnter', {
+  group = my_augroup,
+  callback = function(args)
+    local chan = vim.v.event.chan
+    local info = vim.api.nvim_get_chan_info(chan)
+    if info.stream == 'socket' then
+      latest_ui_chan = chan
+    end
+  end,
+})
+
+local function osc52_str(clipboard, contents)
+  return string.format('\027]52;%s;%s\027\\', clipboard, contents)
+end
+
+local function find_attached_pty(pid)
+  while (true) do
+    local path = '/proc/' .. pid ..  '/fd/2'
+    local stat = vim.loop.fs_stat(path)
+    if stat and stat.type == 'char' then
+      return path
+    else
+      pid = vim.api.nvim_get_proc(pid).ppid
+    end
+  end
+end
+
+local function send_osc52(seq)
+  local uis = vim.api.nvim_list_uis()
+  if latest_ui_chan then
+    local nvim_pid = vim.api.nvim_get_chan_info(latest_ui_chan).client.attributes.pid
+    local pty = find_attached_pty(nvim_pid)
+    local file = io.open(pty, 'w')
+    if file then
+      file:write(seq)
+      file:close()
+    end
+  else
+    local ok = pcall(vim.api.nvim_chan_send, 2, seq)
+    if not ok then
+      vim.api.nvim_chan_send(1, seq)
+    end
+  end
+end
+
+local function osc52_copy(reg)
+  local clipboard = reg == '+' and 'c' or 'p'
+  return function(lines)
+    local s = table.concat(lines, '\n')
+    send_osc52(osc52_str(clipboard, vim.base64.encode(s)))
+  end
+end
 
 vim.g.clipboard = {
   name = 'OSC 52',
   copy = {
-    ['+'] = osc52.copy('+'),
-    ['*'] = osc52.copy('*'),
+    ['+'] = osc52_copy('+'),
+    ['*'] = osc52_copy('*'),
   },
   paste = {
     ['+'] = osc52.paste('+'),
     ['*'] = osc52.paste('*'),
   },
 }
+
+vim.api.nvim_create_user_command('OSC52Copy', function(opts)
+  send_osc52(osc52_str('p', opts.args))
+end, { nargs = 1 })
+
+table.insert(bash_rc, string.format('clip() { %s --server "$NVIM" --remote-expr "execute(\'OSC52Copy $(base64 -w0)\')" ; }', vim.fn.shellescape(vi_program)))
 #+end_src
 
 *** browse-url
