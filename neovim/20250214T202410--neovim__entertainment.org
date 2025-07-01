@@ -48,6 +48,26 @@ vim.api.nvim_create_user_command('V64cmd', function(opts)
   local decoded = vim.trim(vim.base64.decode(opts.args))
   vim.cmd(decoded)
 end, { nargs = 1 })
+
+local function get_current_dir()
+  local buf_type = vim.bo.buftype
+  local file_type = vim.bo.filetype
+  local dir = vim.fn.getcwd()
+  if buf_type == 'terminal' then
+    dir = vim.b.terminal_cwd
+  elseif file_type == 'netrw' then
+    dir = vim.b.netrw_curdir
+  elseif buf_type == '' or 'help' then
+    dir = vim.fn.expand("%:p:h")
+  end
+  return dir
+end
+
+vim.keymap.set('n', '<Leader>d', function()
+    local dir = get_current_dir()
+    print(dir)
+    vim.fn.chdir(dir)
+  end, { noremap = true })
 #+end_src
 ** options
 :PROPERTIES:
@@ -58,7 +78,6 @@ vim.opt.tabstop = 2
 vim.opt.shiftwidth = 2
 vim.opt.expandtab = true
 vim.opt.smartindent = true
-vim.opt.autochdir = true
 vim.opt.mouse = ''
 
 vim.opt.shada:append('rterm://')
@@ -297,7 +316,6 @@ vim.api.nvim_create_autocmd('TermRequest', {
       local cwd = seq:match('^]1337;CurrentDir=(.+)')
       if cwd then
         vim.api.nvim_buf_set_var(args.buf, 'terminal_cwd', cwd)
-        vim.fn.chdir(cwd)
       end
     end
   end,
@@ -377,7 +395,7 @@ local function setup_terminal_bash()
         end
         vim.api.nvim_buf_set_var(ev.buf, 'osc7_dir', dir)
         if vim.o.autochdir and buf == ev.buf then
-          vim.cmd.cd(dir)
+          vim.fn.chdir(dir)
         end
       end
     end,
@@ -609,7 +627,7 @@ vim.api.nvim_create_user_command(
     if opts.args ~= '' then
       paths = opts.args
     elseif vim.bo.filetype == 'netrw' then
-      vim.cmd.lcd(vim.b.netrw_curdir)
+      vim.fn.chdir(vim.b.netrw_curdir)
       paths = vim.fn['netrw#Expose']('netrwmarkfilelist_' .. vim.api.nvim_get_current_buf())
       if paths == 'n/a' then
         paths = {vim.fn.expand('<cfile>:p')}
@@ -636,8 +654,6 @@ end
 :CUSTOM_ID: 0c6f9751-5296-4199-879d-dd91d0e9d278
 :END:
 #+begin_src lua
-vim.g.netrw_keepdir = 0
-
 if archive_7z_program then
   vim.g.netrw_decompress = {
     ['.zip'] = archive_7z_program .. ' x -otmp-zip',
@@ -651,11 +667,11 @@ end
 :CUSTOM_ID: 1ad2abfd-1d4a-4651-85c5-859f1f2ba1e6
 :END:
 #+begin_src lua
-local function netrw_buffer_dir()
-  vim.cmd.edit(get_buffer_dir())
+local function netrw_current_dir()
+  vim.cmd.edit(get_current_dir())
 end
 
-vim.keymap.set('n', '<Leader>d', netrw_buffer_dir, { noremap = true })
+vim.keymap.set('n', '<Leader>D', netrw_current_dir, { noremap = true })
 #+end_src
 ** sudo
 :PROPERTIES:
