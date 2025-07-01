@@ -1,0 +1,121 @@
+#+title:      header-editor
+#+date:       [2025-07-01 Tue 19:48]
+#+filetags:   :browser:
+#+identifier: 20250701T194830
+
+* tangle
+#+begin_src elisp
+(zr-org-babel-json-format "config")
+(let ((coding-system-for-write 'utf-8))
+  (org-babel-tangle))
+#+end_src
+
+* config
+:PROPERTIES:
+:CUSTOM_ID: 340afd0b-545f-40e8-8079-0219ecd1df4a
+:END:
+#+name: config
+#+begin_src json :comments no :tangle (zr-org-by-tangle-dir "header-editor.json") :mkdirp t
+{
+  "receiveBody": [],
+  "receiveHeader": [],
+  "request": [
+    {
+      "action": "redirect",
+      "enable": true,
+      "exclude": "",
+      "group": "Ungrouped",
+      "isFunction": false,
+      "matchType": "regexp",
+      "name": "uc drive to fast",
+      "pattern": "^(https://)drive(\\.uc\\.cn/s/.+)",
+      "ruleType": "redirect",
+      "to": "$1fast$2"
+    },
+    {
+      "action": "redirect",
+      "enable": true,
+      "exclude": "",
+      "group": "Ungrouped",
+      "isFunction": false,
+      "matchType": "regexp",
+      "name": "kemono",
+      "pattern": "^(https?://kemono\\.)party(/.+)",
+      "ruleType": "redirect",
+      "to": "$1su$2"
+    },
+    {
+      "code": "<<expand-js(js=moezone-download-redirect[])>>",
+      "enable": true,
+      "exclude": "",
+      "group": "Ungrouped",
+      "isFunction": true,
+      "matchType": "domain",
+      "name": "moezone-download-redirect",
+      "pattern": "www.moezone.dev",
+      "ruleType": "redirect"
+    }
+  ],
+  "sendHeader": [
+    {
+      "action": {
+        "name": "referer",
+        "value": "https://alhs.xyz/"
+      },
+      "enable": true,
+      "exclude": "",
+      "group": "Ungrouped",
+      "isFunction": false,
+      "matchType": "domain",
+      "name": "alhs",
+      "pattern": "alhs.xyz",
+      "ruleType": "modifySendHeader"
+    },
+    {
+      "action": {
+        "name": "accept-language",
+        "value": "zh-CN;q=0.9,zh;q=0.8"
+      },
+      "enable": true,
+      "exclude": "",
+      "group": "Ungrouped",
+      "isFunction": false,
+      "matchType": "domain",
+      "name": "xyg688",
+      "pattern": "www.xyg688.com",
+      "ruleType": "modifySendHeader"
+    }
+  ]
+}
+#+end_src
+* functions
+#+name: expand-js
+#+begin_src elisp :var js=moezone-download-redirect[]
+(substring (json-serialize js) 1 -1)
+#+end_src
+
+** moezone download redirect
+#+name: moezone-download-redirect
+#+begin_src js
+if(detail.type !== 'main_frame'){
+  return val;
+}
+
+const urlObj = new URL(val);
+const encodedPath = urlObj.pathname;
+
+const decodedPath = decodeURIComponent(encodedPath);
+
+const pattern = /链接:\s*(https?:\/\/pan\.baidu\.com\/s\/\S+)\s*提取码:\s*(\w+)/;
+const match = decodedPath.match(pattern);
+
+let url = val;
+
+if (match) {
+  const baiduUrl = match[1].replace('https://', 'https:/');
+  const pwd = match[2];
+  url = `${baiduUrl}?pwd=${pwd}`;
+}
+
+return url;
+#+end_src
