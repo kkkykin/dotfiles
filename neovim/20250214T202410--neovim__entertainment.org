@@ -60,6 +60,20 @@ vim.opt.expandtab = true
 vim.opt.smartindent = true
 vim.opt.autochdir = true
 vim.opt.mouse = ''
+
+vim.opt.shada:append('rterm://')
+
+local null_file = '/dev/null'
+
+if is_windows then
+  null_file = 'nul'
+else
+  vim.opt.shada:append('r/tmp/')
+end
+
+if vim.fn.executable('ug') == 1 then
+  vim.opt.grepprg = 'ug -HIn $* ' .. null_file
+end
 #+end_src
 ** theme
 :PROPERTIES:
@@ -68,7 +82,20 @@ vim.opt.mouse = ''
 #+begin_src lua
 vim.cmd('colorscheme vim')
 #+end_src
-
+** commandline
+:PROPERTIES:
+:CUSTOM_ID: 6cd4993d-8dce-4506-b156-cd76606141e0
+:END:
+#+begin_src lua
+vim.keymap.set('c', '<C-a>', '<Home>', { noremap = true })
+vim.keymap.set('c', '<C-b>', '<Left>', { noremap = true })
+vim.keymap.set('c', '<C-f>', '<Right>', { noremap = true })
+vim.keymap.set('c', '<C-v>', '<C-a>', { noremap = true })
+vim.keymap.set('c', '<Esc>b', '<C-Left>', { noremap = true })
+vim.keymap.set('c', '<Esc>f', '<C-Right>', { noremap = true })
+vim.keymap.set('c', '<Esc>p', '<Up>', { noremap = true })
+vim.keymap.set('c', '<Esc>n', '<Down>', { noremap = true })
+#+end_src
 ** emacsclient
 :PROPERTIES:
 :CUSTOM_ID: e57de01b-02b3-444b-a500-14ffbc921ac7
