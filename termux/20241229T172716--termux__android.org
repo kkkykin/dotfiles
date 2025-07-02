@@ -81,6 +81,15 @@ export EMACS_SOCKET_NAME
 #+end_src
 
 
+
+
+** wlan-ip
+:PROPERTIES:
+:CUSTOM_ID: f44b656d-5d54-46f8-be45-ffb559d35333
+:END:
+#+begin_src sh :tangle (zr-org-by-tangle-dir "zr-wlan-ip")
+ifconfig 2>/dev/null | awk '/^wlan0: /{flag=1} flag && /inet /{print $2; exit}'
+#+end_src
 ** wifi-manage
 :PROPERTIES:
 :CUSTOM_ID: 34639262-73f0-4ab5-bfda-f1567abe017f
@@ -549,6 +558,77 @@ log "${RED}达到最大重试次数 (${max_retries})，命令最终失败${NC}"
 exit $last_exit_code
 #+end_src
 
+
+
+** daemons
+:PROPERTIES:
+:header-args:sh+: :var NOTIFICATION_GROUP="daemon"
+:END:
+*** sshd-daemon
+:PROPERTIES:
+:CUSTOM_ID: 2efcfb38-22ec-4212-ac91-e0e9be2cd724
+:END:
+#+name: sshd-daemon
+#+begin_src sh :tangle (zr-org-by-tangle-dir "zr-sshd-daemon") :var SSHD_NOTIFICATION_ID=select-notification-id(name="sshd")
+sshd-live-p(){
+  local pid_file="$PREFIX/var/run/sshd.pid"
+  if [ -f "$pid_file" ]; then
+    local pid=$(cat "$pid_file")
+    if kill -0 "$pid" 2>/dev/null; then
+      local proc_name="$(ps -p "$pid" -o comm=)"
+      if [ "$proc_name" = 'sshd' ]; then
+        return 0
+      fi
+    fi
+  fi
+  return 1
+}
+
+start-sshd(){
+  stop-sshd
+  sshd
+  local ip="$(zr-wlan-ip)"
+  local script_path=$(realpath "$0")
+  local act="$script_path stop" 
+  termux-notification \
+    --ongoing -c "sshd: $ip" -t "sshd" \
+    --group "$NOTIFICATION_GROUP" \
+    -i "$SSHD_NOTIFICATION_ID" \
+    --action "$act" --on-delete "$act"
+  termux-toast "IP: $ip"
+}
+
+stop-sshd(){
+  pkill sshd
+  termux-notification-remove "$SSHD_NOTIFICATION_ID"
+}
+
+toggle-sshd(){
+  if sshd-live-p; then
+    stop-sshd
+  else
+    start-sshd
+  fi
+}
+
+case "$1" in
+  start)
+    start-sshd
+    ;;
+  stop)
+    stop-sshd
+    ;;
+  stat)
+    sshd-live-p
+    ;;
+  toggle)
+    toggle-sshd
+    ;;
+  *)
+    echo "Wrong argument."
+    ;;
+esac
+#+end_src
 * jobs
 :PROPERTIES:
 :header-args:sh: :shebang "#!/data/data/com.termux/files/usr/bin/env bash" :mkdirp t
@@ -562,3 +642,17 @@ exit $last_exit_code
 #+begin_src sh :tangle (zr-org-by-tangle-dir "remove-metered-wifi.sh")
 zr-try-cmd -q -- zr-wifi-manage remove "$wifi_name"
 #+end_src
+
+* ids
+#+name: notification-tbl
+| name | notification-id |
+|------+-----------------|
+| sshd | sshd-daemon     |
+
+#+name: select-id
+#+begin_src elisp :var name="sshd" tbl=notification-tbl[]
+(nth 1 (assoc name tbl))
+#+end_src
+
+#+name: select-notification-id
+#+call: select-id[](tbl=notification-tbl[])[]
