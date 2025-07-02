@@ -679,7 +679,12 @@ GroupAdd 'NoHotGestures', 'ahk_group games'
 #HotIf not WinActive('ahk_group NoHotGestures')
 $RButton::{
   MouseGetPos ,, &mWin
-  if mWin != WinGetID('A')
+  try {
+    activeID := WinGetID("A")
+  } catch TargetError {
+    activeID := 0
+  }
+  if (activeID != 0 and mWin != activeID)
     WinActivate(mWin)
 
   hgs.Start() ; Start recording
