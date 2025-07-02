@@ -379,3 +379,186 @@ else
   run-feedme
 fi
 #+end_src
+
+** try-cmd
+:PROPERTIES:
+:CUSTOM_ID: da264674-2058-4b93-b4b3-7c98aab763c4
+:END:
+#+begin_src sh :tangle (zr-org-by-tangle-dir "zr-try-cmd")
+# 全局配置
+VERSION="1.0.0"
+DEFAULT_TIMEOUT=10
+DEFAULT_MAX_RETRIES=3
+DEFAULT_BACKOFF_FACTOR=1
+MAX_WAIT_TIME=300  # 最大等待时间(秒)
+
+# 颜色定义
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# 显示帮助信息
+show_help() {
+  cat <<EOF
+命令重试脚本 v${VERSION}
+
+用法: ${0##*/} [选项] -- 命令 [参数...]
+选项:
+  -t, --timeout SECONDS     单次超时时间（默认: ${DEFAULT_TIMEOUT}s）
+  -r, --max-retries NUM     最大重试次数（默认: ${DEFAULT_MAX_RETRIES}）
+  -b, --backoff FACTOR      退避因子（默认: ${DEFAULT_BACKOFF_FACTOR}，0表示禁用）
+  -q, --quiet              安静模式，减少输出
+  -v, --version            显示版本信息
+  -h, --help               显示此帮助信息
+
+退避算法: 等待时间 = FACTOR * (2^(重试次数-1))，最大 ${MAX_WAIT_TIME} 秒
+
+示例:
+  ${0##*/} -t 5 -r 2 -- curl -s http://example.com
+  ${0##*/} -b 2 -- ./unstable_script.sh
+EOF
+exit 0
+}
+
+# 初始化变量
+timeout=$DEFAULT_TIMEOUT
+max_retries=$DEFAULT_MAX_RETRIES
+backoff_factor=$DEFAULT_BACKOFF_FACTOR
+quiet_mode=false
+command=()
+
+# 解析命令行参数
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -t|--timeout)
+      timeout=$2
+      shift 2
+      ;;
+    -r|--max-retries)
+      max_retries=$2
+      shift 2
+      ;;
+    -b|--backoff)
+      backoff_factor=$2
+      shift 2
+      ;;
+    -q|--quiet)
+      quiet_mode=true
+      shift
+      ;;
+    -v|--version)
+      echo "v${VERSION}"
+      exit 0
+      ;;
+    -h|--help)
+      show_help
+      ;;
+    --)
+      shift
+      command=("$@")
+      break
+      ;;
+    *)
+      echo -e "${RED}错误: 未知参数 '$1'${NC}" >&2
+      show_help
+      exit 1
+      ;;
+  esac
+done
+
+# 参数验证函数
+validate_number() {
+  local value=$1 name=$2 min=$3
+  if ! [[ "$value" =~ ^[0-9]+$ ]] || [[ $value -lt $min ]]; then
+    echo -e "${RED}错误: ${name}必须是不小于${min}的整数${NC}" >&2
+    exit 1
+  fi
+}
+
+# 验证参数
+validate_number "$timeout" "超时时间" 1
+validate_number "$max_retries" "最大重试次数" 0
+validate_number "$backoff_factor" "退避因子" 0
+
+# 检查命令是否为空
+if [[ ${#command[@]} -eq 0 ]]; then
+  echo -e "${RED}错误: 必须指定要执行的命令${NC}" >&2
+  show_help
+  exit 1
+fi
+
+# 日志函数
+log() {
+  $quiet_mode && return
+  echo -e "[$(date '+%Y-%m-%d %T')] $*"
+}
+
+# 执行命令函数
+try_command() {
+  log "${BLUE}执行: ${command[*]} (超时: ${timeout}s)${NC}"
+  timeout "$timeout" "${command[@]}"
+}
+
+# 计算等待时间
+calculate_wait_time() {
+  local attempt=$1
+  if [[ $backoff_factor -eq 0 ]]; then
+    echo 0
+    return
+  fi
+
+  local wait_time=$(( backoff_factor * (1 << (attempt-1)) ))
+  (( wait_time > MAX_WAIT_TIME )) && wait_time=$MAX_WAIT_TIME
+  echo $wait_time
+}
+
+# 主执行流程
+retry_count=0
+last_exit_code=0
+
+while [[ $retry_count -le $max_retries ]]; do
+  if [[ $retry_count -gt 0 ]]; then
+    wait_time=$(calculate_wait_time $retry_count)
+    if [[ $wait_time -gt 0 ]]; then
+      log "${YELLOW}等待 ${wait_time}s 后重试...${NC}"
+      sleep $wait_time
+    fi
+  fi
+
+  if try_command; then
+    log "${GREEN}命令执行成功${NC}"
+    exit 0
+  else
+    last_exit_code=$?
+
+    if [[ $last_exit_code -eq 124 ]]; then
+      ((retry_count++))
+      if [[ $retry_count -le $max_retries ]]; then
+        log "${YELLOW}命令超时，将进行第 ${retry_count}/${max_retries} 次重试${NC}"
+      fi
+    else
+      log "${RED}命令执行失败，退出码: ${last_exit_code}${NC}"
+      break
+    fi
+  fi
+done
+
+log "${RED}达到最大重试次数 (${max_retries})，命令最终失败${NC}"
+exit $last_exit_code
+#+end_src
+
+* jobs
+:PROPERTIES:
+:header-args:sh: :shebang "#!/data/data/com.termux/files/usr/bin/env bash" :mkdirp t
+:tangle-dir: _tangle/jobs
+:END:
+
+** remove metered wifi
+:PROPERTIES:
+:CUSTOM_ID: 30a0d69e-1e6b-4ddb-a2a0-8bf5cea4cb20
+:END:
+#+begin_src sh :tangle (zr-org-by-tangle-dir "remove-metered-wifi.sh")
+zr-try-cmd -q -- zr-wifi-manage remove "$wifi_name"
+#+end_src
