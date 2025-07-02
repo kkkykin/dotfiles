@@ -830,6 +830,22 @@ end
   end,
 },
 #+end_src
+** lsp
+:PROPERTIES:
+:CUSTOM_ID: b107dcff-8a0e-48c8-afeb-42dd8e7a467a
+:END:
+#+begin_src lua
+vim.lsp.config = {
+  bashls = {
+    cmd = { 'bash-language-server', 'start' },
+    filetypes = { 'bash', 'sh' }
+  },
+}
+
+if vim.fn.executable('bash-language-server') == 1 then
+  vim.lsp.enable('bashls')
+end
+#+end_src
 ** post
 :PROPERTIES:
 :CUSTOM_ID: e9ab948e-c8d6-4f2c-ab8f-d225b27d9114
