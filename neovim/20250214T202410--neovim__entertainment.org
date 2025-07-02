@@ -67,7 +67,7 @@ vim.keymap.set('n', '<Leader>d', function()
     local dir = get_current_dir()
     print(dir)
     vim.fn.chdir(dir)
-  end, { noremap = true })
+  end, {  })
 #+end_src
 ** options
 :PROPERTIES:
@@ -106,14 +106,14 @@ vim.cmd('colorscheme vim')
 :CUSTOM_ID: 6cd4993d-8dce-4506-b156-cd76606141e0
 :END:
 #+begin_src lua
-vim.keymap.set('c', '<C-a>', '<Home>', { noremap = true })
-vim.keymap.set('c', '<C-b>', '<Left>', { noremap = true })
-vim.keymap.set('c', '<C-f>', '<Right>', { noremap = true })
-vim.keymap.set('c', '<C-v>', '<C-a>', { noremap = true })
-vim.keymap.set('c', '<Esc>b', '<C-Left>', { noremap = true })
-vim.keymap.set('c', '<Esc>f', '<C-Right>', { noremap = true })
-vim.keymap.set('c', '<Esc>p', '<Up>', { noremap = true })
-vim.keymap.set('c', '<Esc>n', '<Down>', { noremap = true })
+vim.keymap.set('c', '<C-a>', '<Home>', {  })
+vim.keymap.set('c', '<C-b>', '<Left>', {  })
+vim.keymap.set('c', '<C-f>', '<Right>', {  })
+vim.keymap.set('c', '<C-v>', '<C-a>', {  })
+vim.keymap.set('c', '<Esc>b', '<C-Left>', {  })
+vim.keymap.set('c', '<Esc>f', '<C-Right>', {  })
+vim.keymap.set('c', '<Esc>p', '<Up>', {  })
+vim.keymap.set('c', '<Esc>n', '<Down>', {  })
 #+end_src
 ** emacsclient
 :PROPERTIES:
@@ -128,7 +128,7 @@ local function open_with_emacsclient()
   end
 end
 
-vim.keymap.set('n', '<Leader>e', open_with_emacsclient, { noremap = true, silent = true })
+vim.keymap.set('n', '<Leader>e', open_with_emacsclient, { silent = true })
 #+end_src
 
 *** eval
@@ -235,7 +235,7 @@ vim.keymap.set('t', '<C-w>n', '<C-\\><C-n>')
 vim.keymap.set('t', '<C-w><C-\\>', '<C-\\>')
 vim.keymap.set('t', '<C-w>"', function()
   return '<C-\\><C-N>"' .. vim.fn.nr2char(vim.fn.getchar()) .. 'pi'
-end, { expr = true, noremap = true })
+end, { expr = true,  })
 vim.keymap.set('t', '<C-w>c', '<C-c>')
 vim.keymap.set('t', '<C-w>gt', '<C-\\><C-o>gt')
 vim.keymap.set('t', '<C-w>gT', '<C-\\><C-o>gT')
@@ -383,7 +383,7 @@ local function setup_terminal_bash()
   end
 
   local buf = vim.api.nvim_get_current_buf()
-  vim.keymap.set('t', '<C-w>n', '<C-\\><C-n>', { noremap = true, buffer = buf })
+  vim.keymap.set('t', '<C-w>n', '<C-\\><C-n>', { buffer = buf })
   vim.api.nvim_create_autocmd({ 'TermRequest' }, {
     group = my_augroup,
     desc = 'Handles OSC 7 dir change requests',
@@ -420,7 +420,7 @@ local function setup_terminal(args)
       for key, _ in pairs(map) do
         vim.keymap.set('t', key, function()
                                    term_map_key(key)
-                                 end, { noremap = true, buffer = buf })
+                                 end, { buffer = buf })
       end
     end
     if cmd == 'cmd.exe' then
@@ -545,7 +545,7 @@ vim.keymap.set({ 'n' }, 'gx', function()
       vim.notify(err, vim.log.levels.ERROR)
     end
   end
-end, { noremap = true })
+end, {  })
 #+end_src
 
 *** browse-media
@@ -671,7 +671,7 @@ local function netrw_current_dir()
   vim.cmd.edit(get_current_dir())
 end
 
-vim.keymap.set('n', '<Leader>D', netrw_current_dir, { noremap = true })
+vim.keymap.set('n', '<Leader>D', netrw_current_dir, {  })
 #+end_src
 ** sudo
 :PROPERTIES:
