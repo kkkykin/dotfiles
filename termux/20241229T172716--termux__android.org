@@ -2,6 +2,7 @@
 #+date:       [2024-12-29 Sun 17:27]
 #+filetags:   :android:
 #+identifier: 20241229T172716
+#+property:   header-args:sh :var zr_cli="zr-cli"
 
 * tangle
 #+begin_src elisp
@@ -63,7 +64,7 @@ extra-keys = [[ESC, CTRL, ALT, LEFT, DOWN, UP, RIGHT, KEYBOARD]]
 
 * cli
 :PROPERTIES:
-:header-args:sh: :shebang "#!/data/data/com.termux/files/usr/bin/env bash" :mkdirp t
+:header-args:sh+: :shebang "#!/data/data/com.termux/files/usr/bin/env bash" :mkdirp t
 :tangle-dir: _tangle/bin
 :END:
 
@@ -159,7 +160,7 @@ exec "$script_path" "$@"
 :PROPERTIES:
 :CUSTOM_ID: f44b656d-5d54-46f8-be45-ffb559d35333
 :END:
-#+begin_src sh :tangle (zr-org-by-tangle-dir "zr-wlan-ip")
+#+begin_src sh :tangle (zr-org-by-tangle-dir "wlan-ip")
 ifconfig 2>/dev/null | awk '/^wlan0: /{flag=1} flag && /inet /{print $2; exit}'
 #+end_src
 ** wifi-manage
@@ -168,7 +169,7 @@ ifconfig 2>/dev/null | awk '/^wlan0: /{flag=1} flag && /inet /{print $2; exit}'
 :END:
 #+header: :var jobs_running_dir=(expand-file-name "home/running_jobs" zr-termux-root-directory)
 #+header: :var data_source_dir=(expand-file-name "_tangle/data")
-#+begin_src sh :tangle (zr-org-by-tangle-dir "zr-wifi-manage")
+#+begin_src sh :tangle (zr-org-by-tangle-dir "wifi-manage")
 wifi_job_id=999
 wifi_data_file="$data_source_dir/ssid.json"
 
@@ -203,7 +204,7 @@ function try-connect-wifi() {
     DISCONNECTED)
       local script_name="remove-metered-wifi.sh"
       local job_script="$jobs_running_dir/$script_name"
-      zr-job-script-generate "wifi_name=$1" "$script_name" > "$job_script"
+      "$zr_cli" job-script-generate "wifi_name=$1" "$script_name" > "$job_script"
       chmod u+x "$job_script"
       termux-job-scheduler --job-id "$wifi_job_id" --period-ms "$((1000 * 60 * 15))" --battery-not-low 0 -s "$job_script"
       rish -c "cmd wifi add-suggestion \"$1\" wpa2 ${@:2}"
@@ -237,7 +238,7 @@ esac
 :CUSTOM_ID: ee0414ff-ad03-462c-bec9-5136f8b8a093
 :END:
 #+header: :var jobs_source_dir=(expand-file-name "_tangle/jobs")
-#+begin_src sh :tangle (zr-org-by-tangle-dir "zr-job-script-generate")
+#+begin_src sh :tangle (zr-org-by-tangle-dir "job-script-generate")
 if [ $# -lt 1 ]; then
   echo "Usage: $0 [key=value ...] [-- command...] filename" >&2
   exit 1
@@ -315,12 +316,12 @@ vpn-toggle () {
 
 case "$1" in
     true)
-        if ! vpn-enable-p; then
+        if ! "$zr_cli" vpn-enable-p; then
             vpn-toggle
         fi
         ;;
     false)
-        if vpn-enable-p; then
+        if "$zr_cli" vpn-enable-p; then
             vpn-toggle
         fi
         ;;
@@ -335,7 +336,7 @@ esac
 :PROPERTIES:
 :CUSTOM_ID: 2fa215c1-0152-4103-9817-f000fd990a68
 :END:
-#+begin_src sh :tangle (zr-org-by-tangle-dir "zr-tailscale-enable")
+#+begin_src sh :tangle (zr-org-by-tangle-dir "tailscale-enable")
 function tailscale-broadcast() {
   termux-am broadcast -n com.tailscale.ipn/.IPNReceiver -a com.tailscale.ipn.$1
 }
@@ -416,11 +417,11 @@ esac
 :END:
 #+begin_src sh :tangle (zr-org-by-tangle-dir "wifi-mobile-switch")
 if termux-wifi-connectioninfo | grep -q '^  "supplicant_state": "UNINITIALIZED"$'; then
-    wifi-enable true
-    mobile-enable false
+    "$zr_cli" wifi-enable true
+    "$zr_cli" mobile-enable false
 else
-    mobile-enable true
-    wifi-enable false
+    "$zr_cli" mobile-enable true
+    "$zr_cli" wifi-enable false
 fi
 #+end_src
 
@@ -437,7 +438,7 @@ fi
 :CUSTOM_ID: bb284853-b6aa-4e30-abe0-f0f187924df3
 :END:
 #+begin_src sh :tangle (zr-org-by-tangle-dir "kill-latest-app")
-app=$(echo "$(recent-apps)" | head -1)
+app=$("$zr_cli" recent-apps | head -1)
 
 termux-toast "Killing ${app}"
 
@@ -453,10 +454,10 @@ function run-feedme() {
   termux-am start com.seazon.feedme
 }
 
-if zr-tailscale-enable stat; then
+if "$zr_cli" tailscale-enable stat; then
   run-feedme
 else
-  zr-tailscale-enable true
+  "$zr_cli" tailscale-enable true
   run-feedme
 fi
 #+end_src
@@ -465,7 +466,7 @@ fi
 :PROPERTIES:
 :CUSTOM_ID: da264674-2058-4b93-b4b3-7c98aab763c4
 :END:
-#+begin_src sh :tangle (zr-org-by-tangle-dir "zr-try-cmd")
+#+begin_src sh :tangle (zr-org-by-tangle-dir "try-cmd")
 # 全局配置
 VERSION="1.0.0"
 DEFAULT_TIMEOUT=10
@@ -637,7 +638,7 @@ exit $last_exit_code
 :PROPERTIES:
 :CUSTOM_ID: 4d1338f0-9c67-4023-9d35-549bde1756c7
 :END:
-#+begin_src sh :tangle (zr-org-by-tangle-dir "zr-stay-on-while-plugged-in")
+#+begin_src sh :tangle (zr-org-by-tangle-dir "stay-on-while-plugged-in")
 case "$1" in
   true)
     rish -c 'settings put global stay_on_while_plugged_in 3'
@@ -662,7 +663,7 @@ esac
 :CUSTOM_ID: 2efcfb38-22ec-4212-ac91-e0e9be2cd724
 :END:
 #+name: sshd-daemon
-#+begin_src sh :tangle (zr-org-by-tangle-dir "zr-sshd-daemon") :var SSHD_NOTIFICATION_ID=select-notification-id(name="sshd")
+#+begin_src sh :tangle (zr-org-by-tangle-dir "sshd-daemon") :var SSHD_NOTIFICATION_ID=select-notification-id(name="sshd")
 sshd-live-p(){
   local pid_file="$PREFIX/var/run/sshd.pid"
   if [ -f "$pid_file" ]; then
@@ -680,7 +681,7 @@ sshd-live-p(){
 start-sshd(){
   stop-sshd
   sshd
-  local ip="$(zr-wlan-ip)"
+  local ip="$("$zr_cli" wlan-ip)"
   local script_path=$(realpath "$0")
   local act="$script_path stop" 
   termux-notification \
@@ -689,11 +690,11 @@ start-sshd(){
     -i "$SSHD_NOTIFICATION_ID" \
     --action "$act" --on-delete "$act"
   termux-toast "IP: $ip"
-  zr-stay-on-while-plugged-in true
+  "$zr_cli" stay-on-while-plugged-in true
 }
 
 stop-sshd(){
-  zr-stay-on-while-plugged-in false
+  "$zr_cli" stay-on-while-plugged-in false
   pkill sshd
   termux-notification-remove "$SSHD_NOTIFICATION_ID"
 }
@@ -735,7 +736,7 @@ esac
 :CUSTOM_ID: 30a0d69e-1e6b-4ddb-a2a0-8bf5cea4cb20
 :END:
 #+begin_src sh :tangle (zr-org-by-tangle-dir "remove-metered-wifi.sh")
-zr-try-cmd -q -- zr-wifi-manage remove "$wifi_name"
+"$zr_cli" try-cmd -q -- "$zr_cli" wifi-manage remove "$wifi_name"
 #+end_src
 
 * ids
