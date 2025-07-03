@@ -83,6 +83,15 @@ export EMACS_SOCKET_NAME
 
 
 
+
+** ctags
+:PROPERTIES:
+:CUSTOM_ID: 22ddba1a-4831-4ef1-9cb0-82d5fdecbeae
+:END:
+#+begin_src sh :tangle (zr-org-by-tangle-dir "ctags") :var etags=(expand-file-name etags-program-name "~/../lib")
+exec "$etags" --ctags "$@"
+#+end_src
+
 ** wlan-ip
 :PROPERTIES:
 :CUSTOM_ID: f44b656d-5d54-46f8-be45-ffb559d35333
