@@ -118,12 +118,7 @@ show_help() {
   echo "--------------------------------"
   
   # 列出目录中所有可执行文件，排除目录和不可执行文件
-  find "$SCRIPT_DIR" -maxdepth 1 -type f -executable -printf "%f\n" | sort | while read -r script; do
-    # 获取脚本的第一行注释作为描述（如果有）
-    description=$(head -n 1 "${SCRIPT_DIR}/${script}" | grep -E '^# ?' | sed 's/^# //')
-    printf "%-20s %s\n" "$script" "$description"
-  done
-  
+  find "$SCRIPT_DIR" -maxdepth 1 -type f -executable -printf "%f\n" | sort
   exit 0
 }
 
