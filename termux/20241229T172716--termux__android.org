@@ -560,6 +560,27 @@ exit $last_exit_code
 
 
 
+
+** stay-on-while-plugged-in
+:PROPERTIES:
+:CUSTOM_ID: 4d1338f0-9c67-4023-9d35-549bde1756c7
+:END:
+#+begin_src sh :tangle (zr-org-by-tangle-dir "zr-stay-on-while-plugged-in")
+case "$1" in
+  true)
+    rish -c 'settings put global stay_on_while_plugged_in 3'
+    ;;
+  false)
+    rish -c 'settings put global stay_on_while_plugged_in 0'
+    ;;
+  stat)
+    rish -c 'settings get global stay_on_while_plugged_in'
+    ;;
+  *)
+    echo "Wrong argument."
+    ;;
+esac
+#+end_src
 ** daemons
 :PROPERTIES:
 :header-args:sh+: :var NOTIFICATION_GROUP="daemon"
@@ -596,9 +617,11 @@ start-sshd(){
     -i "$SSHD_NOTIFICATION_ID" \
     --action "$act" --on-delete "$act"
   termux-toast "IP: $ip"
+  zr-stay-on-while-plugged-in true
 }
 
 stop-sshd(){
+  zr-stay-on-while-plugged-in false
   pkill sshd
   termux-notification-remove "$SSHD_NOTIFICATION_ID"
 }
