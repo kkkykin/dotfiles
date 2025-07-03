@@ -5,18 +5,9 @@
 
 * tangle
 #+begin_src elisp
-(let* ((js (org-babel-tangle nil nil "^js$"))
-       (sh (org-babel-tangle nil nil "^sh$"))
-       (base-dir "/storage/emulated/0/Android/obb/com.fooview.android.fooview")
-       (pub-dir "/storage/emulated/0/fooview")
-       (cmd (list "mkdir" "-p" base-dir ";"))
-       mv-dir
-       (shell-file-name (expand-file-name "usr/bin/rish" zr-termux-root-directory)))
-  (when js (push (expand-file-name "js" pub-dir) mv-dir))
-  (when sh (push (expand-file-name "sh" pub-dir) mv-dir))
-  (when mv-dir (setq cmd `(,@cmd "mv" "-f" ,@mv-dir ,base-dir)))
-  (start-process-shell-command
-   "Deploy fv scripts" nil (combine-and-quote-strings cmd)))
+(org-babel-tangle nil nil "^js$")
+(org-babel-tangle nil nil "^sh$")
+(zr-android-fooview-run "tangle-install")
 #+end_src
 
 * js
