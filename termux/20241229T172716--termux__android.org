@@ -16,9 +16,11 @@
   (plstore-close zr-local-pls))
 
 (when (eq system-type 'android)
-  (dolist (bin (directory-files "_tangle/bin" t "^[^.]" t))
+  (dolist (bin '("ctags"
+                 "emacsclient"
+                 "zr-cli"))
     (make-symbolic-link
-     bin
+     (expand-file-name bin "_tangle/bin")
      (file-name-concat zr-termux-root-directory
                        "usr/bin"
                        (file-name-nondirectory bin))
@@ -99,6 +101,34 @@ export EMACS_SOCKET_NAME
 :END:
 #+begin_src sh :tangle (zr-org-by-tangle-dir "ctags") :var etags=(expand-file-name etags-program-name "~/../lib")
 exec "$etags" --ctags "$@"
+#+end_src
+
+** zr-cli
+:PROPERTIES:
+:CUSTOM_ID: cd695924-23b2-4407-886a-6a8c96138465
+:END:
+#+begin_src sh :tangle (zr-org-by-tangle-dir "zr-cli") :var SCRIPT_DIR=(expand-file-name "_tangle/bin")
+if [ $# -eq 0 ]; then
+  echo "Usage: $0 <script-name> [args...]"
+  exit 1
+fi
+
+script_name="$1"
+shift
+
+script_path="${SCRIPT_DIR}/${script_name}"
+
+if [ ! -f "$script_path" ]; then
+  echo "Error: Script '$script_name' not found in $SCRIPT_DIR"
+  exit 2
+fi
+
+if [ ! -x "$script_path" ]; then
+  echo "Error: Script '$script_name' is not executable"
+  exit 3
+fi
+
+exec "$script_path" "$@"
 #+end_src
 
 ** wlan-ip
