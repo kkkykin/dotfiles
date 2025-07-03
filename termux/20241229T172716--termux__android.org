@@ -116,20 +116,20 @@ ifconfig 2>/dev/null | awk '/^wlan0: /{flag=1} flag && /inet /{print $2; exit}'
 #+header: :var data_source_dir=(expand-file-name "_tangle/data")
 #+begin_src sh :tangle (zr-org-by-tangle-dir "zr-wifi-manage")
 wifi_job_id=999
-wifi_data_file="$data_source_dir/wifi.json"
+wifi_data_file="$data_source_dir/ssid.json"
 
 function get-ssid-location() {
   local cur_ssid=$(termux-wifi-connectioninfo | jq -r .ssid)
   if [ "$cur_ssid" = '<unknown ssid>' ]; then
     return 1
   else
-    local exp=".ssid[\"$cur_ssid\"].location"
+    local exp=".[\"$cur_ssid\"].location"
     jq -er "$exp" "$wifi_data_file"
   fi
 }
 
 function near_known_wifi_p() {
-  grep -Fxf <(termux-wifi-scaninfo | jq -r '.[].ssid') <(jq -r '.ssid | keys[]' "$wifi_data_file")
+  grep -Fxf <(termux-wifi-scaninfo | jq -r '.[].ssid') <(jq -r 'keys[]' "$wifi_data_file")
 }
 
 function try-remove-wifi() {
