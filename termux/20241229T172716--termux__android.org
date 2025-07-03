@@ -108,8 +108,31 @@ exec "$etags" --ctags "$@"
 :CUSTOM_ID: cd695924-23b2-4407-886a-6a8c96138465
 :END:
 #+begin_src sh :tangle (zr-org-by-tangle-dir "zr-cli") :var SCRIPT_DIR=(expand-file-name "_tangle/bin")
-if [ $# -eq 0 ]; then
+# 帮助函数：列出所有可用脚本
+show_help() {
   echo "Usage: $0 <script-name> [args...]"
+  echo "       $0 --help"
+  echo ""
+  echo "Available scripts in $SCRIPT_DIR:"
+  echo "--------------------------------"
+  
+  # 列出目录中所有可执行文件，排除目录和不可执行文件
+  find "$SCRIPT_DIR" -maxdepth 1 -type f -executable -printf "%f\n" | sort | while read -r script; do
+    # 获取脚本的第一行注释作为描述（如果有）
+    description=$(head -n 1 "${SCRIPT_DIR}/${script}" | grep -E '^# ?' | sed 's/^# //')
+    printf "%-20s %s\n" "$script" "$description"
+  done
+  
+  exit 0
+}
+
+if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
+  show_help
+fi
+
+# 检查是否提供了至少一个参数
+if [ $# -eq 0 ]; then
+  show_help
   exit 1
 fi
 
@@ -119,12 +142,13 @@ shift
 script_path="${SCRIPT_DIR}/${script_name}"
 
 if [ ! -f "$script_path" ]; then
-  echo "Error: Script '$script_name' not found in $SCRIPT_DIR"
+  echo "Error: Script '$script_name' not found in $SCRIPT_DIR" >&2
+  echo "Use '$0 --help' to list available scripts" >&2
   exit 2
 fi
 
 if [ ! -x "$script_path" ]; then
-  echo "Error: Script '$script_name' is not executable"
+  echo "Error: Script '$script_name' is not executable" >&2
   exit 3
 fi
 
