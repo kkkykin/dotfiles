@@ -5,19 +5,28 @@
 
 * tangle
 #+begin_src elisp
-(org-babel-tangle)
+(let ((zr-local-pls (or zr-local-pls (plstore-open "termux.pls")))
+      (data-dir (expand-file-name "_tangle/data")))
+  (write-region
+   (json-serialize
+    (plist-get (cdr (plstore-get zr-local-pls "ssid")) :data))
+   nil
+   (expand-file-name "ssid.json" data-dir))
+  (org-babel-tangle)
+  (plstore-close zr-local-pls))
 
-(dolist (bin (directory-files "_tangle/bin" t "^[^.]" t))
-  (make-symbolic-link
-   bin
-   (file-name-concat zr-termux-root-directory
-                     "usr/bin"
-                     (file-name-nondirectory bin))
-   t))
+(when (eq system-type 'android)
+  (dolist (bin (directory-files "_tangle/bin" t "^[^.]" t))
+    (make-symbolic-link
+     bin
+     (file-name-concat zr-termux-root-directory
+                       "usr/bin"
+                       (file-name-nondirectory bin))
+     t))
 
-(let ((conf (expand-file-name "home/.termux/termux.properties"
-                              zr-termux-root-directory)))
-  (rename-file (expand-file-name "_tangle/termux.properties") conf t))
+  (let ((conf (expand-file-name "home/.termux/termux.properties"
+                                zr-termux-root-directory)))
+    (rename-file (expand-file-name "_tangle/termux.properties") conf t)))
 #+end_src
 
 * permissions
