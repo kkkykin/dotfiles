@@ -17,19 +17,18 @@
   (plstore-close zr-local-pls))
 
 (when (eq system-type 'android)
-  (dolist (bin '("ctags"
-                 "emacsclient"
-                 "zr-cli"))
-    (make-symbolic-link
-     (expand-file-name bin "_tangle/bin")
-     (file-name-concat zr-termux-root-directory
-                       "usr/bin"
-                       (file-name-nondirectory bin))
-     t))
-
-  (let ((conf (expand-file-name "home/.termux/termux.properties"
+  (let ((termux-path (expand-file-name "usr/bin" zr-termux-root-directory))
+        (etags-path (expand-file-name etags-program-name "~/../lib"))
+        (conf (expand-file-name "home/.termux/termux.properties"
                                 zr-termux-root-directory)))
-    (rename-file (expand-file-name "_tangle/termux.properties") conf t)))
+    (rename-file (expand-file-name "_tangle/termux.properties") conf t)
+    (make-symbolic-link etags-path (expand-file-name "etags" termux-path) t)
+    (dolist (bin '("emacsclient"
+                   "zr-cli"))
+      (make-symbolic-link
+       (expand-file-name bin "_tangle/bin")
+       (expand-file-name bin termux-path)
+       t))))
 #+end_src
 
 * permissions
@@ -95,14 +94,6 @@ export EMACS_SOCKET_NAME
 
 
 
-
-** ctags
-:PROPERTIES:
-:CUSTOM_ID: 22ddba1a-4831-4ef1-9cb0-82d5fdecbeae
-:END:
-#+begin_src sh :tangle (zr-org-by-tangle-dir "ctags") :var etags=(expand-file-name etags-program-name "~/../lib")
-exec "$etags" --ctags "$@"
-#+end_src
 
 ** zr-cli
 :PROPERTIES:
