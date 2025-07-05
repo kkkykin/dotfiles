@@ -2,12 +2,14 @@
 #+date:       [2024-12-29 Sun 17:27]
 #+filetags:   :android:
 #+identifier: 20241229T172716
-#+property:   header-args:sh :var zr_cli="zr-cli"
+#+property:   header-args:sh :var zr_cli="zr-cli" :shebang "#!/data/data/com.termux/files/usr/bin/env bash" :mkdirp t
+#+property:   header-args:python :shebang "#!/data/data/com.termux/files/usr/bin/env python" :mkdirp t
 
 * tangle
 #+begin_src elisp
 (let ((zr-local-pls (or zr-local-pls (plstore-open "termux.pls")))
       (data-dir (expand-file-name "_tangle/data")))
+  (mkdir data-dir t)
   (write-region
    (json-serialize
     (plist-get (cdr (plstore-get zr-local-pls "ssid")) :data))
@@ -19,10 +21,15 @@
 (when (eq system-type 'android)
   (let ((termux-path (expand-file-name "usr/bin" zr-termux-root-directory))
         (etags-path (expand-file-name etags-program-name "~/../lib"))
+        (intents-path (expand-file-name "home/bin" zr-termux-root-directory))
         (conf (expand-file-name "home/.termux/termux.properties"
                                 zr-termux-root-directory)))
     (rename-file (expand-file-name "_tangle/termux.properties") conf t)
     (make-symbolic-link etags-path (expand-file-name "etags" termux-path) t)
+    (mkdir intents-path t)
+    (dolist (bin (directory-files "_tangle/intents" t "^[^.]" t))
+      (let ((name (file-name-nondirectory bin)))
+        (make-symbolic-link bin (expand-file-name name intents-path) t)))
     (dolist (bin '("emacsclient"
                    "zr-cli"))
       (make-symbolic-link
@@ -63,7 +70,6 @@ extra-keys = [[ESC, CTRL, ALT, LEFT, DOWN, UP, RIGHT, KEYBOARD]]
 
 * cli
 :PROPERTIES:
-:header-args:sh+: :shebang "#!/data/data/com.termux/files/usr/bin/env bash" :mkdirp t
 :tangle-dir: _tangle/bin
 :END:
 
@@ -705,7 +711,6 @@ fi
 #+end_src
 * daemons
 :PROPERTIES:
-:header-args:sh+: :shebang "#!/data/data/com.termux/files/usr/bin/env bash" :mkdirp t
 :tangle-dir: _tangle/daemons
 :END:
 ** sshd
@@ -775,9 +780,121 @@ stop(){
   pkill rclone
 }
 #+end_src
+
+* intents
+:PROPERTIES:
+:tangle-dir: _tangle/intents
+:CUSTOM_ID: edc235ea-6d8e-4457-ad1d-0f043e2854bb
+:END:
+
+#+header: :var file_transform_tbl=(mapcar (lambda (a) (list (car a) (cdr a))) zr-rclone-file-transform-alist)
+#+header: :var rclone_user=(let ((auth (car (zr-net-url-get-auths zr-rclone-baseurl)))) (plist-get auth :user))
+#+header: :var playlist_path="/storage/emulated/0/Movies/mpv.m3u8"
+#+begin_src python :tangle (zr-org-by-tangle-dir "termux-url-opener")
+from urllib.parse import urlparse, unquote
+import urllib.request
+import json
+import re
+import base64
+import sys
+import subprocess
+
+class Rclone:
+  def __init__(self, url):
+    """
+    初始化 Rclone 参数
+    :param url: urlparse 的结果
+    """
+    auth_str = f"{url.username}:{url.password}"
+    auth_bytes = auth_str.encode("utf-8")
+    auth_b64 = base64.b64encode(auth_bytes).decode("utf-8")
+    self.baseurl = f'{url.scheme}://{url.hostname}:{url.port}/'
+    self.headers = {
+      'Authorization': f"Basic {auth_b64}",
+      'Content-Type': 'application/json'
+    }
+
+  def rc(self, opt: str, data: object) -> object:
+    """
+    执行 rc 命令
+    
+    :param opt: 要执行的命令
+    :return: 命令输出
+    """
+    req = urllib.request.Request(
+      url = self.baseurl + opt,
+      data = json.dumps(data).encode('utf-8'),
+      headers = self.headers,
+      method = 'POST'
+    )
+
+    response = urllib.request.urlopen(req)
+    return json.loads(response.read().decode('utf-8'))
+
+def mpv_play_files(files):
+  """播放文件"""
+  if type(files) == list:
+    with open(playlist_path, 'w', encoding='utf-8') as file:
+      file.write('\n'.join(files))
+    data = playlist_path
+  else:
+    data = files
+
+  subprocess.run(['am', 'start', '-a', 'android.intent.action.VIEW',
+                  '-t', 'video/any', '-p', 'is.xyz.mpv.ytdl',
+                  '-d', data])
+  
+
+def transform_file_path(file):
+  """
+  Transform file path according to file_transform_tbl.
+
+  Args:
+    file: The file path to transform
+
+  Returns:
+    The transformed file path
+  """
+  for transform in file_transform_tbl:
+    orig, replacement = transform
+    file = re.sub(orig, replacement, file)
+  return file
+
+def rclone_handler(url):
+  """处理 rclone 相关链接"""
+  path = unquote(url.path) if parsed.path else None
+  path_parts = [part for part in path.split('/') if part] if path else []
+  pattern = r'^\[(.*:)]$'
+  matches = re.search(pattern, path_parts[0])
+  fs = matches.group(1)
+  
+  rclone = Rclone(url)
+  data = {
+    'fs': fs,
+    'remote': '/'.join(path_parts[1:]),
+    'opt': {
+      'recurse': True,
+      'noModTime': True,
+      'noMimeType': True,
+      'filesOnly': True
+    }
+  }
+  res = rclone.rc('operations/stat', data)
+  if res['item'] == None:
+    res = rclone.rc('operations/list', data)
+    mpv_play_files([transform_file_path(fs + item['Path']) for item in res['list']])
+  else:
+    mpv_play_files(transform_file_path(fs + res['item']['Path']))
+
+url = sys.argv[1]
+
+parsed = urlparse(url)
+
+if parsed.username == rclone_user:
+  rclone_handler(parsed)
+#+end_src
 * jobs
 :PROPERTIES:
-:header-args:sh: :shebang "#!/data/data/com.termux/files/usr/bin/env bash" :mkdirp t
 :tangle-dir: _tangle/jobs
 :END:
 
