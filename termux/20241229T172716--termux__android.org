@@ -640,17 +640,81 @@ case "$1" in
     ;;
 esac
 #+end_src
-** daemons
+** daemon-manager
 :PROPERTIES:
-:header-args:sh+: :var NOTIFICATION_GROUP="daemon"
+:CUSTOM_ID: 5ff6ccd4-c9f5-4779-96ce-90f1cc0cfff7
 :END:
-*** sshd-daemon
+#+header: :var DAEMON_DIR=(expand-file-name "_tangle/daemons")
+#+begin_src sh :tangle (zr-org-by-tangle-dir "daemon") :var NOTIFICATION_GROUP="daemon"
+daemon-manager() {
+  local daemon_name="$1"
+  local action="$2"
+  local notification_id="$daemon_name-daemon"
+
+  # Source the daemon's specific functions if they exist
+  local daemon_script="$DAEMON_DIR/${daemon_name}"
+  if [ -f "$daemon_script" ]; then
+    source "$daemon_script"
+  fi
+
+  # Check if required functions are defined
+  if ! declare -f "stat" >/dev/null || \
+    ! declare -f "start" >/dev/null || \
+    ! declare -f "stop" >/dev/null; then
+  echo "Error: Required functions for daemon '$daemon_name' not found."
+  return 1
+  fi
+
+  case "$action" in
+    start)
+      local stop_act="$manager_path $daemon_name stop"
+      termux-notification \
+        --ongoing -c "$daemon_name" -t "$daemon_name" \
+        --group "$NOTIFICATION_GROUP" \
+        -i "$notification_id" --priority min \
+        --on-delete "$stop_act" --action "$stop_act"
+      stop
+      start
+      ;;
+    stop)
+      stop
+      termux-notification-remove "$notification_id"
+      ;;
+    stat)
+      stat
+      ;;
+    toggle)
+      if stat; then
+        exec "$manager_path" "$daemon_name" stop
+      else
+        exec "$manager_path" "$daemon_name" start
+      fi
+      ;;
+    *)
+      echo "Usage: $0 DAEMON_NAME {start|stop|stat|toggle}"
+      return 1
+      ;;
+  esac
+}
+
+# If script is executed directly (not sourced)
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  manager_path="$(realpath $0)"
+  daemon-manager "$@"
+fi
+#+end_src
+* daemons
+:PROPERTIES:
+:header-args:sh+: :shebang "#!/data/data/com.termux/files/usr/bin/env bash" :mkdirp t
+:tangle-dir: _tangle/daemons
+:END:
+** sshd
 :PROPERTIES:
 :CUSTOM_ID: 2efcfb38-22ec-4212-ac91-e0e9be2cd724
 :END:
 #+name: sshd-daemon
-#+begin_src sh :tangle (zr-org-by-tangle-dir "sshd-daemon") :var SSHD_NOTIFICATION_ID=select-notification-id(name="sshd")
-sshd-live-p(){
+#+begin_src sh :tangle (zr-org-by-tangle-dir "sshd")
+stat(){
   local pid_file="$PREFIX/var/run/sshd.pid"
   if [ -f "$pid_file" ]; then
     local pid=$(cat "$pid_file")
@@ -664,52 +728,51 @@ sshd-live-p(){
   return 1
 }
 
-start-sshd(){
-  stop-sshd
+start(){
   sshd
   local ip="$("$zr_cli" wlan-ip)"
-  local script_path=$(realpath "$0")
-  local act="$script_path stop" 
   termux-notification \
-    --ongoing -c "sshd: $ip" -t "sshd" \
+    --ongoing -c "IP: $ip" -t "sshd" \
     --group "$NOTIFICATION_GROUP" \
-    -i "$SSHD_NOTIFICATION_ID" \
-    --action "$act" --on-delete "$act"
+    -i "$notification_id" \
+    --action "$stop_act" --on-delete "$stop_act"
   termux-toast "IP: $ip"
   "$zr_cli" stay-on-while-plugged-in true
 }
 
-stop-sshd(){
+stop(){
   "$zr_cli" stay-on-while-plugged-in false
   pkill sshd
-  termux-notification-remove "$SSHD_NOTIFICATION_ID"
+}
+#+end_src
+
+** rclone-rc
+:PROPERTIES:
+:CUSTOM_ID: 82d65056-5bbc-4956-98f0-c48baf784a6d
+:END:
+#+header: :var rclone_addr=(let ((auth (car (zr-net-url-get-auths zr-rclone-baseurl)))) (format "%s:%s" (plist-get auth :host) (plist-get auth :port)))
+#+header: :var rclone_user=(let ((auth (car (zr-net-url-get-auths zr-rclone-baseurl)))) (plist-get auth :user))
+#+header: :var rclone_pass=(let ((auth (car (zr-net-url-get-auths zr-rclone-baseurl)))) (auth-info-password auth))
+#+begin_src sh :tangle (zr-org-by-tangle-dir "rclone")
+stat(){
+  curl "http://$rclone_addr" -m1
 }
 
-toggle-sshd(){
-  if sshd-live-p; then
-    stop-sshd
-  else
-    start-sshd
-  fi
+start(){
+  rclone rcd --rc-serve "--rc-addr=$rclone_addr" \
+    "--rc-user=$rclone_user" "--rc-pass=$rclone_pass" \
+    >/dev/null 2>&1 &
+  open_url="termux-open-url 'http://$rclone_user:$rclone_pass@$rclone_addr'"
+  termux-notification \
+    --ongoing -c "http://$rclone_addr" -t "rclone" \
+    --group "$NOTIFICATION_GROUP" \
+    -i "$notification_id" \
+    --action "$open_url" --on-delete "$stop_act"
 }
 
-case "$1" in
-  start)
-    start-sshd
-    ;;
-  stop)
-    stop-sshd
-    ;;
-  stat)
-    sshd-live-p
-    ;;
-  toggle)
-    toggle-sshd
-    ;;
-  *)
-    echo "Wrong argument."
-    ;;
-esac
+stop(){
+  pkill rclone
+}
 #+end_src
 * jobs
 :PROPERTIES:
