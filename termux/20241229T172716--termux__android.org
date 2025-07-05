@@ -672,7 +672,7 @@ daemon-manager() {
         --ongoing -c "$daemon_name" -t "$daemon_name" \
         --group "$NOTIFICATION_GROUP" \
         -i "$notification_id" --priority min \
-        --on-delete "$stop_act" --action "$stop_act"
+        --on-delete "$stop_act"
       stop
       start
       ;;
@@ -735,7 +735,7 @@ start(){
     --ongoing -c "IP: $ip" -t "sshd" \
     --group "$NOTIFICATION_GROUP" \
     -i "$notification_id" \
-    --action "$stop_act" --on-delete "$stop_act"
+    --on-delete "$stop_act"
   termux-toast "IP: $ip"
   "$zr_cli" stay-on-while-plugged-in true
 }
@@ -767,7 +767,8 @@ start(){
     --ongoing -c "http://$rclone_addr" -t "rclone" \
     --group "$NOTIFICATION_GROUP" \
     -i "$notification_id" \
-    --action "$open_url" --on-delete "$stop_act"
+    --button1 'Open' --button1-action "$open_url" \
+    --on-delete "$stop_act"
 }
 
 stop(){
