@@ -836,7 +836,7 @@ def mpv_play_files(files):
   if type(files) == list:
     with open(playlist_path, 'w', encoding='utf-8') as file:
       file.write('\n'.join(files))
-    data = playlist_path
+    data = 'file://' + playlist_path
   else:
     data = files
 
