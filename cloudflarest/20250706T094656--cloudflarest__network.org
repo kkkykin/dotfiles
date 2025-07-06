@@ -1,0 +1,137 @@
+#+title:      cloudflarest
+#+date:       [2025-07-06 Sun 09:46]
+#+filetags:   :network:
+#+identifier: 20250706T094656
+
+* tangle
+#+begin_src elisp
+(org-babel-tangle)
+#+end_src
+
+* scripts
+:PROPERTIES:
+:header-args:python: :eval no :shebang (concat "#!" (executable-find "python"))
+:END:
+
+** trojan-go
+:PROPERTIES:
+:CUSTOM_ID: f25e68f0-db9f-4804-bd42-5ef2180616ad
+:END:
+#+header: :var arg_ips=(expand-file-name "_tangle/ips/better-cf")
+#+header: :var arg_url="https://cf-speedtest-v2.acfun.win/300mb.test"
+#+header: :var arg_tll="150"
+#+header: :var results_dir=(expand-file-name "_results")
+#+header: :var json_expr="remote_addr"
+#+header: :var json_path=(expand-file-name "../trojan-go/_tangle/config.json")
+#+begin_src python :tangle (zr-org-by-tangle-dir "trojan-go.py") :mkdirp t
+import csv
+import os
+import shutil
+from datetime import datetime
+import subprocess
+import json
+
+timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+def get_nested_field(data, path):
+  """根据路径获取嵌套字段的值（如 'user.profile.age'）"""
+  keys = path.replace('[', '.').replace(']', '').split('.')
+  for key in keys:
+    if isinstance(data, dict) and key in data:
+      data = data[key]
+    elif isinstance(data, list) and key.isdigit() and int(key) < len(data):
+      data = data[int(key)]
+    else:
+      raise KeyError(f"路径 '{path}' 中 '{key}' 不存在")
+  return data
+
+def set_nested_field(data, path, value):
+  """设置嵌套字段的值"""
+  keys = path.replace('[', '.').replace(']', '').split('.')
+  for key in keys[:-1]:
+    if isinstance(data, dict) and key in data:
+      data = data[key]
+    elif isinstance(data, list) and key.isdigit() and int(key) < len(data):
+      data = data[int(key)]
+    else:
+      raise KeyError(f"路径 '{path}' 中 '{key}' 不存在")
+  
+  final_key = keys[-1]
+  if isinstance(data, dict) and final_key in data:
+    data[final_key] = value
+  elif isinstance(data, list) and final_key.isdigit() and int(final_key) < len(data):
+    data[int(final_key)] = value
+  else:
+    raise KeyError(f"路径 '{path}' 中 '{final_key}' 不存在")
+
+def modify_json_field_with_backup(file_path, field_path, new_value):
+  # 1. 检查文件是否存在
+  if not os.path.exists(file_path):
+    print(f"错误: 文件 '{file_path}' 不存在！")
+    return
+
+  # 2. 创建备份目录
+  backup_dir = os.path.join(os.path.dirname(file_path), "backups")
+  os.makedirs(backup_dir, exist_ok=True)
+
+  # 3. 备份文件（带时间戳）
+  backup_file = os.path.join(backup_dir, f"{os.path.basename(file_path)}.bak_{timestamp}")
+  shutil.copy2(file_path, backup_file)
+  print(f"备份已保存到: {backup_file}")
+
+  # 4. 读取并修改字段
+  try:
+    with open(file_path, 'r', encoding='utf-8') as f:
+      data = json.load(f)
+
+    # 检查字段是否存在（避免创建新字段）
+    get_nested_field(data, field_path)  # 如果字段不存在会抛出 KeyError
+    set_nested_field(data, field_path, new_value)
+
+    # 写回文件
+    with open(file_path, 'w', encoding='utf-8') as f:
+      json.dump(data, f, indent=2, ensure_ascii=False)
+    print(f"字段 '{field_path}' 已更新为: {new_value}")
+
+  except KeyError as e:
+    print(f"错误: {e}，未修改文件")
+  except Exception as e:
+    print(f"操作失败: {e}")
+
+def find_best_ip(dict):
+  """找到最好的 ip"""
+  for row in dict:
+    if float(row['下载速度(MB/s)']) > 30 and row['已发送'] == row['已接收']:
+      return row['IP 地址']
+  return None
+
+def run_cloudflarest():
+  """运行"""
+  result_path = os.path.join(results_dir, f"{timestamp}.csv")
+  os.makedirs(results_dir, exist_ok=True)
+  subprocess.run(['cloudflarest', '-tll', arg_tll, '-f', arg_ips,
+                  '-url', arg_url, '-o', result_path, '-p', '0'])
+  
+  with open(result_path, 'r', encoding='utf-8') as csvfile:
+    csv_reader = csv.DictReader(csvfile)
+    best_ip = find_best_ip(csv_reader)
+    if best_ip:
+      modify_json_field_with_backup(json_path, json_expr, best_ip)
+
+run_cloudflarest()
+#+end_src
+
+* cidr
+:PROPERTIES:
+:tangle-dir: _tangle/ips
+:header-args:org: :comments no
+:END:
+
+** cloudflare
+:PROPERTIES:
+:CUSTOM_ID: 7f65aa67-4c20-4d77-9f31-3d11c0b6e54a
+:END:
+#+begin_src org :tangle (zr-org-by-tangle-dir "better-cf") :mkdirp t
+162.158.0.0/15
+104.16.0.0/12
+#+end_src

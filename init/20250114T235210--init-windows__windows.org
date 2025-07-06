@@ -143,8 +143,8 @@ start /b mpd "%USERPROFILE%\scoop\persist\mpd\mpd.conf"
 #+end_src
 
 #+name: run_trojan
-#+begin_src bat
-start /b /abovenormal /d "%trojan-dir%" trojan-go.exe
+#+begin_src bat :var config=(expand-file-name "../trojan-go/_tangle/config.json")
+start /b /abovenormal /d "%trojan-dir%" trojan-go.exe -config "%config%"
 #+end_src
 
 ** main

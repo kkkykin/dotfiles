@@ -1,0 +1,164 @@
+#+title:      trojan-go
+#+date:       [2025-07-06 Sun 16:28]
+#+filetags:   :network:
+#+identifier: 20250706T162855
+
+* tangle
+#+begin_src elisp :var force-download="no" curl-args='("-xsocks5h://127.0.0.1:10808")
+(zr-org-babel-json-format "config")
+(let ((zr-local-pls (plstore-open "trojan-go.pls"))
+      (geoip-url "https://github.com/v2fly/geoip/releases/latest/download/geoip.dat")
+      (geosite-url "https://github.com/v2fly/domain-list-community/releases/latest/download/dlc.dat")
+      (geoip-path (zr-org-by-tangle-dir "geoip.dat"))
+      (geosite-path (zr-org-by-tangle-dir "geosite.dat")))
+  (when (string= force-download "yes")
+    (apply #'call-process "curl" nil 0 nil
+           (append curl-args (list "-Lo" geoip-path geoip-url)))
+    (apply #'call-process "curl" nil 0 nil
+           (append curl-args (list "-Lo" geosite-path geosite-url))))
+  (org-babel-tangle))
+#+end_src
+
+* config
+:PROPERTIES:
+:CUSTOM_ID: abeb2685-b061-4580-acdb-c4b4483ec839
+:END:
+#+name: config
+#+header: :var pass=(plist-get (cdr (plstore-get zr-local-pls "conf")) :pass)
+#+header: :var domain=(plist-get (cdr (plstore-get zr-local-pls "conf")) :domain)
+#+header: :var geoip_path=(zr-org-by-tangle-dir "geoip.dat")
+#+header: :var geosite_path=(zr-org-by-tangle-dir "geosite.dat")
+#+begin_src json :comments no :tangle (zr-org-by-tangle-dir "config.json") :mkdirp t
+{
+  "disable_http_check": false,
+  "forward_proxy": {
+    "enabled": false,
+    "password": "",
+    "proxy_addr": "",
+    "proxy_port": 0,
+    "username": ""
+  },
+  "local_addr": "127.0.0.1",
+  "local_port": 10808,
+  "log_file": "",
+  "log_level": 1,
+  "mux": {
+    "concurrency": 8,
+    "enabled": false,
+    "idle_timeout": 60
+  },
+  "password": [
+    "$pass"
+  ],
+  "remote_addr": "162.159.253.126",
+  "remote_port": 2053,
+  "router": {
+    "block": [
+      "geosite:category-ads-all"
+    ],
+    "bypass": [
+      "geoip:cn",
+      "geoip:private",
+      "geosite:cn",
+      "geosite:geolocation-cn",
+      "domain:notion.so",
+      "domain:steamstatic.com",
+      "domain:steamcontent.com",
+      "domain:alipan.com",
+      "domain:aliyundrive.net",
+      "domain:123pan.com"
+    ],
+    "default_policy": "proxy",
+    "domain_strategy": "as_is",
+    "enabled": true,
+    "geoip": "$geoip_path",
+    "geosite": "$geosite_path",
+    "proxy": [
+      "cidr:149.154.160.0/20",
+      "cidr:185.76.151.0/24",
+      "cidr:2001:67c:4e8::/48",
+      "cidr:2001:b28:f23c::/48",
+      "cidr:2001:b28:f23d::/48",
+      "cidr:2001:b28:f23f::/48",
+      "cidr:2a0a:f280::/32",
+      "cidr:91.105.192.0/23",
+      "cidr:91.108.12.0/22",
+      "cidr:91.108.16.0/22",
+      "cidr:91.108.20.0/22",
+      "cidr:91.108.4.0/22",
+      "cidr:91.108.56.0/22",
+      "cidr:91.108.8.0/22",
+      "domain:anthropic.com",
+      "domain:azureedge.net",
+      "domain:box.com",
+      "domain:cache.nixos.org",
+      "domain:claude.ai",
+      "domain:cpp-lang.net",
+      "domain:dodi-repacks.site",
+      "domain:gamespot.com",
+      "domain:protesilaos.com",
+      "domain:infosec.exchange",
+      "domain:beginners.re",
+      "domain:singlelogin.rs",
+      "domain:singlelogin.re",
+      "domain:italian-books.sk",
+      "domain:hgamefree.info",
+      "domain:rust-lang.org",
+      "domain:godotengine.org",
+      "domain:hstock.org",
+      "domain:libretro.com",
+      "domain:makeuseof.com",
+      "domain:moezone.moe",
+      "domain:mxcontent.net",
+      "domain:pixeldrain.com",
+      "domain:reimu.net",
+      "domain:repack-games.com",
+      "domain:saveeditonline.com",
+      "domain:sentry.io",
+      "domain:sms-activate.io",
+      "domain:solvemedia.com",
+      "domain:south-plus.org",
+      "domain:sstm.moe",
+      "domain:steampowered.com",
+      "domain:terabox.com",
+      "domain:wdho.ru",
+      "domain:weilnetz.de",
+      "domain:xenodium.com",
+      "domain:zi0.cc",
+      "geosite:geolocation-!cn"
+    ]
+  },
+  "run_type": "client",
+  "ssl": {
+    "alpn": [
+      "http/1.1"
+    ],
+    "cert": "",
+    "cipher": "",
+    "curves": "",
+    "fallback_addr": "",
+    "fallback_port": 0,
+    "fingerprint": "",
+    "key": "",
+    "key_password": "",
+    "plain_http_response": "",
+    "prefer_server_cipher": false,
+    "reuse_session": true,
+    "session_ticket": true,
+    "sni": "$domain",
+    "verify": true,
+    "verify_hostname": true
+  },
+  "tcp": {
+    "keep_alive": true,
+    "no_delay": true,
+    "prefer_ipv4": false
+  },
+  "udp_timeout": 60,
+  "websocket": {
+    "enabled": true,
+    "host": "$domain",
+    "path": "/websocket"
+  }
+}
+#+end_src
