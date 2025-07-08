@@ -30,7 +30,7 @@
 :END:
 
 https://github.com/P3TERX/aria2.conf
-*** 文件保存
+*** save file
 :PROPERTIES:
 :CUSTOM_ID: 2847641e-b3b8-4f68-b91c-4a1c6722d88e
 :END:
@@ -70,7 +70,7 @@ max-resume-failure-tries=0
 remote-time=true
 #+end_src
 
-*** 进度保存设置
+*** save process
 :PROPERTIES:
 :CUSTOM_ID: 27f62b99-4fa2-40e4-9ade-9b9550952056
 :END:
@@ -99,7 +99,7 @@ auto-save-interval=20
 force-save=false
 #+end_src
 
-*** 下载连接设置
+*** connection
 :PROPERTIES:
 :CUSTOM_ID: 78cd3fca-00dd-4c54-92e2-9dfd23c9b41a
 :END:
@@ -177,7 +177,7 @@ content-disposition-default-utf8=true
 #min-tls-version=TLSv1.2
 #+end_src
 
-*** BT/PT 下载设置
+*** bt/pt
 :PROPERTIES:
 :CUSTOM_ID: 00b15b1b-cbb2-4628-a525-8aa775cde413
 :END:
@@ -312,7 +312,7 @@ bt-force-encryption=true
 bt-detach-seed-only=true
 #+end_src
 
-***  客户端伪装
+*** agent
 :PROPERTIES:
 :CUSTOM_ID: 695840bb-10ec-4834-a7c2-72d89f0cdf19
 :END:
@@ -328,7 +328,7 @@ peer-agent=Deluge 1.3.15
 peer-id-prefix=-DE13F0-
 #+end_src
 
-*** 执行额外命令
+*** hooks
 :PROPERTIES:
 :CUSTOM_ID: bf1b44df-ae49-4eb7-b9ac-c6e26f41313a
 :END:
@@ -355,7 +355,7 @@ on-download-start=scripts/download-start.$ext
 on-bt-download-complete=scripts/bt-download-complete.$ext
 #+end_src
 
-*** RPC 设置
+*** rpc
 :PROPERTIES:
 :CUSTOM_ID: dc7cf92e-18fa-44f6-9ab9-8a1b00cb7b0b
 :END:
@@ -393,7 +393,7 @@ rpc-max-request-size=10M
 #event-poll=select
 #+end_src
 
-*** 高级选项
+*** advanced
 :PROPERTIES:
 :CUSTOM_ID: 54a84d6e-4186-47ce-8eff-500319b021f0
 :END:
@@ -414,7 +414,7 @@ rpc-max-request-size=10M
 #multiple-interface=
 #+end_src
 
-*** 日志设置
+*** log
 :PROPERTIES:
 :CUSTOM_ID: 9dadd617-49e9-44c7-9c38-702f62dca162
 :END:
