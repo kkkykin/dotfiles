@@ -4,8 +4,9 @@
 #+identifier: 20250706T094656
 
 * tangle
-#+begin_src elisp :var curl-args='("-xsocks5h://127.0.0.1:10808")
-(when (eq system-type 'android)
+#+begin_src elisp :var force-download="no" curl-args='("-xsocks5h://127.0.0.1:10808")
+(when (and (eq system-type 'android)
+           (string= "yes" force-download))
   (let ((url "https://github.com/XIU2/CloudflareSpeedTest/releases/latest/download/CloudflareST_linux_arm64.tar.gz")
         (bin-dir "_tangle"))
     (call-process
@@ -27,11 +28,7 @@
 :PROPERTIES:
 :CUSTOM_ID: 62851ddf-0b0c-4cd4-8f67-25fdf3f80abe
 :END:
-#+header: :var arg_ips=(expand-file-name "_tangle/ips/better-cf")
-#+header: :var arg_url="https://cf-speedtest-v2.acfun.win/300mb.test"
-#+header: :var arg_tll="150"
-#+header: :var results_dir=(expand-file-name "_results")
-#+begin_src python :tangle (zr-org-by-tangle-dir "find-best-ip.py")
+#+begin_src python :tangle (zr-org-by-tangle-dir "find_best_ip.py")
 import csv
 import os
 import argparse
@@ -53,7 +50,9 @@ def run_cloudflarest(cloudflarest_path, tll, results_dir, url, ip_file):
   os.makedirs(results_dir, exist_ok=True)
   
   subprocess.run([cloudflarest_path, '-tll', str(tll), '-f', ip_file,
-                  '-url', url, '-o', result_path, '-p', '0'])
+                  '-url', url, '-o', result_path, '-p', '0'],
+                 stdout=subprocess.DEVNULL,
+                 stderr=subprocess.DEVNULL)
   
   with open(result_path, 'r', encoding='utf-8') as csvfile:
     csv_reader = csv.DictReader(csvfile)
@@ -61,15 +60,15 @@ def run_cloudflarest(cloudflarest_path, tll, results_dir, url, ip_file):
 
 def main():
   parser = argparse.ArgumentParser(description='查找最佳Cloudflare IP')
-  parser.add_argument('--cloudflarest', default='cloudflarest', 
+  parser.add_argument('--cloudflarest', default='CloudflareST', 
                       help='cloudflarest可执行文件路径 (默认: cloudflarest)')
-  parser.add_argument('--tll', type=int, default=arg_tll,
+  parser.add_argument('--tll', type=int, default=150,
                       help='测试延迟限制 (默认: 150)')
-  parser.add_argument('--results-dir', default=results_dir,
+  parser.add_argument('--results-dir', default="results",
                       help='测试结果存储目录 (默认: results)')
-  parser.add_argument('--url', default=arg_url,
+  parser.add_argument('--url', required=True,
                       help='测试使用的URL')
-  parser.add_argument('--ip-file', default=arg_ips,
+  parser.add_argument('--ip-file', required=True,
                       help='IP列表文件路径')
   
   args = parser.parse_args()
@@ -92,7 +91,7 @@ if __name__ == "__main__":
 :PROPERTIES:
 :CUSTOM_ID: d1b33679-0404-42cd-b3e1-499a14b2864a
 :END:
-#+begin_src python :tangle (zr-org-by-tangle-dir "modify-json-field.py")
+#+begin_src python :tangle (zr-org-by-tangle-dir "modify_json_field.py")
 import json
 import os
 import shutil
@@ -144,7 +143,6 @@ def modify_json_field_with_backup(file_path, field_path, new_value):
   # 3. 备份文件（带时间戳）
   backup_file = os.path.join(backup_dir, f"{os.path.basename(file_path)}.bak_{timestamp}")
   shutil.copy2(file_path, backup_file)
-  print(f"备份已保存到: {backup_file}")
 
   # 4. 读取并修改字段
   try:
@@ -158,7 +156,6 @@ def modify_json_field_with_backup(file_path, field_path, new_value):
     # 写回文件
     with open(file_path, 'w', encoding='utf-8') as f:
       json.dump(data, f, indent=2, ensure_ascii=False)
-    print(f"字段 '{field_path}' 已更新为: {new_value}")
 
   except KeyError as e:
     print(f"错误: {e}，未修改文件")
@@ -182,112 +179,41 @@ if __name__ == "__main__":
   main()
 #+end_src
 
+
 ** trojan-go
 :PROPERTIES:
-:CUSTOM_ID: f25e68f0-db9f-4804-bd42-5ef2180616ad
+:CUSTOM_ID: 829dd96c-1f86-400f-821d-836657796bd1
 :END:
 #+header: :var arg_ips=(expand-file-name "_tangle/ips/better-cf")
 #+header: :var arg_url="https://cf-speedtest-v2.acfun.win/300mb.test"
-#+header: :var arg_tll="150"
+#+header: :var arg_tll=150
 #+header: :var results_dir=(expand-file-name "_results")
 #+header: :var json_expr="remote_addr"
 #+header: :var json_path=(expand-file-name "../trojan-go/_tangle/config.json")
-#+begin_src python :tangle (zr-org-by-tangle-dir "trojan-go.py") :mkdirp t
-import csv
-import os
-import shutil
-from datetime import datetime
-import subprocess
-import json
+#+header: :var cfst=(or (executable-find "cloudflarest") (expand-file-name "_tangle/CloudflareST"))
+#+begin_src python :tangle (zr-org-by-tangle-dir "trojan_go.py")
+from find_best_ip import find_best_ip, run_cloudflarest
+from modify_json_field import modify_json_field_with_backup
+import sys
 
-timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+best_ip = run_cloudflarest(
+  cloudflarest_path=cfst,
+  tll=arg_tll,
+  results_dir=results_dir,
+  url=arg_url,
+  ip_file=arg_ips
+)
 
-def get_nested_field(data, path):
-  """根据路径获取嵌套字段的值（如 'user.profile.age'）"""
-  keys = path.replace('[', '.').replace(']', '').split('.')
-  for key in keys:
-    if isinstance(data, dict) and key in data:
-      data = data[key]
-    elif isinstance(data, list) and key.isdigit() and int(key) < len(data):
-      data = data[int(key)]
-    else:
-      raise KeyError(f"路径 '{path}' 中 '{key}' 不存在")
-  return data
-
-def set_nested_field(data, path, value):
-  """设置嵌套字段的值"""
-  keys = path.replace('[', '.').replace(']', '').split('.')
-  for key in keys[:-1]:
-    if isinstance(data, dict) and key in data:
-      data = data[key]
-    elif isinstance(data, list) and key.isdigit() and int(key) < len(data):
-      data = data[int(key)]
-    else:
-      raise KeyError(f"路径 '{path}' 中 '{key}' 不存在")
-  
-  final_key = keys[-1]
-  if isinstance(data, dict) and final_key in data:
-    data[final_key] = value
-  elif isinstance(data, list) and final_key.isdigit() and int(final_key) < len(data):
-    data[int(final_key)] = value
-  else:
-    raise KeyError(f"路径 '{path}' 中 '{final_key}' 不存在")
-
-def modify_json_field_with_backup(file_path, field_path, new_value):
-  # 1. 检查文件是否存在
-  if not os.path.exists(file_path):
-    print(f"错误: 文件 '{file_path}' 不存在！")
-    return
-
-  # 2. 创建备份目录
-  backup_dir = os.path.join(os.path.dirname(file_path), "backups")
-  os.makedirs(backup_dir, exist_ok=True)
-
-  # 3. 备份文件（带时间戳）
-  backup_file = os.path.join(backup_dir, f"{os.path.basename(file_path)}.bak_{timestamp}")
-  shutil.copy2(file_path, backup_file)
-  print(f"备份已保存到: {backup_file}")
-
-  # 4. 读取并修改字段
-  try:
-    with open(file_path, 'r', encoding='utf-8') as f:
-      data = json.load(f)
-
-    # 检查字段是否存在（避免创建新字段）
-    get_nested_field(data, field_path)  # 如果字段不存在会抛出 KeyError
-    set_nested_field(data, field_path, new_value)
-
-    # 写回文件
-    with open(file_path, 'w', encoding='utf-8') as f:
-      json.dump(data, f, indent=2, ensure_ascii=False)
-    print(f"字段 '{field_path}' 已更新为: {new_value}")
-
-  except KeyError as e:
-    print(f"错误: {e}，未修改文件")
-  except Exception as e:
-    print(f"操作失败: {e}")
-
-def find_best_ip(dict):
-  """找到最好的 ip"""
-  for row in dict:
-    if float(row['下载速度(MB/s)']) > 30 and row['已发送'] == row['已接收']:
-      return row['IP 地址']
-  return None
-
-def run_cloudflarest():
-  """运行"""
-  result_path = os.path.join(results_dir, f"{timestamp}.csv")
-  os.makedirs(results_dir, exist_ok=True)
-  subprocess.run(['cloudflarest', '-tll', arg_tll, '-f', arg_ips,
-                  '-url', arg_url, '-o', result_path, '-p', '0'])
-  
-  with open(result_path, 'r', encoding='utf-8') as csvfile:
-    csv_reader = csv.DictReader(csvfile)
-    best_ip = find_best_ip(csv_reader)
-    if best_ip:
-      modify_json_field_with_backup(json_path, json_expr, best_ip)
-
-run_cloudflarest()
+if best_ip:
+  print(f"{best_ip}")
+  modify_json_field_with_backup(
+    file_path=json_path,
+    field_path=json_expr,
+    new_value=best_ip
+  )
+else:
+  print("未找到合适IP")
+  sys.exit(1)
 #+end_src
 
 * cidr
