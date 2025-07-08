@@ -60,7 +60,6 @@
       "geoip:cn",
       "geoip:private",
       "geosite:cn",
-      "geosite:geolocation-cn",
       "domain:notion.so",
       "domain:steamstatic.com",
       "domain:steamcontent.com",
@@ -124,8 +123,7 @@
       "domain:wdho.ru",
       "domain:weilnetz.de",
       "domain:xenodium.com",
-      "domain:zi0.cc",
-      "geosite:geolocation-!cn"
+      "domain:zi0.cc"
     ]
   },
   "run_type": "client",
