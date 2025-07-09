@@ -1,0 +1,24 @@
+#+title:      uv
+#+date:       [2025-07-09 Wed 16:48]
+#+filetags:   :base:
+#+identifier: 20250709T164836
+
+* tangle
+#+begin_src elisp
+(let ((conf-path (pcase system-type
+                   ('windows-nt (substitute-in-file-name "$APPDATA/uv/uv.toml"))
+                   (_ (expand-file-name "~/.config/uv/uv.toml")))))
+  (org-babel-tangle)
+  (mkdir (file-name-directory conf-path) t)
+  (make-symbolic-link (zr-org-by-tangle-dir "uv.toml") conf-path t))
+#+end_src
+
+* config
+:PROPERTIES:
+:CUSTOM_ID: d18cc652-cc91-4913-898d-b3be6afd5256
+:END:
+#+begin_src toml :mkdirp t :tangle (zr-org-by-tangle-dir "uv.toml")
+[[index]]
+url = "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple/"
+default = true
+#+end_src
