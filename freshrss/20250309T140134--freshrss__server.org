@@ -5,15 +5,19 @@
 
 * Feed fix
 #+begin_src sql
-CREATE OR REPLACE FUNCTION fix_entry()
+CREATE EXTENSION IF NOT EXISTS plpython3u;
+
+CREATE OR REPLACE FUNCTION freshrss_fix_entry()
 RETURNS TRIGGER AS $$
 <<fix-entry-main-code>>
 $$ LANGUAGE plpython3u;
 
-CREATE TRIGGER trigger_fix_entry
+GRANT EXECUTE ON FUNCTION freshrss_fix_entry() to freshrss;
+
+CREATE OR REPLACE TRIGGER freshrss_trigger_fix_entry
 BEFORE INSERT ON freshrss_kkky_entry
 FOR EACH ROW
-EXECUTE FUNCTION fix_entry();
+EXECUTE FUNCTION freshrss_fix_entry();
 #+end_src
 
 #+name: fix-entry-main-code
@@ -87,6 +91,6 @@ if re.search(r'^https://[a-z]*(south|snow)-plus\.(net|org)/read\.php\?tid=', TD[
 
 ** cleanup
 #+begin_src sql
-drop trigger trigger_fix_entry on freshrss_kkky_entry;
-drop function fix_entry;
+drop trigger freshrss_trigger_fix_entry on freshrss_kkky_entry;
+drop function freshrss_fix_entry;
 #+end_src
