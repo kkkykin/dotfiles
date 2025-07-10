@@ -7,13 +7,8 @@
 #+begin_src sql
 CREATE OR REPLACE FUNCTION fix_entry()
 RETURNS TRIGGER AS $$
-BEGIN
-    <<fix-xyg688-img>>
-    <<fix-asmr-one-link>>
-    <<redirect-retroarch-download-link>>
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+<<fix-entry-main-code>>
+$$ LANGUAGE plpython3u;
 
 CREATE TRIGGER trigger_fix_entry
 BEFORE INSERT ON freshrss_kkky_entry
@@ -21,65 +16,73 @@ FOR EACH ROW
 EXECUTE FUNCTION fix_entry();
 #+end_src
 
+#+name: fix-entry-main-code
+#+begin_src python
+import re
+return_value = None
+
+<<fix-xyg688-img>>
+<<fix-asmr-one-link>>
+<<redirect-retroarch-download-link>>
+
+return return_value
+#+end_src
+
 ** Feeds
 
 *** xyg688
 #+name: fix-xyg688-img
-#+begin_src sql
-IF NEW.link LIKE 'https://www.xyg688.com/post-%' THEN
-    NEW.content := regexp_replace(
-        NEW.content,
-        '(<img[^>]*\s+src=")data:image/gif;base64,[A-Za-z0-9+/]+("[^>]*\s+data-src="([^"]+)")',
-        '\1\3\2',
-        'g'
-    );
-END IF;
+#+begin_src python
+if TD['new']['link'].startswith('https://www.xyg688.com/post-'):
+  TD['new']['content'] = re.sub(
+    r'(<img[^>]*\s+src=")data:image/gif;base64,[A-Za-z0-9+/]+("[^>]*\s+data-src="([^"]+)")',
+    r'\1\3\2',
+    TD['new']['content']
+  )
+  return_value = 'MODIFY'
 #+end_src
 
 *** asmr one
 Wait the commit merge: https://github.com/FreshRSS/FreshRSS/commit/a7361a3e7cd335c8932deba88fe60e8f673c2d40
 
 #+name: fix-asmr-one-link
-#+begin_src sql
-IF NEW.link LIKE 'https://api.asmr-200.com/api/%' THEN
-    NEW.link := regexp_replace(
-        NEW.link,
-        '^https://api.asmr-200.com/api',
-        'https://asmr.one/work'
-    );
-END IF;
+#+begin_src python
+if TD['new']['link'].startswith('https://api.asmr-200.com/api/'):
+  TD['new']['link'] = TD['new']['link'].replace(
+    'https://api.asmr-200.com/api',
+    'https://asmr.one/work'
+  )
+  return_value = 'MODIFY'
 #+end_src
 
 *** retroarch
 #+name: redirect-retroarch-download-link
-#+begin_src sql
-IF NEW.link LIKE 'https://github.com/libretro/RetroArch/releases/%' THEN
-    NEW.link := 'https://www.retroarch.com/?page=platforms#:~:text=Download-,Download%20(64bit),-Download%20(32bit)';
-END IF;
+#+begin_src python
+if TD['new']['link'].startswith('https://github.com/libretro/RetroArch/releases/'):
+  TD['new']['link'] = 'https://www.retroarch.com/?page=platforms#:~:text=Download-,Download%20(64bit),-Download%20(32bit)'
+  return_value = 'MODIFY'
 #+end_src
 
 *** south-plus
 #+name: fix-south-plus
-#+begin_src sql
-IF NEW.link LIKE 'https://%-plus.%/read.php?tid=%' THEN
-    NEW.link := regexp_replace(
-        NEW.link,
-        '^https://[a-z.]*(south|snow)-plus\.(net|org)',
-        'https://www.north-plus.net'
-    );
-    NEW.content := regexp_replace(
-        NEW.content,
-        '\[img\](http[^[]+?)\[/img\]',
-        '<img src="\1" loading="lazy">',
-        'g'
-    );
-    NEW.content := regexp_replace(
-        NEW.content,
-        '\[url\](http[^[]+?\.(png|jpg))\[/url\]',
-        '<img src="\1" loading="lazy">',
-        'g'
-    );
-END IF;
+#+begin_src python
+if re.search(r'^https://[a-z]*(south|snow)-plus\.(net|org)/read\.php\?tid=', TD['new']['link']):
+  TD['new']['link'] = re.sub(
+    r'^https://[a-z.]*(south|snow)-plus\.(net|org)',
+    'https://www.north-plus.net',
+    TD['new']['link']
+  )
+  TD['new']['content'] = re.sub(
+    r'\[img\](http[^\[]+?)\[/img\]',
+    r'<img src="\1" loading="lazy">',
+    TD['new']['content']
+  )
+  TD['new']['content'] = re.sub(
+    r'\[url\](http[^\[]+?\.(png|jpg))\[/url\]',
+    r'<img src="\1" loading="lazy">',
+    TD['new']['content']
+  )
+  return_value = 'MODIFY'
 #+end_src
 
 ** cleanup
