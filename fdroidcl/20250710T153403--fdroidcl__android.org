@@ -1,0 +1,32 @@
+#+title:      fdroidcl
+#+date:       [2025-07-10 Thu 15:34]
+#+filetags:   :android:
+#+identifier: 20250710T153403
+
+* tangle
+#+begin_src elisp
+(let ((conf-path (pcase system-type
+                   ('windows-nt (substitute-in-file-name "$APPDATA/fdroidcl/config.toml"))
+                   (_ (expand-file-name "~/.config/fdroidcl/config.toml")))))
+  (org-babel-tangle)
+  (mkdir (file-name-directory conf-path) t)
+  (make-symbolic-link (zr-org-by-tangle-dir "config.toml") conf-path t))
+#+end_src
+
+* config
+:PROPERTIES:
+:CUSTOM_ID: d3541119-b937-4825-9fe4-05681457105e
+:END:
+#+begin_src toml :tangle (zr-org-by-tangle-dir "config.toml") :mkdirp t
+setups = []
+
+[[repos]]
+id = 'f-droid'
+url = 'https://mirrors.tuna.tsinghua.edu.cn/fdroid/repo'
+enabled = true
+
+[[repos]]
+id = 'f-droid-archive'
+url = 'https://mirrors.tuna.tsinghua.edu.cn/fdroid/archive'
+enabled = false
+#+end_src
