@@ -4,13 +4,13 @@
 #+identifier: 20250220T211258
 
 * tangle
-#+begin_src elisp
-(dolist (l '("https://github.com/P3TERX/aria2.conf/raw/refs/heads/master/dht.dat"
-             "https://github.com/P3TERX/aria2.conf/raw/refs/heads/master/dht6.dat"))
-  (let ((arg (zr-net-curl-parameters-dwim l))
-        (name (expand-file-name (file-name-nondirectory l) "_tangle")))
-    (apply #'start-process "aria2-download-dht" nil
-           "curl" "-Lo" name l arg)))
+#+begin_src elisp :var force-download="no"
+(when (string= force-download "yes")
+  (dolist (l '("https://github.com/P3TERX/aria2.conf/raw/refs/heads/master/dht.dat"
+               "https://github.com/P3TERX/aria2.conf/raw/refs/heads/master/dht6.dat"))
+    (let ((arg (zr-net-curl-parameters-dwim l))
+          (name (expand-file-name (file-name-nondirectory l) "_tangle")))
+      (apply #'call-process "curl" nil 0 nil "-Lo" name l arg))))
 
 (let ((zr-local-pls (plstore-open "aria2.pls"))
       (session (zr-org-by-tangle-dir "aria2.session"))
