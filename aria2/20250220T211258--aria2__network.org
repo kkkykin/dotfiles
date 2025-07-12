@@ -21,6 +21,20 @@
   (unless (file-symlink-p link-dir)
     (let ((dir (read-directory-name "downloads dir? ")))
       (make-symbolic-link dir link-dir))))
+
+(let ((script-dir (expand-file-name "_tangle/scripts/")))
+  (dolist (s '("download-stop"
+               "download-complete"
+               "download-error"
+               "download-pause"
+               "download-start"))
+    (let* ((prefix (format "%s%s." script-dir s))
+           (py (concat prefix "py")))
+      (call-process "uv" nil 0 nil "lock" "--script" py)
+      (when (eq system-type 'windows-nt)
+        (let ((bat (concat prefix "bat"))
+              (code (format "uv run -s \"%s\" %%*" py)))
+          (write-region code nil bat))))))
 #+end_src
 
 * conf
@@ -332,7 +346,7 @@ peer-id-prefix=-DE13F0-
 :PROPERTIES:
 :CUSTOM_ID: bf1b44df-ae49-4eb7-b9ac-c6e26f41313a
 :END:
-#+begin_src conf-unix :var ext=(pcase system-type ('windows-nt "bat") (_ "sh"))
+#+begin_src conf-unix :var ext=(pcase system-type ('windows-nt "bat") (_ "py"))
 # 下载停止后执行的命令
 # 从 正在下载 到 删除、错误、完成 时触发。暂停被标记为未开始下载，故与此项无关。
 on-download-stop=scripts/download-stop.$ext
@@ -439,24 +453,273 @@ show-console-readout=false
 #+end_src
 
 * scripts
-#+begin_src elisp :var platform='()
-(let ((script-dir "_tangle/scripts/")
-      tpl ext)
-  (pcase (or platform system-type)
-    ('windows-nt
-     (setq tpl "emacsclient -ne \"(zr-aria2-event-handler \"\"%s\"\" \"\"%%1\"\" %%2 \"%%3\")\""
-           ext "bat"))
-    (_
-     (setq tpl "#!/usr/bin/env bash\nenv -C Downloads emacsclient -ne \"(zr-aria2-event-handler \\\"%s\\\" \\\"$1\\\" $2 \\\"$3\\\")\""
-           ext "sh")))
-  (mkdir script-dir t)
-  (dolist (s '("download-stop"
-               "download-complete"
-               "download-error"
-               "download-pause"
-               "download-start"
-               "bt-download-complete"))
-    (let ((path (format "%s%s.%s" script-dir s ext)))
-      (write-region (format tpl s) nil path)
-      (chmod path #o700))))
+:PROPERTIES:
+:CUSTOM_ID: a4ff4630-0327-47ab-8d24-a8ca1071ac9c
+:tangle-dir: _tangle/scripts
+:header-args:python: :shebang (string-join '("#!/usr/bin/env -S uv run -s" "# /// script" "# requires-python = \">=3.12\"" "# dependencies = [\"aria2p\"]" "# [[tool.uv.index]]" "# url = \"https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple/\"" "# ///") "\n") :var aria2_secret=(auth-source-pick-first-password :host "aria2.localhost")
+:END:
+
+** common
+#+name: comment-begin
+#+begin_src python
+import sys
+import re
+import sqlite3
+from pathlib import Path
+from aria2p import API, Client, Download
+
+client = Client(
+  host = 'http://127.0.0.1',
+  port = 6800,
+  secret = aria2_secret
+)
+
+# Database setup
+DB_PATH = Path.home() / ".aria2_event_handler.db"
+
+def init_db():
+  """Initialize the SQLite database."""
+  with sqlite3.connect(DB_PATH) as conn:
+    conn.execute("""
+    CREATE TABLE IF NOT EXISTS option_changed_gids (
+      gid TEXT PRIMARY KEY
+    )
+    """)
+#+end_src
+
+#+name: common-end
+#+begin_src python
+if __name__ == "__main__":
+  if len(sys.argv) != 4:
+    sys.exit(1)
+
+  gid = sys.argv[1]
+  num_files = sys.argv[2]
+  file_path = sys.argv[3]
+  event_handler(gid, num_files, file_path)
+#+end_src
+
+** download-start
+:PROPERTIES:
+:CUSTOM_ID: addfab41-01f1-42ee-8868-42f0be601d27
+:END:
+
+#+name: pac
+#+begin_src python
+import re
+from typing import List, Tuple, Union
+
+class ProxyConfig:
+  def __init__(self):
+    self.proxy_mode = "byhost"  # "always", "bypass", or "byhost"
+    self.proxies = [
+      "HTTP 127.0.0.1:10808",
+      "SOCKS5 127.0.0.1:1080",
+      "SOCKS5 127.0.0.1:10808"
+    ]
+    self.autoproxy_hosts = [
+      [],
+      [],
+      [
+        "github.com"
+        , "pixeldrain.com"
+        , "workupload.com"
+        , "uploadhaven.com"
+      ]
+    ]
+
+  def match_host(self, host: str, rule_list: List[str]) -> bool:
+    """Check if host matches any pattern in the rule list using shell-style wildcards."""
+    for pattern in rule_list:
+      # Convert shell wildcard pattern to regex
+      regex_pattern = re.escape(pattern).replace(r'\*', '.*').replace(r'\?', '.')
+      if re.fullmatch(regex_pattern, host):
+        return True
+    return False
+
+  def find_proxy_for_host(self, host: str) -> str:
+    """Determine the appropriate proxy for the given host."""
+    last_pos = 0
+    
+    if self.proxy_mode == 'always':
+      return self.proxies[0]
+    
+    elif self.proxy_mode == 'bypass':
+      current_host = host
+      while True:
+        if self.match_host(current_host, self.autoproxy_hosts[0]):
+          return 'DIRECT'
+        last_pos = current_host.find('.') + 1
+        if last_pos < 1:
+          break
+        current_host = current_host[last_pos:]
+      return self.proxies[0]
+    
+    else:  # byhost mode
+      for i, proxy in enumerate(self.proxies):
+        current_host = host
+        while True:
+          if i < len(self.autoproxy_hosts) and self.match_host(current_host, self.autoproxy_hosts[i]):
+            return proxy
+          last_pos = current_host.find('.') + 1
+          if last_pos < 1:
+            break
+          current_host = current_host[last_pos:]
+      return 'DIRECT'
+
+  def find_proxy_for_url(self, url: str, host: str) -> str:
+    """Public method to find proxy for URL with error handling."""
+    try:
+      return self.find_proxy_for_host(host)
+    except Exception:
+      return 'DIRECT'  # Fallback to direct connection on error
+
+  def format_proxy_for_aria2(self, proxy_str: str) -> Union[dict, None]:
+    """Convert proxy string to aria2 options format."""
+    if proxy_str == 'DIRECT':
+      return None
+      
+    parts = proxy_str.split()
+    if len(parts) != 2:
+      return None
+      
+    proxy_type, proxy_addr = parts
+    proxy_type = proxy_type.lower()
+    
+    # Convert to aria2 proxy format
+    if proxy_type == "http":
+      return {"http-proxy": proxy_addr, "https-proxy": proxy_addr}
+    elif proxy_type == "socks5":
+      return {"all-proxy": f"http://{proxy_addr}"}
+    return None
+#+end_src
+
+#+begin_src python :tangle (zr-org-by-tangle-dir "download-start.py")
+<<comment-begin>>
+<<pac>>
+
+proxy_config = ProxyConfig()
+
+def get_option_changed_gids():
+  """Retrieve all tracked GIDs from the database."""
+  with sqlite3.connect(DB_PATH) as conn:
+    cursor = conn.execute("SELECT gid FROM option_changed_gids")
+    return {row[0] for row in cursor.fetchall()}
+
+def add_option_changed_gid(gid):
+  """Add a GID to the tracking database."""
+  with sqlite3.connect(DB_PATH) as conn:
+    conn.execute("INSERT OR IGNORE INTO option_changed_gids (gid) VALUES (?)", (gid,))
+
+# Initialize database and load existing GIDs
+init_db()
+option_changed_gids = get_option_changed_gids()
+
+server_options = [
+  (r"^https://d\.pcs\.baidu\.com", 
+  {"max_connection_per_server": "2"}),
+  (r"^https://pixeldrain\.com", 
+  {"max_connection_per_server": "1"}),
+  (r"^https://[a-zA-Z0-9]+\.workupload\.com", 
+  {"max_connection_per_server": "1"}),
+  (r"^https://download[0-9]+\.uploadhaven\.com", 
+  {"max_connection_per_server": "2"})
+]
+
+on_download_start_functions = []
+
+def event_handler(gid, count, file=None):
+  """Handle aria2 events and trigger hooks."""
+  info = {}
+  
+  uris = client.get_uris(gid)
+  info['uris'] = uris
+  for func in on_download_start_functions:
+    func(gid, info)
+
+def change_option_for_uri(gid, info):
+  """Change download options based on URI patterns."""
+  if gid in option_changed_gids:
+    return
+  
+  uris = info.get('uris', [])
+  used_uri = next((uri for uri in uris if uri.get('status') == 'used'), None)
+  
+  if not used_uri:
+    return
+  
+  uri = used_uri.get('uri')
+  if not uri:
+    return
+  
+  # Parse URL to get host
+  from urllib.parse import urlparse
+  host = urlparse(uri).hostname
+  
+  # Get proxy configuration
+  proxy_str = proxy_config.find_proxy_for_url(uri, host)
+  aria2_proxy_options = proxy_config.format_proxy_for_aria2(proxy_str)
+  
+  # Find matching server options
+  opts = {}
+  for pattern, options in server_options:
+    if pattern.match(uri):
+      opts.update(options)
+  
+  # Merge with proxy options if needed
+  if aria2_proxy_options and aria2_proxy_options != 'DIRECT':
+    opts.update(aria2_proxy_options)
+  
+  if opts:
+    add_option_changed_gid(gid)
+    
+    # Pause, change options, then unpause
+    client.pause(gid)
+    client.change_option(gid, opts)
+    client.unpause(gid)
+
+# Register the hook
+on_download_start_functions.append(change_option_for_uri)
+
+<<common-end>>
+#+end_src
+
+** download-complete
+:PROPERTIES:
+:CUSTOM_ID: ee794415-ca8a-43bd-9055-21ed97f2f4d1
+:END:
+#+begin_src python :tangle (zr-org-by-tangle-dir "download-complete.py")
+<<comment-begin>>
+
+init_db()
+
+on_download_complete_functions = []
+on_bt_download_complete_functions = []
+
+def event_handler(gid, count, file=None):
+  """Handle aria2 events and trigger hooks."""
+  info = {}
+  
+  info['file'] = file
+  if int(count) > 1:
+    hooks = on_bt_download_complete_functions
+  else:
+    hooks = on_download_complete_functions
+  for func in hooks:
+    func(gid, info)
+
+def remove_option_changed_gid(gid):
+  """Remove a GID from the tracking database."""
+  with sqlite3.connect(DB_PATH) as conn:
+    conn.execute("DELETE FROM option_changed_gids WHERE gid = ?", (gid,))
+
+def remove_finished_gid(gid, *_):
+  """Clean up finished download GIDs."""
+  remove_option_changed_gid(gid)
+
+# Register completion hooks
+on_download_complete_functions.append(remove_finished_gid)
+on_bt_download_complete_functions.append(remove_finished_gid)
+
+<<common-end>>
 #+end_src
