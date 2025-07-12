@@ -636,7 +636,8 @@ def event_handler(gid, count, file=None):
   uris = client.get_uris(gid)
   info['uris'] = uris
   for func in on_download_start_functions:
-    func(gid, info)
+    if func(gid, info):
+      break
 
 def change_option_for_uri(gid, info):
   """Change download options based on URI patterns."""
@@ -707,7 +708,8 @@ def event_handler(gid, count, file=None):
   else:
     hooks = on_download_complete_functions
   for func in hooks:
-    func(gid, info)
+    if func(gid, info):
+      break
 
 def remove_option_changed_gid(gid):
   """Remove a GID from the tracking database."""
