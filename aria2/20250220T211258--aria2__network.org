@@ -467,7 +467,12 @@ import sys
 import re
 import sqlite3
 from pathlib import Path
-from aria2p import Client
+from aria2p import Client, ClientException
+
+downloading_limits = {
+  r"^https://d\.pcs\.baidu\.com": 1,
+  r"^https://pixeldrain\.com": 3
+}
 
 client = Client(
   host = 'http://127.0.0.1',
@@ -478,14 +483,80 @@ client = Client(
 # Database setup
 DB_PATH = Path.home() / ".aria2_event_handler.db"
 
+DB_STATUS = {
+  'init': 0,
+  'customize': 10,
+  'wait': 20,
+  'download': 30
+}
+
 def init_db():
   """Initialize the SQLite database."""
   with sqlite3.connect(DB_PATH) as conn:
     conn.execute("""
-    CREATE TABLE IF NOT EXISTS option_changed_gids (
-      gid TEXT PRIMARY KEY
+    CREATE TABLE IF NOT EXISTS downloads (
+      gid TEXT PRIMARY KEY,
+      status INT DEFAULT 0,
+      name TEXT,
+      regexp TEXT
     )
     """)
+
+init_db()
+
+def get_gid_status(gid):
+  """"""
+  with sqlite3.connect(DB_PATH) as conn:
+    cursor = conn.execute("SELECT status FROM downloads WHERE gid = ?", (gid,))
+    return cursor.fetchone()[0]
+
+def set_gid_status(gid, status):
+  """更新 gid 状态"""
+  code = DB_STATUS[status]
+  if code:
+    with sqlite3.connect(DB_PATH) as conn:
+      conn.execute("UPDATE downloads SET status = ? WHERE gid = ?", (code, gid,))
+
+def delete_the_task(gid, *_):
+  """删除任务"""
+  with sqlite3.connect(DB_PATH) as conn:
+    conn.execute(
+      "DELETE FROM downloads WHERE gid = ?" , (gid,)
+    )
+
+def find_next_task(gid):
+  """找到之前战术暂停的任务"""
+  with sqlite3.connect(DB_PATH) as conn:
+    cursor = conn.execute(
+      "SELECT gid, regexp FROM downloads WHERE gid != ? AND regexp = (SELECT regexp FROM downloads WHERE gid = ?) AND status = ?"
+      , (gid, gid, DB_STATUS['wait'],)
+    )
+    result = cursor.fetchall()
+    if result:
+      waiting = [i['gid'] for i in client.tell_waiting(0, 10, ['gid'])]
+      for gid, regexp in result:
+        if gid not in waiting:
+          delete_the_task(gid)
+        else:
+          return (gid, regexp,)
+    else:
+      return None
+
+def delete_this_continue_next(gid, *_):
+  """删除这个继续下一个"""
+  next = find_next_task(gid)
+  delete_the_task(gid)
+  if next is not None:
+    client.unpause(next[0])
+
+def count_active_downloads(regexp, gid):
+  """Count active downloads for a regexp."""
+  with sqlite3.connect(DB_PATH) as conn:
+    cursor = conn.execute(
+      "SELECT COUNT(*) FROM downloads WHERE regexp = ? AND status = ? AND gid != ?"
+      , (regexp, DB_STATUS['download'], gid,)
+    )
+    return cursor.fetchone()[0]
 #+end_src
 
 #+name: common-end
@@ -585,14 +656,9 @@ class ProxyConfig:
       return None
       
     proxy_type, proxy_addr = parts
-    proxy_type = proxy_type.lower()
     
     # Convert to aria2 proxy format
-    if proxy_type == "http":
-      return {"http-proxy": proxy_addr, "https-proxy": proxy_addr}
-    elif proxy_type == "socks5":
-      return {"all-proxy": f"http://{proxy_addr}"}
-    return None
+    return {"all-proxy": f"http://{proxy_addr}"}
 #+end_src
 
 #+begin_src python :tangle (zr-org-by-tangle-dir "download-start.py")
@@ -601,20 +667,13 @@ class ProxyConfig:
 
 proxy_config = ProxyConfig()
 
-def get_option_changed_gids():
-  """Retrieve all tracked GIDs from the database."""
+def get_customized_gids():
+  """Retrieve all customized GIDs from the database."""
   with sqlite3.connect(DB_PATH) as conn:
-    cursor = conn.execute("SELECT gid FROM option_changed_gids")
+    cursor = conn.execute("SELECT gid FROM downloads WHERE status > ?", (DB_STATUS['customize'],))
     return {row[0] for row in cursor.fetchall()}
 
-def add_option_changed_gid(gid):
-  """Add a GID to the tracking database."""
-  with sqlite3.connect(DB_PATH) as conn:
-    conn.execute("INSERT OR IGNORE INTO option_changed_gids (gid) VALUES (?)", (gid,))
-
-# Initialize database and load existing GIDs
-init_db()
-option_changed_gids = get_option_changed_gids()
+customized_gids = get_customized_gids()
 
 server_options = [
   (r"^https://d\.pcs\.baidu\.com", 
@@ -627,25 +686,31 @@ server_options = [
   {"max-connection-per-server": "2"})
 ]
 
+def insert_gid_to_db(gid, *_):
+  """"""
+  with sqlite3.connect(DB_PATH) as conn:
+    conn.execute("INSERT OR IGNORE INTO downloads (gid) VALUES (?)", (gid,))
+
 on_download_start_functions = []
 
 def event_handler(gid, count, file=None):
   """Handle aria2 events and trigger hooks."""
   info = {}
+  insert_gid_to_db(gid)
   
   uris = client.get_uris(gid)
   info['uris'] = uris
+  info['used_uri'] = next((uri for uri in uris if uri.get('status') == 'used'), None)
   for func in on_download_start_functions:
     if func(gid, info):
       break
 
 def change_option_for_uri(gid, info):
   """Change download options based on URI patterns."""
-  if gid in option_changed_gids:
+  if gid in customized_gids:
     return
   
-  uris = info.get('uris', [])
-  used_uri = next((uri for uri in uris if uri.get('status') == 'used'), None)
+  used_uri = info['used_uri']
   
   if not used_uri:
     return
@@ -671,17 +736,88 @@ def change_option_for_uri(gid, info):
   # Merge with proxy options if needed
   if aria2_proxy_options and aria2_proxy_options != 'DIRECT':
     opts.update(aria2_proxy_options)
+  else:
+    opts.update({'all-proxy':''})
 
   if opts:
-    add_option_changed_gid(gid)
+    set_gid_status(gid, 'customize')
     
-    # Pause, change options, then unpause
     client.pause(gid)
     client.change_option(gid, opts)
     client.unpause(gid)
+  set_gid_status(gid, 'wait')
+
+def pause_it_if_too_much(gid, info):
+  """"""
+  uri = info['used_uri'].get('uri')
+  flag = True
+  for pattern, limit in downloading_limits.items():
+    if re.match(pattern, uri):
+      with sqlite3.connect(DB_PATH) as conn:
+        conn.execute(
+          "UPDATE downloads SET regexp = ? WHERE gid = ? AND regexp IS NULL" , (pattern, gid,)
+        )
+      active_cnt = count_active_downloads(pattern, gid)
+      if active_cnt >= limit:
+        try:
+          client.pause(gid)
+        except ClientException as e:
+          print(f"无法暂停任务: {e}")
+        return True
+      else:
+        set_gid_status(gid, 'download')
+        flag = False
+  if flag:
+    set_gid_status(gid, 'download')
+
+def add_some_uri(gid, info):
+  """添加一些其他源"""
+  uri = info['used_uri'].get('uri')
+  if uri.startswith('https://pixeldrain.com/'):
+    client.change_uri(gid, 1, [], ['https://habitica-assets.kkky.eu.org/' + uri])
 
 # Register the hook
+on_download_start_functions.append(add_some_uri)
 on_download_start_functions.append(change_option_for_uri)
+on_download_start_functions.append(pause_it_if_too_much)
+
+<<common-end>>
+#+end_src
+
+** download-pause
+:PROPERTIES:
+:CUSTOM_ID: 81750791-44ef-4863-b2be-3a9d85affd03
+:END:
+#+begin_src python :tangle (zr-org-by-tangle-dir "download-pause.py")
+<<comment-begin>>
+
+on_download_pause_functions = []
+
+def event_handler(gid, count, file=None):
+  """Handle aria2 events and trigger hooks."""
+  info = {}
+
+  info['file'] = file
+  for func in on_download_pause_functions:
+    if func(gid, info):
+      break
+
+def check_customize(gid, *_):
+  """Check if."""
+  return get_gid_status(gid) == DB_STATUS['customize']
+
+def pause_this_continue_next(gid, *_):
+  """设置该 gid 状态并找到之前战术暂停的任务继续"""
+  next = find_next_task(gid)
+  set_gid_status(gid, 'wait')
+  if next is not None:
+    next_gid, regexp = next
+    if (count_active_downloads(regexp, next_gid)
+        < downloading_limits[regexp]):
+      client.unpause(next)
+
+on_download_pause_functions.append(check_customize)
+on_download_pause_functions.append(pause_this_continue_next)
 
 <<common-end>>
 #+end_src
@@ -692,8 +828,6 @@ on_download_start_functions.append(change_option_for_uri)
 :END:
 #+begin_src python :tangle (zr-org-by-tangle-dir "download-complete.py")
 <<comment-begin>>
-
-init_db()
 
 on_download_complete_functions = []
 on_bt_download_complete_functions = []
@@ -711,18 +845,55 @@ def event_handler(gid, count, file=None):
     if func(gid, info):
       break
 
-def remove_option_changed_gid(gid):
-  """Remove a GID from the tracking database."""
-  with sqlite3.connect(DB_PATH) as conn:
-    conn.execute("DELETE FROM option_changed_gids WHERE gid = ?", (gid,))
-
-def remove_finished_gid(gid, *_):
-  """Clean up finished download GIDs."""
-  remove_option_changed_gid(gid)
-
 # Register completion hooks
-on_download_complete_functions.append(remove_finished_gid)
-on_bt_download_complete_functions.append(remove_finished_gid)
+on_download_complete_functions.append(delete_this_continue_next)
+on_bt_download_complete_functions.append(delete_the_task)
+
+<<common-end>>
+#+end_src
+
+** download-error
+:PROPERTIES:
+:CUSTOM_ID: fab3918c-bae9-4be5-b092-cf244b6ecc18
+:END:
+#+begin_src python :tangle (zr-org-by-tangle-dir "download-error.py")
+<<comment-begin>>
+
+on_download_error_functions = []
+
+def event_handler(gid, count, file=None):
+  """Handle aria2 events and trigger hooks."""
+  info = {}
+  
+  info['file'] = file
+  for func in on_download_error_functions:
+    if func(gid, info):
+      break
+
+on_download_error_functions.append(delete_this_continue_next)
+
+<<common-end>>
+#+end_src
+
+** download-stop
+:PROPERTIES:
+:CUSTOM_ID: af5d336e-bc64-4130-b179-5f3830022822
+:END:
+#+begin_src python :tangle (zr-org-by-tangle-dir "download-stop.py")
+<<comment-begin>>
+
+on_download_stop_functions = []
+
+def event_handler(gid, count, file=None):
+  """Handle aria2 events and trigger hooks."""
+  info = {}
+  
+  info['file'] = file
+  for func in on_download_stop_functions:
+    if func(gid, info):
+      break
+
+on_download_stop_functions.append(delete_this_continue_next)
 
 <<common-end>>
 #+end_src
