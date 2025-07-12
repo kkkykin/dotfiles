@@ -456,7 +456,8 @@ show-console-readout=false
 :PROPERTIES:
 :CUSTOM_ID: a4ff4630-0327-47ab-8d24-a8ca1071ac9c
 :tangle-dir: _tangle/scripts
-:header-args:python: :shebang (string-join '("#!/usr/bin/env -S uv run -s" "# /// script" "# requires-python = \">=3.12\"" "# dependencies = [\"aria2p\"]" "# [[tool.uv.index]]" "# url = \"https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple/\"" "# ///") "\n") :var aria2_secret=(auth-source-pick-first-password :host "aria2.localhost")
+:header-args:python: :shebang (string-join '("#!/usr/bin/env -S uv run -s" "# /// script" "# requires-python = \">=3.12\"" "# dependencies = [\"aria2p\"]" "# [[tool.uv.index]]" "# url = \"https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple/\"" "# ///") "\n")
+:header-args:python+: :var aria2_secret=(auth-source-pick-first-password :host "aria2.localhost") :mkdirp t
 :END:
 
 ** common
@@ -466,7 +467,7 @@ import sys
 import re
 import sqlite3
 from pathlib import Path
-from aria2p import API, Client, Download
+from aria2p import Client
 
 client = Client(
   host = 'http://127.0.0.1',
@@ -617,13 +618,13 @@ option_changed_gids = get_option_changed_gids()
 
 server_options = [
   (r"^https://d\.pcs\.baidu\.com", 
-  {"max_connection_per_server": "2"}),
+  {"max-connection-per-server": "2"}),
   (r"^https://pixeldrain\.com", 
-  {"max_connection_per_server": "1"}),
+  {"max-connection-per-server": "1"}),
   (r"^https://[a-zA-Z0-9]+\.workupload\.com", 
-  {"max_connection_per_server": "1"}),
+  {"max-connection-per-server": "1"}),
   (r"^https://download[0-9]+\.uploadhaven\.com", 
-  {"max_connection_per_server": "2"})
+  {"max-connection-per-server": "2"})
 ]
 
 on_download_start_functions = []
@@ -651,7 +652,7 @@ def change_option_for_uri(gid, info):
   uri = used_uri.get('uri')
   if not uri:
     return
-  
+
   # Parse URL to get host
   from urllib.parse import urlparse
   host = urlparse(uri).hostname
@@ -663,13 +664,13 @@ def change_option_for_uri(gid, info):
   # Find matching server options
   opts = {}
   for pattern, options in server_options:
-    if pattern.match(uri):
+    if re.match(pattern, uri):
       opts.update(options)
   
   # Merge with proxy options if needed
   if aria2_proxy_options and aria2_proxy_options != 'DIRECT':
     opts.update(aria2_proxy_options)
-  
+
   if opts:
     add_option_changed_gid(gid)
     
