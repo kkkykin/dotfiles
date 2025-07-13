@@ -814,7 +814,7 @@ def pause_this_continue_next(gid, *_):
     next_gid, regexp = next
     if (count_active_downloads(regexp, next_gid)
         < downloading_limits[regexp]):
-      client.unpause(next)
+      client.unpause(next_gid)
 
 on_download_pause_functions.append(check_customize)
 on_download_pause_functions.append(pause_this_continue_next)
