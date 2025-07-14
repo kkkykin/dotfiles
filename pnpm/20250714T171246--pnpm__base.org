@@ -6,8 +6,16 @@
 * tangle
 #+begin_src elisp
 (let ((rc-path (pcase system-type
-                   ('windows-nt (substitute-in-file-name "$PNPM_HOME/config/rc"))
-                   (_ (expand-file-name "~/.config/pnpm/rc")))))
+                 ('windows-nt (substitute-in-file-name "$PNPM_HOME/config/rc"))
+                 (_ (expand-file-name "~/.config/pnpm/rc"))))
+      (scoop-pnpm (expand-file-name "../../../../apps/pnpm/current/pnpm.exe"))
+      (win32-pnpm (substitute-in-file-name "$PNPM_HOME/pnpm.exe")))
+  (when (and (getenv "PNPM_HOME")
+             (eq system-type 'windows-nt)
+             (file-exists-p scoop-pnpm)
+             (not (file-symlink-p win32-pnpm)))
+    (rename-file win32-pnpm (concat win32-pnpm ".bak"))
+    (make-symbolic-link scoop-pnpm win32-pnpm t))
   (org-babel-tangle)
   (mkdir (file-name-directory rc-path) t)
   (make-symbolic-link (zr-org-by-tangle-dir "rc.ini") rc-path t))
