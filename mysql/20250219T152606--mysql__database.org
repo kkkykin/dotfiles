@@ -23,7 +23,7 @@
 #+begin_src elisp
 (let* ((base (substitute-in-file-name "$userprofile/scoop/persist/mysql"))
        (lts (concat base "-lts")))
-  (expand-file-name "data" (if (file-directory-p lts) lts my)))
+  (expand-file-name "data" (if (file-directory-p lts) lts base)))
 #+end_src
 
 #+begin_src conf :tangle (zr-org-by-tangle-dir "my.cnf") :mkdirp t :var datadir=find-mysql-datadir()
@@ -34,7 +34,6 @@ character-set-server=utf8mb4
 
 [client]
 user=root
-default-character-set=utf8mb4
 
 [mysql]
 default-character-set=utf8mb4
