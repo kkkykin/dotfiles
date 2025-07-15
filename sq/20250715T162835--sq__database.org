@@ -1,0 +1,19 @@
+#+title:      sq
+#+date:       [2025-07-15 Tue 16:28]
+#+filetags:   :database:
+#+identifier: 20250715T162835
+* tangle
+#+begin_src elisp
+(with-temp-buffer
+  (call-process "sq" nil t nil "ls" "-cj")
+  (goto-char (point-min))
+  (let* ((json (json-parse-buffer :object-type 'alist))
+         (sources (mapcar (lambda (s) (alist-get 'location s))
+                          (alist-get 'sources json)))
+         (connections (mapcar #'zr-prog-sql-connection-to-uri
+                              sql-connection-alist)))
+    (dolist (conn connections)
+      (unless (member (replace-regexp-in-string ":\\([^:@]+?\\)@" "xxxxx" conn nil nil 1)
+                      sources)
+        (call-process "sq" nil nil nil "add" conn "--skip-verify")))))
+#+end_src
