@@ -4,16 +4,32 @@
 #+identifier: 20250715T162835
 * tangle
 #+begin_src elisp
-(with-temp-buffer
-  (call-process "sq" nil t nil "ls" "-cj")
-  (goto-char (point-min))
-  (let* ((json (json-parse-buffer :object-type 'alist))
-         (sources (mapcar (lambda (s) (alist-get 'location s))
-                          (alist-get 'sources json)))
-         (connections (mapcar #'zr-prog-sql-connection-to-uri
-                              sql-connection-alist)))
-    (dolist (conn connections)
-      (unless (member (replace-regexp-in-string ":\\([^:@]+?\\)@" "xxxxx" conn nil nil 1)
-                      sources)
-        (call-process "sq" nil nil nil "add" conn "--skip-verify")))))
+(let* ((json (with-temp-buffer
+               (call-process "sq" nil t nil "ls" "-cj" "e")
+               (goto-char (point-min))
+               (condition-case nil
+                   (json-parse-buffer)
+                 (json-parse-error nil))))
+       (sources
+        (when json
+          (mapcar
+           (lambda (s) (list (gethash "handle" s) (gethash "location" s)))
+           (gethash "sources" json))))
+       (connections
+        (mapcar (lambda (db)
+                  (list (concat "@e/" (car db))
+                        (replace-regexp-in-string
+                         ":\\([^:@]+?\\)@" "xxxxx"
+                         (zr-prog-sql-connection-to-uri db)
+                         nil nil 1)))
+                sql-connection-alist)))
+  (when-let* ((removed (cl-set-difference sources connections
+                                          :test #'equal)))
+    (apply #'call-process "sq" nil nil nil "rm"
+           (mapcar #'car removed)))
+  (when-let* ((added (cl-set-difference connections sources
+                                        :test #'equal)))
+    (dolist (conn added)
+      (apply #'call-process "sq" nil nil nil "add" "--skip-verify"
+             "--handle" conn))))
 #+end_src
