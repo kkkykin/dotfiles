@@ -13,23 +13,29 @@
        (sources
         (when json
           (mapcar
-           (lambda (s) (list (gethash "handle" s) (gethash "location" s)))
+           (lambda (s) (cons (gethash "handle" s) (gethash "location" s)))
            (gethash "sources" json))))
        (connections
         (mapcar (lambda (db)
-                  (list (concat "@e/" (car db))
+                  (cons (concat "@e/" (downcase (subst-char-in-string ?- ?_ (car db))))
+                        (zr-prog-sql-connection-to-uri db)))
+                sql-connection-alist))
+       (masked
+        (mapcar (lambda (db)
+                  (cons (car db)
                         (replace-regexp-in-string
                          ":\\([^:@]+?\\)@" "xxxxx"
-                         (zr-prog-sql-connection-to-uri db)
-                         nil nil 1)))
-                sql-connection-alist)))
-  (when-let* ((removed (cl-set-difference sources connections
+                         (cdr db) nil nil 1)))
+                connections)))
+  (when-let* ((removed (cl-set-difference sources masked
                                           :test #'equal)))
     (apply #'call-process "sq" nil nil nil "rm"
            (mapcar #'car removed)))
-  (when-let* ((added (cl-set-difference connections sources
+  (when-let* ((added (cl-set-difference masked sources
                                         :test #'equal)))
     (dolist (conn added)
-      (apply #'call-process "sq" nil nil nil "add" "--skip-verify"
-             "--handle" conn))))
+      (let ((handle (car conn)))
+        (call-process "sq" nil nil nil "add" "--skip-verify"
+                      "--handle" handle
+                      (alist-get handle connections nil nil #'string=))))))
 #+end_src
