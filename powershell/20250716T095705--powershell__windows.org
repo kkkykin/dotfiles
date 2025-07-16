@@ -117,3 +117,13 @@ $Global:__LastHistoryId = $LastHistoryEntry.Id
 return $out
 }
 #+end_src
+
+** modules
+:PROPERTIES:
+:CUSTOM_ID: bf71f630-7414-4295-8c19-254e287f6dbd
+:END:
+#+begin_src powershell
+if (Get-Module -Name PSReadLine -ErrorAction SilentlyContinue) {
+    Set-PSReadLineOption -EditMode Emacs
+}
+#+end_src
