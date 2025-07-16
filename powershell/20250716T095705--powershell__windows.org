@@ -25,10 +25,10 @@
 :END:
 #+begin_src powershell
 $completionSources = @(
-    # @{
-    #     Name      = "sq"
-    #     FilePath  = "$HOME\scoop\apps\sq\current\completions\sq.powershell"
-    # },
+    @{
+        Name      = "sq"
+        GetScript = { sq completion powershell | Out-String }
+    },
     @{
         Name    = "rclone"
         GetScript = { rclone completion powershell | Out-String }
@@ -41,7 +41,7 @@ foreach ($source in $completionSources) {
         if (Get-Command $source.Name -ErrorAction SilentlyContinue) {
             try {
                 Invoke-Expression (& $source.GetScript)
-                Write-Host "✅ 已加载 $($source.Name) 的自动补全" -ForegroundColor Green
+                # Write-Host "✅ 已加载 $($source.Name) 的自动补全" -ForegroundColor Green
             } catch {
                 Write-Warning "⚠️ 加载 $($source.Name) 动态补全失败: $_"
             }
@@ -51,7 +51,7 @@ foreach ($source in $completionSources) {
         if (Test-Path $source.FilePath) {
             try {
                 Get-Content $source.FilePath | Invoke-Expression
-                Write-Host "✅ 已加载 $($source.Name) 的自动补全（来自文件）" -ForegroundColor Green
+                # Write-Host "✅ 已加载 $($source.Name) 的自动补全（来自文件）" -ForegroundColor Green
             } catch {
                 Write-Warning "⚠️ 加载 $($source.Name) 文件补全失败: $_"
             }
