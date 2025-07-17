@@ -497,10 +497,10 @@ Capslock & r::{
 #+begin_src ahk
 SetTitleMatchMode 3
 
-GroupAdd 'NoEmacsKeys', 'ahk_class Emacs'
-GroupAdd 'NoEmacsKeys', 'ahk_class Xming X'
-GroupAdd 'NoEmacsKeys', 'ahk_exe scrcpy.exe'
-GroupAdd 'NoEmacsKeys', 'ahk_exe WindowsTerminal.exe'
+GroupAdd 'EmacsParty', 'ahk_class Emacs'
+GroupAdd 'EmacsParty', 'ahk_class Xming X'
+GroupAdd 'EmacsParty', 'ahk_exe scrcpy.exe'
+GroupAdd 'EmacsParty', 'ahk_exe WindowsTerminal.exe'
 #+end_src
 
 #+begin_src ahk
@@ -524,16 +524,15 @@ cmdTitle := 'Command Prompt'
 ; #HotIf WinActive('ahk_exe msedge.exe') || WinActive(cmdTitle)
 <^n::Down
 
-#HotIf WinActive('ahk_class Emacs')
+#HotIf WinActive('ahk_group EmacsParty')
 <^Space::^@
 #HotIf WinActive('ahk_exe scrcpy.exe')
-<^Space::^@
 >!`::Run 'wt.exe -w _quake ft'
 
 #HotIf WinActive('ahk_exe WXWork.exe')
 Capslock::WinMinimize
 
-#HotIf not WinActive('ahk_group NoEmacsKeys')
+#HotIf not WinActive('ahk_group EmacsParty')
 <^g::clearNumArg
 <!1::setNumArg(1)
 <!2::setNumArg(2)
