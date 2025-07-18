@@ -39,6 +39,8 @@
 
 #+attr_babel: :id ee921021-4682-4c08-86dd-747dca0ea5c4
 #+begin_src conf :tangle (if (eq system-type 'windows-nt) (zr-org-by-tangle-dir "gitconfig") "no")
+[color]
+    ui = always
 [core]
 	sshCommand = C:/Windows/System32/OpenSSH/ssh.exe
 [gc]
