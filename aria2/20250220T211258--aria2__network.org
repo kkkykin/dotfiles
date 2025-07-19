@@ -471,6 +471,7 @@ from aria2p import Client, ClientException
 
 downloading_limits = {
   r"^https://d\.pcs\.baidu\.com": 1,
+  r"^https://[^/]+\.mypikpak\.com": 5,
   r"^https://pixeldrain\.com": 3
 }
 
@@ -677,6 +678,9 @@ customized_gids = get_customized_gids()
 
 server_options = [
   (r"^https://d\.pcs\.baidu\.com", 
+  {"max-connection-per-server": "2",
+   "user-agent": "pan.baidu.com"}),
+  (r"^https://[^/]+\.mypikpak\.com/",
   {"max-connection-per-server": "2"}),
   (r"^https://pixeldrain\.com", 
   {"max-connection-per-server": "1"}),
