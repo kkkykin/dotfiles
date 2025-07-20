@@ -362,6 +362,16 @@ local server_options = {
     }
 }
 
+-- 定义 URI 转换规则
+local uri_transform_rules = {
+    {
+        pattern = "^https://pixeldrain\\.com/",
+        callback = function(uri)
+            return {uri, "https://habitica-assets.kkky.eu.org/" .. uri}
+        end
+    }
+}
+
 -- 合并两个表
 local function merge_options(base, new)
     local result = {}
@@ -378,6 +388,22 @@ local function get_options_for_uri(uri)
         end
     end
     return nil
+end
+
+-- 转换 URI 如果匹配规则
+local function transform_uri_if_needed(uri)
+    for _, rule in ipairs(uri_transform_rules) do
+        if ngx.re.match(uri, rule.pattern, "jo") then
+            local ok, new_uris = pcall(rule.callback, uri)
+            if ok and new_uris and #new_uris > 0 then
+                ngx.log(ngx.INFO, "Transformed URI: ", uri, " to: ", cjson.encode(new_uris))
+                return new_uris
+            else
+                ngx.log(ngx.ERR, "Failed to transform URI: ", uri, " error: ", new_uris)
+            end
+        end
+    end
+    return {uri}  -- 如果没有转换，返回包含原始 URI 的列表
 end
 
 function _M.process_request()
@@ -424,11 +450,25 @@ function _M.process_request()
         if #params >= 3 then position = params[3] end
     end
     
+    -- 检查每个 URI 并进行可能的转换
+    local new_uris = {}
+    local uris_changed = false
+    
+    for _, uri in ipairs(uris) do
+        local transformed_uris = transform_uri_if_needed(uri)
+        for _, new_uri in ipairs(transformed_uris) do
+            table.insert(new_uris, new_uri)
+            if new_uri ~= uri then
+                uris_changed = true
+            end
+        end
+    end
+    
     -- 检查每个 URI 并收集 options
     local final_options = {}
     local has_custom_options = false
     
-    for _, uri in ipairs(uris) do
+    for _, uri in ipairs(new_uris) do
         local uri_options = get_options_for_uri(uri)
         if uri_options then
             final_options = merge_options(final_options, uri_options)
@@ -436,19 +476,22 @@ function _M.process_request()
         end
     end
     
-    -- 如果有自定义 options，则合并到原始 options 中
-    if has_custom_options then
-        options = merge_options(options, final_options)
+    -- 如果有 URI 变化或自定义 options，则更新请求
+    if uris_changed or has_custom_options then
+        -- 合并 options
+        if has_custom_options then
+            options = merge_options(options, final_options)
+        end
         
         -- 重新构建参数
         local new_params = {}
         if #params >= 1 and type(params[1]) == "string" then
             -- 有 secret token 的情况
-            new_params = {params[1], uris, options}
+            new_params = {params[1], new_uris, options}
             if position then new_params[4] = position end
         else
             -- 无 secret token 的情况
-            new_params = {uris, options}
+            new_params = {new_uris, options}
             if position then new_params[3] = position end
         end
         
@@ -463,8 +506,14 @@ function _M.process_request()
         ngx.req.set_header("Content-Length", #new_body)
         
         -- 记录日志
-        ngx.log(ngx.INFO, "Modified options for URIs: ", cjson.encode(uris), 
-               " with options: ", cjson.encode(final_options))
+        if uris_changed then
+            ngx.log(ngx.INFO, "Transformed URIs from: ", cjson.encode(uris), 
+                   " to: ", cjson.encode(new_uris))
+        end
+        if has_custom_options then
+            ngx.log(ngx.INFO, "Applied options for URIs: ", cjson.encode(new_uris), 
+                   " with options: ", cjson.encode(final_options))
+        end
     end
 end
 
