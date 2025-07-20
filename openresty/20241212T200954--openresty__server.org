@@ -69,6 +69,11 @@ http {
     include sites-enabled/*.conf.2;
     lua_package_path "$prefix/lua-scripts/?.lua;;";
 
+    map $http_upgrade $connection_upgrade {
+      default upgrade;
+      ''      close;
+    }
+
     server {
         listen $listen;
         # listen       80;
@@ -310,6 +315,187 @@ end
 local command = 'explorer "' .. url .. '"'
 
 utils.shell_command_and_say(command)
+#+end_src
+
+**** aria2
+:PROPERTIES:
+:CUSTOM_ID: 621f4833-8664-42fc-bb62-c8ff4ef8072a
+:END:
+#+begin_src lua :tangle "_tangle/lua-scripts/libs/aria2_proxy.lua"
+local cjson = require "cjson"
+local re = require "ngx.re"
+
+local _M = {}
+
+-- 定义不同 URL 模式对应的 options
+local server_options = {
+    {
+        pattern = "^https://d\\.pcs\\.baidu\\.com/",
+        options = {
+            ["max-connection-per-server"] = "2",
+            ["user-agent"] = "pan.baidu.com"
+        }
+    },
+    {
+        pattern = "^https://[^/]+\\.mypikpak\\.com/",
+        options = {
+            ["max-connection-per-server"] = "2"
+        }
+    },
+    {
+        pattern = "^https://pixeldrain\\.com/",
+        options = {
+            ["max-connection-per-server"] = "1"
+        }
+    },
+    {
+        pattern = "^https://[a-zA-Z0-9]+\\.workupload\\.com/",
+        options = {
+            ["max-connection-per-server"] = "1"
+        }
+    },
+    {
+        pattern = "^https://download[0-9]+\\.uploadhaven\\.com/",
+        options = {
+            ["max-connection-per-server"] = "2"
+        }
+    }
+}
+
+-- 合并两个表
+local function merge_options(base, new)
+    local result = {}
+    for k, v in pairs(base or {}) do result[k] = v end
+    for k, v in pairs(new or {}) do result[k] = v end
+    return result
+end
+
+-- 根据 URI 查找匹配的 options
+local function get_options_for_uri(uri)
+    for _, rule in ipairs(server_options) do
+        if ngx.re.match(uri, rule.pattern, "jo") then
+            return rule.options
+        end
+    end
+    return nil
+end
+
+function _M.process_request()
+    -- 只处理 POST 请求
+    if ngx.req.get_method() ~= "POST" then
+        return
+    end
+    
+    -- 读取请求体
+    ngx.req.read_body()
+    local body = ngx.req.get_body_data()
+    if not body then
+        return
+    end
+    
+    -- 解析 JSON
+    local ok, json_data = pcall(cjson.decode, body)
+    if not ok or not json_data then
+        ngx.log(ngx.ERR, "Failed to decode JSON: ", json_data)
+        return
+    end
+    
+    -- 只处理 aria2.addUri 方法
+    if json_data.method ~= "aria2.addUri" then
+        return
+    end
+    
+    -- 获取参数
+    local params = json_data.params or {}
+    local uris = {}
+    local options = {}
+    local position
+    
+    -- 解析参数 (处理可能的 secret token 情况)
+    if #params >= 1 and type(params[1]) == "string" then
+        -- 有 secret token 的情况: [secret, uris, options, position]
+        if #params >= 2 then uris = params[2] or {} end
+        if #params >= 3 then options = params[3] or {} end
+        if #params >= 4 then position = params[4] end
+    else
+        -- 无 secret token 的情况: [uris, options, position]
+        if #params >= 1 then uris = params[1] or {} end
+        if #params >= 2 then options = params[2] or {} end
+        if #params >= 3 then position = params[3] end
+    end
+    
+    -- 检查每个 URI 并收集 options
+    local final_options = {}
+    local has_custom_options = false
+    
+    for _, uri in ipairs(uris) do
+        local uri_options = get_options_for_uri(uri)
+        if uri_options then
+            final_options = merge_options(final_options, uri_options)
+            has_custom_options = true
+        end
+    end
+    
+    -- 如果有自定义 options，则合并到原始 options 中
+    if has_custom_options then
+        options = merge_options(options, final_options)
+        
+        -- 重新构建参数
+        local new_params = {}
+        if #params >= 1 and type(params[1]) == "string" then
+            -- 有 secret token 的情况
+            new_params = {params[1], uris, options}
+            if position then new_params[4] = position end
+        else
+            -- 无 secret token 的情况
+            new_params = {uris, options}
+            if position then new_params[3] = position end
+        end
+        
+        -- 更新 JSON 数据
+        json_data.params = new_params
+        
+        -- 重新编码 JSON
+        local new_body = cjson.encode(json_data)
+        
+        -- 更新请求体
+        ngx.req.set_body_data(new_body)
+        ngx.req.set_header("Content-Length", #new_body)
+        
+        -- 记录日志
+        ngx.log(ngx.INFO, "Modified options for URIs: ", cjson.encode(uris), 
+               " with options: ", cjson.encode(final_options))
+    end
+end
+
+return _M
+#+end_src
+
+#+begin_src conf-space :tangle "_tangle/conf/sites-enabled/aria2-jsonrpc.conf.3"
+location /aria2-jsonrpc {
+  access_log off;
+  access_by_lua_block {
+    local aria2_proxy = require "libs/aria2_proxy"
+    aria2_proxy.process_request()
+  }
+  
+  proxy_pass http://127.0.0.1:6800/jsonrpc;
+  proxy_http_version 1.1;
+  proxy_set_header Upgrade $http_upgrade;
+  proxy_set_header Connection $connection_upgrade;
+
+  proxy_set_header Host $host;
+  proxy_set_header X-Real-IP $remote_addr;
+  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+  
+  proxy_pass_request_headers on;
+  proxy_pass_request_body on;
+  
+  # 增加超时设置
+  proxy_connect_timeout 60s;
+  proxy_read_timeout 60s;
+  proxy_send_timeout 60s;
+}
 #+end_src
 
 *** serve files
