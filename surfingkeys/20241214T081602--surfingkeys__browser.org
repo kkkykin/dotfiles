@@ -35,6 +35,7 @@ const {
   addSearchAlias,
   getBrowserName,
   mapkey,
+  tabOpenLink,
   Hints,
   Front,
 } = api;
@@ -47,7 +48,6 @@ const {
 settings.clickablePat = /(https?:\/\/|thunder:\/\/|magnet:)\S+/ig;
 settings.interceptedErrors = ["*"];
 #+end_src
-
 ** utils
 :PROPERTIES:
 :CUSTOM_ID: 7ffe28ab-62a9-4c9e-82cc-5c4a15f9dafd
@@ -480,6 +480,38 @@ function FindProxyForURL(url, host) {
 :CUSTOM_ID: 66421736-0059-408e-b459-30112a58c0c1
 :END:
 #+begin_src js
+}
+#+end_src
+
+** dwim
+:PROPERTIES:
+:CUSTOM_ID: 60ddd28f-3a84-4104-9ff7-2a352320fe9b
+:END:
+#+begin_src js
+mapkey(',,', '根据当前URL执行特定操作', function() {  
+  const url = window.location.href;
+  let match
+
+  <<github-to-deepwiki>>
+
+  else {
+    Front.showBanner('当前页面没有配置特定操作');
+  }  
+});
+#+end_src
+
+*** sub
+:PROPERTIES:
+:header-args:js: :tangle no
+:END:
+#+name: github-to-deepwiki
+#+begin_src js
+match = url.match(/^https:\/\/github\.com\/([^\/]+)\/([^\/]+)\/?/)
+if (match) {  
+  const user = match[1];  
+  const repo = match[2];  
+  const deepwikiUrl = `https://deepwiki.com/${user}/${repo}`;  
+  tabOpenLink(deepwikiUrl);
 }
 #+end_src
 
