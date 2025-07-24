@@ -483,12 +483,47 @@ function FindProxyForURL(url, host) {
 }
 #+end_src
 
+** QRCode
+:PROPERTIES:
+:CUSTOM_ID: 9d549487-6a6b-49c4-ae77-7e0de65cbdde
+:END:
+#+begin_src js
+function openLinkInQRCode() {
+  Hints.create('img', function(element) {
+    const imageUrl = element.src;
+
+    RUNTIME('request', {
+      url: 'https://cli.im/Api/Browser/deqr',
+      headers: {
+        'accept': 'application/json, text/javascript, */*; q=0.01',
+        'content-type': 'application/x-www-form-urlencoded; charset=UTF-8',
+        'x-requested-with': 'XMLHttpRequest'
+      },
+      data: `data=${encodeURIComponent(imageUrl)}`
+    }, function(response) {
+      try {
+        const result = JSON.parse(response.text);
+        if (result.status === 1 && result.data && result.data.RawData) {
+          tabOpenLink(result.data.RawData);
+        } else {
+          Front.showBanner('二维码解析失败');
+        }
+      } catch (e) {
+        Front.showBanner('响应解析错误');
+      }
+    });
+  });
+}
+
+mapkey(',q', '打开二维码中链接', openLinkInQRCode);
+#+end_src
+
 ** dwim
 :PROPERTIES:
 :CUSTOM_ID: 60ddd28f-3a84-4104-9ff7-2a352320fe9b
 :END:
 #+begin_src js
-mapkey(',,', '根据当前URL执行特定操作', function() {  
+mapkey(',,', '根据当前URL执行特定操作', function() {
   const url = window.location.href;
   let match
 
@@ -496,7 +531,7 @@ mapkey(',,', '根据当前URL执行特定操作', function() {
 
   else {
     Front.showBanner('当前页面没有配置特定操作');
-  }  
+  }
 });
 #+end_src
 
