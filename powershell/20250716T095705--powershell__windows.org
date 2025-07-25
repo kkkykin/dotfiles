@@ -127,3 +127,25 @@ if (Get-Module -Name PSReadLine -ErrorAction SilentlyContinue) {
     Set-PSReadLineOption -EditMode Emacs
 }
 #+end_src
+
+** alias
+:PROPERTIES:
+:CUSTOM_ID: 821fe690-2234-4a99-a5f8-a3442da4eb97
+:END:
+#+begin_src powershell
+@('cat'
+  , 'cp'
+  , 'curl'
+  # , 'diff'
+  , 'ls'
+  , 'mv'
+  , 'pwd'
+  , 'rm'
+  # , 'tee'
+  , 'wget'
+ ) | ForEach-Object {
+  if (Test-Path "Alias:$_") {
+    Remove-Item "Alias:$_"
+  }
+}
+#+end_src
