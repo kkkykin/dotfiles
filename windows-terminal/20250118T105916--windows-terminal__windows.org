@@ -99,7 +99,7 @@
         "name": "Command Prompt"
       },
       {
-        "commandline": "$nvim-path --listen $nvim-server +te +star",
+        "commandline": "$nvim-path --listen $nvim-server \"+te powershell\" +star",
         "guid": "{34b338b4-6df1-431f-8ece-cdab6925fb75}",
         "name": "nvim",
         "startingDirectory": "$start-dir"
