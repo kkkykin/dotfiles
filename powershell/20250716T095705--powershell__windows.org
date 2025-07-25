@@ -133,19 +133,23 @@ if (Get-Module -Name PSReadLine -ErrorAction SilentlyContinue) {
 :CUSTOM_ID: 821fe690-2234-4a99-a5f8-a3442da4eb97
 :END:
 #+begin_src powershell
-@('cat'
-  , 'cp'
-  , 'curl'
-  # , 'diff'
-  , 'ls'
-  , 'mv'
-  , 'pwd'
-  , 'rm'
-  # , 'tee'
-  , 'wget'
- ) | ForEach-Object {
-  if (Test-Path "Alias:$_") {
-    Remove-Item "Alias:$_"
-  }
+$aliasesToRemove = @('cat'
+                     , 'cp'
+                     , 'curl'
+                     # , 'diff'
+                     , 'ls'
+                     , 'mv'
+                     , 'pwd'
+                     , 'rm'
+                     # , 'tee'
+                     , 'wget'
+                    ) |
+                      Where-Object { Test-Path "Alias:$_" } |
+                      ForEach-Object { "Alias:$_" }
+
+if ($aliasesToRemove) {
+  Remove-Item -Path $aliasesToRemove
 }
+
+Remove-Variable -Name "aliasesToRemove"
 #+end_src
