@@ -529,7 +529,7 @@ cmdTitle := 'Command Prompt'
 #HotIf WinActive('ahk_exe scrcpy.exe')
 >!`::Run 'wt.exe -w _quake ft'
 
-#HotIf WinActive('ahk_exe WXWork.exe')
+#HotIf WinActive('ahk_exe WXWork.exe') and not WinActive('ahk_class ImagePreview')
 Capslock::WinMinimize
 
 #HotIf not WinActive('ahk_group EmacsParty')
