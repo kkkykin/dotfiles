@@ -330,7 +330,7 @@ local _M = {}
 -- 定义不同 URL 模式对应的 options
 local server_options = {
     {
-        pattern = "^https://d\\.pcs\\.baidu\\.com/",
+        pattern = "^https://[^/]+\\.baidu(?:pcs)?\\.com/file/",
         options = {
             ["max-connection-per-server"] = "2",
             ["user-agent"] = "pan.baidu.com"
