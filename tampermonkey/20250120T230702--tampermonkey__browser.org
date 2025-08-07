@@ -4,6 +4,13 @@
 #+identifier: 20250120T230702
 #+property: header-args:org :comments no
 
+* tangle
+#+begin_src elisp
+(let ((zr-local-pls (car (auth-source-search
+                          :host "aria2.remote"))))
+  (org-babel-tangle))
+#+end_src
+
 * scripts
 
 ** cookies-dumper
@@ -89,4 +96,160 @@ GM_cookie.list({}, function(cookies, error) {
     console.error(error);
   }
 });
+#+end_src
+
+** File List
+:PROPERTIES:
+:header-args: :tangle (zr-org-by-tangle-dir "file-list.js") :mkdirp t
+:CUSTOM_ID: 17fa8862-9243-4d50-b8a6-62e04976a848
+:END:
+#+begin_src js :var aria2_remote_token=(auth-info-password zr-local-pls) aria2_remote_url=(plist-get zr-local-pls :user)
+// ==UserScript==
+// @name         File List
+// @namespace    http://tampermonkey.net/
+// @version      2025-08-06
+// @description  try to take over the world!
+// @author       DeepSeek
+// @match        https://yyzz.426720.xyz/
+// @icon         https://www.google.com/s2/favicons?sz=64&domain=426720.xyz
+// @grant        GM_xmlhttpRequest
+// ==/UserScript==
+
+(function() {
+  'use strict';
+
+  // 等待页面加载完成
+  setTimeout(function() {
+    // 找到批量发送下载按钮的容器
+    const sendButton = document.getElementById('send-selected-button');
+
+    if (!sendButton) return;
+
+    // 创建新按钮
+    const newButton = document.createElement('button');
+    newButton.id = 'custom-download-button';
+    newButton.textContent = '自定义下载';
+    newButton.style.marginLeft = '10px';
+    newButton.style.backgroundColor = '#6c757d'; // 灰色按钮
+    newButton.style.color = 'white';
+    newButton.style.border = 'none';
+    newButton.style.borderRadius = '5px';
+    newButton.style.padding = '8px 16px';
+    newButton.style.cursor = 'pointer';
+    newButton.style.fontSize = '14px';
+
+    // 添加点击事件
+    newButton.addEventListener('click', function() {
+      customDownloadFunction();
+    });
+
+    // 将新按钮插入到发送按钮后面
+    sendButton.parentNode.insertBefore(newButton, sendButton.nextSibling);
+
+  }, 1000);
+
+  // 获取选中的文件路径（复用页面原有函数）
+  function getSelectedFiles() {
+    const selectedFiles = [];
+    const fileCheckboxes = document.querySelectorAll('.file-checkbox:checked');
+
+    fileCheckboxes.forEach(checkbox => {
+      selectedFiles.push(checkbox.getAttribute('data-path'));
+    });
+
+    return selectedFiles;
+  }
+
+  async function myPushToAria2(rawUrl) {
+    try {
+      const aria2Payload = {
+        jsonrpc: '2.0',
+        method: 'aria2.addUri',
+        id: '1',
+        params: [
+          `token:${aria2_remote_token}`,
+          [rawUrl],
+          {
+            header: ["User-Agent: pan.baidu.com"]
+          }
+        ]
+      };
+
+      GM_xmlhttpRequest({
+        method: "POST",
+        url: aria2_remote_url,
+        headers: {
+          "Content-Type": "application/json"
+        },
+        data: JSON.stringify(aria2Payload),
+        onload: function(response) {
+          const aria2Data = JSON.parse(response.responseText);
+          console.log('Aria2 响应:', aria2Data);
+
+          if (aria2Data.result) {
+            showCustomAlert(`下载任务已成功添加到 Aria2！`);
+          } else {
+            console.error(`添加下载任务失败:`, aria2Data.error);
+            alert(`添加下载任务失败`);
+          }
+        },
+        onerror: function(error) {
+          console.error(`请求 Aria2 RPC 失败:`, error);
+          alert(`请求 Aria2 RPC 失败！`);
+        }
+      });
+    } catch (error) {
+      console.error(`处理请求时出错:`, error);
+      alert(`处理请求时出错！`);
+    }
+  }
+
+  // 自定义下载函数
+  async function customDownloadFunction() {
+    const selectedFiles = getSelectedFiles();
+    if (selectedFiles.length === 0) {
+      alert('请先选择文件！');
+      return;
+    }
+
+    console.log('自定义下载功能被调用，选中的文件:', selectedFiles);
+
+    // 这里可以添加你的自定义下载逻辑
+    // 例如：
+    try {
+      // 1. 获取文件下载链接
+      const response = await fetch('cun/dlinklist.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json;charset=UTF-8',
+        },
+        body: JSON.stringify({
+          paths: selectedFiles
+        })
+      });
+
+      const data = await response.json();
+
+      if (Array.isArray(data)) {
+        // 2. 处理每个下载链接
+        for (const item of data) {
+          if (item.raw_url) {
+            const url = item.raw_url.replace(/^http:\/\//, 'https://');
+            console.log('处理文件:', url);
+
+            // 这里可以调用你的自定义下载逻辑
+            await myPushToAria2(url);
+          }
+        }
+
+        alert(`已处理 ${data.length} 个文件`);
+      } else {
+        alert('获取下载链接失败');
+      }
+    } catch (error) {
+      console.error('自定义下载出错:', error);
+      alert('下载出错: ' + error.message);
+    }
+  }
+})();
 #+end_src
