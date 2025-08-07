@@ -1,0 +1,32 @@
+#+title:      gemini-cli
+#+date:       [2025-08-07 Thu 16:27]
+#+filetags:   :entertainment:
+#+identifier: 20250807T162718
+* tangle
+#+begin_src elisp
+(let* ((target (zr-org-by-tangle-dir "settings.json"))
+       (conf (pcase system-type
+               ('windows-nt (substitute-in-file-name "$userprofile/.gemini/settings.json"))
+               (_ (expand-file-name "~/.gemini/settings.json"))))
+       (conf-dir (file-name-directory conf)))
+  (mkdir conf-dir t)
+  (zr-org-babel-json-format "settings")
+  (org-babel-tangle)
+  (make-symbolic-link target conf t))
+#+end_src
+* settings
+:PROPERTIES:
+:CUSTOM_ID: 7265cdf7-2471-4032-a384-155dd1ee5be1
+:END:
+#+name: settings
+#+begin_src json :mkdirp t :tangle (zr-org-by-tangle-dir "settings.json")
+{
+  "checkpointing": {
+    "enabled": true
+  },
+  "hideBanner": true,
+  "maxSessionTurns": -1,
+  "preferredEditor": "emacsclient",
+  "selectedAuthType": "gemini-api-key"
+}
+#+end_src
