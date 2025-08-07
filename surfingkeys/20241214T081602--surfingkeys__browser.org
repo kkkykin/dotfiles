@@ -271,6 +271,7 @@ Front.registerInlineQuery({
 | n     | NixHomeManager | https://mipmip.github.io/home-manager-option-search/?query=                          |
 | N     | NixPackages    | https://search.nixos.org/packages?from=0&size=50&sort=relevance&type=packages&query= |
 | j     | Mojeek         | https://www.mojeek.com/search?q=                                                     |
+| u     | Wubi           | https://wubi.xuelai.com/search/                                                      |
 
 #+begin_src js :var mySearchAlias=search-engine-table[]
 for (const alias of mySearchAlias) {
