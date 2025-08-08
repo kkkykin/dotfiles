@@ -24,6 +24,7 @@
   "checkpointing": {
     "enabled": true
   },
+  "contextFileName": "CLAUDE.md",
   "hideBanner": true,
   "maxSessionTurns": -1,
   "preferredEditor": "emacsclient",
