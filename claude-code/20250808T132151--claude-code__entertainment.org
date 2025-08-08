@@ -1,0 +1,45 @@
+#+title:      claude-code
+#+date:       [2025-08-08 Fri 13:21]
+#+filetags:   :entertainment:
+#+identifier: 20250808T132151
+* tangle
+#+begin_src elisp
+(let* ((target (zr-org-by-tangle-dir "settings.json"))
+       (conf (pcase system-type
+               ('windows-nt (substitute-in-file-name "$userprofile/.claude/settings.json"))
+               (_ (expand-file-name "~/.claude/settings.json"))))
+       (conf-dir (file-name-directory conf)))
+  (mkdir conf-dir t)
+  (zr-org-babel-json-format "settings")
+  (org-babel-tangle)
+  (make-symbolic-link target conf t))
+#+end_src
+* settings
+:PROPERTIES:
+:CUSTOM_ID: adfd55f4-ab10-4045-bfc0-d3d794ebf571
+:END:
+#+name: settings
+#+begin_src json :mkdirp t :tangle (zr-org-by-tangle-dir "settings.json")
+{
+  "env": {
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+    "CLAUDE_CODE_GIT_BASH_PATH": "<<find-git-bash()>>",
+    "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "32000"
+  },
+  "permissions": {
+    "allow": [],
+    "deny": []
+  }
+}
+#+end_src
+
+** git-bash
+#+name: find-git-bash
+#+begin_src elisp
+(substring
+ (json-serialize
+  (if (eq 'windows-nt system-type)
+      (subst-char-in-string ?/ ?\\ (executable-find "sh"))
+    (executable-find "bash")))
+ 1 -1)
+#+end_src
