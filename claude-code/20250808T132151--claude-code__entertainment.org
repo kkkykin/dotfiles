@@ -19,7 +19,7 @@
 :CUSTOM_ID: adfd55f4-ab10-4045-bfc0-d3d794ebf571
 :END:
 #+name: settings
-#+begin_src json :mkdirp t :tangle (zr-org-by-tangle-dir "settings.json")
+#+begin_src json :comments no :mkdirp t :tangle (zr-org-by-tangle-dir "settings.json")
 {
   "env": {
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
