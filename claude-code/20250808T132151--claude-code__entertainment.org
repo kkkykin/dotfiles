@@ -43,3 +43,12 @@
     (executable-find "bash")))
  1 -1)
 #+end_src
+
+* guide
+https://www.anthropic.com/engineering/claude-code-best-practices
+https://www.siddharthbharath.com/claude-code-the-complete-guide/
+https://claudelog.com/getting-started/
+** CLAUDE.md
+https://github.com/obra/dotfiles/blob/main/.claude/CLAUDE.md
+* subagents
+https://subagents.cc/
