@@ -1,0 +1,104 @@
+#+title:      claude-code-router
+#+date:       [2025-08-08 Fri 13:35]
+#+filetags:   :entertainment:
+#+identifier: 20250808T133541
+* tangle
+#+begin_src elisp
+(let* ((target (zr-org-by-tangle-dir "config.json"))
+       (conf (pcase system-type
+               ('windows-nt (substitute-in-file-name "$userprofile/.claude-code-router/config.json"))
+               (_ (expand-file-name "~/.claude-code-router/config.json"))))
+       (conf-dir (file-name-directory conf)))
+  (mkdir conf-dir t)
+  (zr-org-babel-json-format "config")
+  (org-babel-tangle)
+  (make-symbolic-link target conf t))
+#+end_src
+
+* config
+:PROPERTIES:
+:CUSTOM_ID: 3ed1f275-c138-49b9-8c58-32cf8e5dd4d7
+:END:
+#+name: config
+#+header: :var openrouter_api_key=(auth-source-pick-first-password :host "openrouter.api")
+#+header: :var modelscope_api_key=(auth-source-pick-first-password :host "modelscope.api")
+#+header: :var gemini_api_key=(auth-source-pick-first-password :host "gemini.api")
+#+begin_src json :mkdirp t :tangle (zr-org-by-tangle-dir "config.json")
+{
+  "API_TIMEOUT_MS": 600000,
+  "HOST": "127.0.0.1",
+  "LOG": true,
+  "NON_INTERACTIVE_MODE": false,
+  "PROXY_URL": "http://127.0.0.1:10808",
+  "Providers": [
+    {
+      "api_base_url": "https://openrouter.ai/api/v1/chat/completions",
+      "api_key": "$openrouter_api_key",
+      "models": [
+        "deepseek/deepseek-chat-v3-0324:free",
+        "qwen/qwen3-coder:free",
+        "deepseek/deepseek-r1-0528:free",
+        "moonshotai/kimi-k2:free"
+      ],
+      "name": "openrouter",
+      "transformer": {
+        "deepseek/deepseek-chat-v3-0324:free": {
+          "use": [
+            "tooluse"
+          ]
+        },
+        "use": [
+          "openrouter"
+        ]
+      }
+    },
+    {
+      "api_base_url": "https://api-inference.modelscope.cn/v1/chat/completions",
+      "api_key": "$modelscope_api_key",
+      "models": [
+        "Qwen/Qwen3-Coder-480B-A35B-Instruct",
+        "Qwen/Qwen3-235B-A22B-Thinking-2507"
+      ],
+      "name": "modelscope",
+      "transformer": {
+        "Qwen/Qwen3-235B-A22B-Thinking-2507": {
+          "use": [
+            "reasoning"
+          ]
+        },
+        "use": [
+          [
+            "maxtoken",
+            {
+              "max_tokens": 65536
+            }
+          ],
+          "enhancetool"
+        ]
+      }
+    },
+    {
+      "api_base_url": "https://generativelanguage.googleapis.com/v1beta/models/",
+      "api_key": "$gemini_api_key",
+      "models": [
+        "gemini-2.5-flash",
+        "gemini-2.5-pro"
+      ],
+      "name": "gemini",
+      "transformer": {
+        "use": [
+          "gemini"
+        ]
+      }
+    }
+  ],
+  "Router": {
+    "background": "openrouter,qwen/qwen3-coder:free",
+    "default": "modelscope,Qwen/Qwen3-Coder-480B-A35B-Instruct",
+    "longContext": "gemini,gemini-2.5-pro",
+    "longContextThreshold": 60000,
+    "think": "modelscope,Qwen/Qwen3-235B-A22B-Thinking-2507",
+    "webSearch": "gemini,gemini-2.5-flash"
+  }
+}
+#+end_src
