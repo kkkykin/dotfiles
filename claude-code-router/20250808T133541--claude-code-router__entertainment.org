@@ -12,6 +12,9 @@
   (mkdir conf-dir t)
   (zr-org-babel-json-format "config")
   (org-babel-tangle)
+  (let ((local (expand-file-name "_local.json")))
+    (when (file-readable-p local)
+      (zr-merge-json-files target local target)))
   (make-symbolic-link target conf t))
 #+end_src
 
@@ -23,7 +26,7 @@
 #+header: :var openrouter_api_key=(auth-source-pick-first-password :host "openrouter.api")
 #+header: :var modelscope_api_key=(auth-source-pick-first-password :host "modelscope.api")
 #+header: :var gemini_api_key=(auth-source-pick-first-password :host "gemini.api")
-#+begin_src json :mkdirp t :tangle (zr-org-by-tangle-dir "config.json")
+#+begin_src json :comments no :mkdirp t :tangle (zr-org-by-tangle-dir "config.json")
 {
   "API_TIMEOUT_MS": 600000,
   "HOST": "127.0.0.1",
