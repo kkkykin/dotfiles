@@ -353,7 +353,7 @@ SaveMacro(pLastRecordedMacroFile) {
   
   ProcessUserInput(*) {
     Saved := MyGui.Submit()
-    dir := Saved.dir
+    dir := Trim(Saved.dir)
     selectedRow := keyLV.GetNext()
     if dir = ''{
       FileDelete(pLastRecordedMacroFile)
