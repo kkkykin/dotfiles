@@ -200,7 +200,7 @@ RapidFire(key_send, key_hold := False, delay := 25){
 
 #+begin_src ahk
 getWinMacroDirNames(win){
-  activeWinTitle := WinGetTitle(win)
+  activeWinTitle := Trim(WinGetTitle(win))
   activeWinClass := WinGetClass(win)
   activeWinExe := WinGetProcessName(win)
   return [activeWinTitle, 'ahk_class ' activeWinClass, 'ahk_exe ' activeWinExe, 'global']
@@ -504,7 +504,8 @@ SaveGame() {
   }
   
   ; 执行 pre_save_hook
-  executeHooks(config.pre_save_hook, config)
+  if config.HasOwnProp('pre_save_hook')
+    executeHooks(config.pre_save_hook, config)
   
   GameSaverLog("pre_save_hook 执行完成")
   
@@ -520,7 +521,8 @@ SaveGame() {
   }
   
   ; 执行 post_save_hook
-  executeHooks(config.post_save_hook, config)
+  if config.HasOwnProp('post_save_hook')
+    executeHooks(config.post_save_hook, config)
   
   msg := "游戏存档成功！"
   tmpMsg(msg)
@@ -540,6 +542,7 @@ LoadGameFromCommit(config, commit_hash) {
     return
   }
 
+  RunGitCommandInDir("reset --hard", config.save_dir)
   GameSaverLog("选择的提交哈希: " commit_hash)
 
   ; 检查是否有分支指向该 commit
@@ -578,7 +581,8 @@ LoadGameFromCommit(config, commit_hash) {
   }
 
   ; 执行 post_load_hook
-  executeHooks(config.post_load_hook, config)
+  if config.HasOwnProp('post_load_hook')
+    executeHooks(config.post_load_hook, config)
 }
 #+end_src
 
@@ -624,7 +628,8 @@ LoadGame() {
   }
   
   ; 执行 pre_load_hook
-  executeHooks(config.pre_load_hook, config)
+  if config.HasOwnProp('pre_load_hook')
+    executeHooks(config.pre_load_hook, config)
   
   ; 让用户选择提交并加载
   getUserSelectedCommit(config.save_dir, LoadGameFromCommit.Bind(config))
