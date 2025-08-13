@@ -20,7 +20,7 @@
 #+begin_src ahk
 #SingleInstance Force
 #Include 'mouse.ahk'
-#Include '*i %A_ScriptDir%/../_local.ahk'
+#Include '*i %A_ScriptDir%/../_pre_local.ahk'
 #+end_src
 
 ** vars
@@ -40,6 +40,7 @@
 macroRecorderPid := 0
 macroRunningPid := 0
 rapidFireEnable := 0
+log_file := gOrgDir '/_ahk.log'
 #+end_src
 
 ** universal-arg
@@ -157,6 +158,14 @@ winMinimizeAll(win := 'A') {
       WinMinimize(hwnd)
     }
   }
+}
+#+end_src
+
+#+begin_src ahk
+LogMessage(message) {
+  timestamp := FormatTime(A_Now, "yyyy-MM-dd HH:mm:ss")
+  log_entry := timestamp " - " message "`n"
+  FileAppend(log_entry, log_file)
 }
 #+end_src
 
@@ -403,6 +412,489 @@ macroManager(pAction?){
 }
 #+end_src
 
+** Game-Saver
+:PROPERTIES:
+:CUSTOM_ID: 6f9a542f-99b8-4298-b709-f09d55332a32
+:END:
+#+begin_src ahk
+game_saver := Map()
+
+GameSaverLog(msg) {
+  LogMessage('GameSaver - ' msg)
+}
+#+end_src
+
+*** git
+:PROPERTIES:
+:CUSTOM_ID: 9103f9f6-654f-4adc-8d80-d7247289ddbd
+:END:
+#+begin_src ahk
+RunGitCommandInDir(command, dir) {
+  ; 确保目录存在
+  if (!DirExist(dir)) {
+    try {
+      DirCreate(dir)
+    } catch {
+      GameSaverLog("无法创建目录: " dir)
+      return ""
+    }
+  }
+  
+  ; 使用 git -C 参数在指定目录执行命令
+  full_command := 'git ' command
+  GameSaverLog("执行命令: " full_command)
+  
+  ; 创建临时文件来存储输出
+  temp_file := A_Temp "\git_output.tmp"
+  
+  try {
+    ; 执行命令并将输出重定向到文件
+    RunWait(A_ComSpec ' /c ' full_command ' > "' temp_file '" 2>&1', dir, "Hide")
+    
+    ; 读取输出内容
+    if (FileExist(temp_file)) {
+      output := FileRead(temp_file, 'UTF-8')
+      FileDelete(temp_file)
+      return output
+    }
+  } catch Error as e {
+    GameSaverLog("执行命令失败: " full_command " - " e.Message)
+    if (FileExist(temp_file)) {
+      FileDelete(temp_file)
+    }
+  }
+  
+  return ""
+}
+#+end_src
+
+#+begin_src ahk
+SaveGame() {
+  GameSaverLog("开始存档游戏...")
+  
+  ; 获取当前活动窗口信息
+  hwnd := WinExist("A")
+  win_class := WinGetClass(hwnd)
+  win_exe := ""
+  try {
+    win_exe := WinGetProcessName(hwnd)
+  }
+  
+  ; 构造窗口识别字符串
+  win_criteria := "ahk_class " win_class
+  if (win_exe != "") {
+    win_criteria := win_criteria " ahk_exe " win_exe
+  }
+  
+  ; 查找匹配的游戏配置
+  config := getGameConfig(win_criteria)
+  if (config == "") {
+    msg := "未找到匹配的游戏配置: " win_criteria
+    tmpMsg(msg)
+    GameSaverLog(msg)
+    return
+  }
+  
+  ; 检查 Git 仓库
+  if (!checkGitRepo(config.save_dir)) {
+    msg := "请先初始化 Git 仓库并添加 .gitignore 文件"
+    MsgBox(msg)
+    GameSaverLog(msg)
+    return
+  }
+  
+  ; 执行 pre_save_hook
+  executeHooks(config.pre_save_hook, config)
+  
+  GameSaverLog("pre_save_hook 执行完成")
+  
+  ; 获取提交信息
+  commit_msg := getUserCommitMessage(config.default_commit_msg)
+  GameSaverLog("提交信息: " commit_msg)
+  
+  ; 执行 Git 操作
+  if (!gitAddAndCommit(commit_msg, config.save_dir)) {
+    msg := "Git 存档操作失败。"
+    GameSaverLog(msg)
+    return
+  }
+  
+  ; 执行 post_save_hook
+  executeHooks(config.post_save_hook, config)
+  
+  msg := "游戏存档成功！"
+  tmpMsg(msg)
+  GameSaverLog(msg)
+}
+#+end_src
+
+*** load-game-from-commit
+:PROPERTIES:
+:CUSTOM_ID: 575e0072-7883-447e-8c0b-1d4b8162c74a
+:END:
+#+begin_src ahk
+LoadGameFromCommit(config, commit_hash) {
+  if (commit_hash = "") {
+    tmpMsg("未选择提交，读档操作取消。")
+    GameSaverLog("未选择提交，读档操作取消。")
+    return
+  }
+
+  GameSaverLog("选择的提交哈希: " commit_hash)
+
+  ; 检查是否有分支指向该 commit
+  branches := RunGitCommandInDir("branch --points-at " commit_hash, config.save_dir)
+  branches := Trim(branches)
+
+  if (branches != "") {
+    ; 情况一：切换到已存在的分支
+    ; 清理星号和空格，获取第一个分支名
+    branch_name := Trim(StrReplace(branches, "* ", ""))
+    branch_name := StrSplit(branch_name, "`n")[1]
+    
+    GameSaverLog("找到指向该提交的分支: " branch_name)
+    RunGitCommandInDir("checkout " branch_name, config.save_dir)
+    msg := "成功加载存档，已切换到分支: " branch_name
+    tmpMsg(msg)
+    GameSaverLog(msg)
+  } else {
+    ; 情况二：从历史点创建新分支
+    GameSaverLog("未找到指向该提交的分支，将创建新分支。")
+    RunGitCommandInDir("checkout " commit_hash, config.save_dir)
+    
+    input := InputBox("请输入新故事线的名称:", "创建新分支", "w300 h100")
+    new_branch_name := input.Value
+    
+    if (new_branch_name != "") {
+      RunGitCommandInDir("switch -c " new_branch_name, config.save_dir)
+      msg := "成功从旧存档创建新故事线: " new_branch_name
+      tmpMsg(msg)
+      GameSaverLog(msg)
+    } else {
+      msg := "已切换到旧存档（分离头指针状态），但未创建新分支。"
+      tmpMsg(msg)
+      GameSaverLog(msg)
+    }
+  }
+
+  ; 执行 post_load_hook
+  executeHooks(config.post_load_hook, config)
+}
+#+end_src
+
+*** load-game
+:PROPERTIES:
+:CUSTOM_ID: 64d4a995-e9e2-401b-83bc-9362e3ca66ba
+:END:
+#+begin_src ahk
+LoadGame() {
+  GameSaverLog("开始读档游戏...")
+  
+  ; 获取当前活动窗口信息
+  hwnd := WinExist("A")
+  win_class := WinGetClass(hwnd)
+  win_exe := ""
+  try {
+    win_exe := WinGetProcessName(hwnd)
+  }
+  
+  ; 构造窗口识别字符串
+  win_criteria := "ahk_class " win_class
+  if (win_exe != "") {
+    win_criteria := win_criteria " ahk_exe " win_exe
+  }
+  
+  GameSaverLog("当前窗口: " win_criteria)
+  
+  ; 查找匹配的游戏配置
+  config := getGameConfig(win_criteria)
+  if (config == "") {
+    msg := "未找到匹配的游戏配置: " win_criteria
+    tmpMsg(msg)
+    GameSaverLog(msg)
+    return
+  }
+  
+  ; 检查 Git 仓库
+  if (!checkGitRepo(config.save_dir)) {
+    msg := "请先初始化 Git 仓库。"
+    MsgBox(msg)
+    GameSaverLog(msg)
+    return
+  }
+  
+  ; 执行 pre_load_hook
+  executeHooks(config.pre_load_hook, config)
+  
+  ; 让用户选择提交并加载
+  getUserSelectedCommit(config.save_dir, LoadGameFromCommit.Bind(config))
+}
+#+end_src
+
+*** get-game-config
+:PROPERTIES:
+:CUSTOM_ID: bc461c1a-dbeb-4056-b892-4d748561d0c7
+:END:
+#+begin_src ahk
+getGameConfig(win_criteria) {
+  ; 精确匹配
+  if (game_saver.Has(win_criteria)) {
+    return game_saver[win_criteria]
+  }
+  
+  ; 部分匹配 - 检查是否有配置的键包含在当前窗口条件中
+  for key, config in game_saver {
+    if (InStr(win_criteria, StrReplace(key, "ahk_class ", "")) || InStr(win_criteria, StrReplace(key, "ahk_exe ", ""))) {
+      return config
+    }
+  }
+  
+  return ""
+}
+#+end_src
+
+*** check-git-repo
+:PROPERTIES:
+:CUSTOM_ID: 1e22e4f0-6515-4353-9fc1-1c59235dc494
+:END:
+#+begin_src ahk
+checkGitRepo(save_dir) {
+  ; 确保目录存在
+  if (!DirExist(save_dir)) {
+    try {
+      DirCreate(save_dir)
+    } catch {
+      GameSaverLog("无法创建目录: " save_dir)
+      MsgBox("无法创建存档目录: " save_dir)
+      return false
+    }
+  }
+  
+  ; 检查 .git 目录是否存在
+  git_dir := save_dir "\.git"
+  if (!FileExist(git_dir)) {
+    ; 提示用户初始化 Git 仓库
+    result := MsgBox('存档目录 "' save_dir '" 不是 Git 仓库，是否要初始化？`n`n请确保已添加 .gitignore 文件。', "Git 仓库初始化", "YesNo")
+    if (result == "Yes") {
+      if (initGitRepo(save_dir)) {
+        return true
+      } else {
+        MsgBox("Git 仓库初始化失败！")
+        return false
+      }
+    } else {
+      return false
+    }
+  }
+  return true
+}
+#+end_src
+
+*** init-git-repo
+:PROPERTIES:
+:CUSTOM_ID: a8773fc0-9b0c-4cd5-a39c-205565a0f836
+:END:
+#+begin_src ahk
+initGitRepo(save_dir) {
+  try {
+    ; 检查 git 命令是否可用
+    RunWait("git --version", , "Hide")
+  } catch {
+    MsgBox("未找到 Git 命令，请确保已安装 Git 并添加到 PATH 环境变量。")
+    return false
+  }
+  
+  try {
+    ; 初始化 Git 仓库
+    output := RunGitCommandInDir("init --initial-branch=main", save_dir)
+    RunGitCommandInDir("config user.email game_saver", save_dir)
+    RunGitCommandInDir("config user.name game_saver", save_dir)
+    GameSaverLog("Git init 输出: " output)
+    
+    ; 检查是否存在 .gitignore 文件，如果不存在则创建一个基本的
+    gitignore_path := save_dir "\.gitignore"
+    if (!FileExist(gitignore_path)) {
+      gitignore_content := "; 忽略系统文件`n*.tmp`n*.log`n`n; 忽略备份文件`n*.bak`n*.backup`n`n; 忽略临时文件`n*.temp`n*.tmp`n`n; 忽略编译文件`n*.exe`n*.dll`n*.obj`n`n; 忽略日志文件`n*.log`nlogs/`n`n; 忽略用户配置`nconfig.local`nsettings.local"
+      FileAppend(gitignore_content, gitignore_path)
+      GameSaverLog("创建 .gitignore 文件")
+    }
+    
+    ; 添加所有文件并进行初始提交
+    RunGitCommandInDir("add -A", save_dir)
+    RunGitCommandInDir('commit -m "Initial commit"', save_dir)
+    
+    GameSaverLog("Git 仓库初始化成功")
+    return true
+  } catch Error as e {
+    GameSaverLog("Git 仓库初始化失败: " e.Message)
+    return false
+  }
+}
+#+end_src
+
+*** execute-hooks
+:PROPERTIES:
+:CUSTOM_ID: 54053c99-2ef8-49fe-b7da-91d8109ae517
+:END:
+#+begin_src ahk
+executeHooks(hooks, config) {
+  for hook in hooks {
+    result := hook(config)
+    if (!result) {
+      return false
+    }
+  }
+  return true
+}
+#+end_src
+
+*** get-user-commit-message
+:PROPERTIES:
+:CUSTOM_ID: aa991075-ac77-4a2d-b7d7-00b51f509fbb
+:END:
+#+begin_src ahk
+getUserCommitMessage(default_msg) {
+  input := InputBox("请输入存档备注:", "存档备注", "w300 h100")
+  if (input.Value == "" and default_msg == "time") {
+    return FormatTime(A_Now, "yyyy-MM-dd HH:mm:ss")
+  }
+  return input.Value
+}
+#+end_src
+
+*** get-user-selected-commit
+:PROPERTIES:
+:CUSTOM_ID: db5100c4-813b-4f67-99fa-ae1abab99418
+:END:
+#+begin_src ahk
+getUserSelectedCommit(save_dir, callback) {
+  ; 获取提交历史
+  history := getGitCommitHistory(save_dir)
+  if (history == "") {
+    MsgBox("无法获取 Git 提交历史。")
+    return ""
+  }
+
+  ; 创建 GUI
+  MyGui := Gui("+AlwaysOnTop", "选择一个存档")
+  MyGui.SetFont("s10", "Microsoft YaHei")
+  MyGui.Add("Text", "w380", "双击或选中后点击“确定”来选择一个存档。")
+  MyGui.Add("Text", "w380", "输入以筛选列表")
+  FilterEdit := MyGui.Add("Edit", "w380 vFilter", "")
+  LV := MyGui.Add("ListView", "r20 w380 Grid", ["Commit Hash", "Details"])
+  LV.ModifyCol(1, "100")
+  LV.ModifyCol(2, "280")
+
+  ; 填充 ListView
+  FullHistory := []
+  Loop Parse, history, "`n"
+  {
+    if (A_LoopField == "")
+      continue
+    FullHistory.Push(A_LoopField)
+    parts := StrSplit(A_LoopField, " ",, 3)
+    hash := parts[2]
+    details := Trim(parts[3])
+    LV.Add(, hash, details)
+  }
+
+  ; 筛选功能
+  FilterEdit.OnEvent("Change", FilterListView)
+
+  FilterListView(*) {
+    filter_text := FilterEdit.Text
+    LV.Delete() ; 清空
+    for _, item in FullHistory {
+      if (filter_text == '' or InStr(item, filter_text)) {
+        parts := StrSplit(item, " ",, 3)
+        hash := parts[2]
+        details := Trim(parts[3])
+        LV.Add(, hash, details)
+      }
+    }
+  }
+
+  ; 按钮
+  MyGui.Add("Button", "Default w100", "确定").OnEvent("Click", Submit)
+  MyGui.Add("Button", "x+10 w100", "取消").OnEvent("Click", (*) => MyGui.Destroy())
+
+  Submit(*) {
+    ; 优先获取选中的行
+    selected_row := LV.GetNext(0, "F")
+    ; 如果没有选中的行，则获取列表中的第一行
+    if (!selected_row) {
+      selected_row := LV.GetNext(0, 'C')
+    }
+
+    if (selected_row) {
+      selected_commit_hash := LV.GetText(selected_row, 1)
+      MyGui.Destroy()
+      callback(selected_commit_hash)
+    } else {
+      MsgBox "请选择一个提交"
+    }
+  }
+  
+  LV.OnEvent('DoubleClick', (*) => Submit())
+
+  MyGui.OnEvent("Close", (*) => MyGui.Destroy())
+  MyGui.Show("w400")
+  ControlFocus(FilterEdit) ; 聚焦到输入框
+}
+#+end_src
+
+*** get-git-commit-history
+:PROPERTIES:
+:CUSTOM_ID: 736773f5-a20d-4327-8bf8-772a0c1cf3cf
+:END:
+#+begin_src ahk
+getGitCommitHistory(save_dir) {
+  try {
+    output := RunGitCommandInDir('log --graph --pretty=format:"%h %d %s" -50 --all', save_dir)
+    return output
+  } catch {
+    return ""
+  }
+}
+#+end_src
+
+*** git-add-and-commit
+:PROPERTIES:
+:CUSTOM_ID: c79a916b-9731-4f98-bd07-9649cbadbf18
+:END:
+#+begin_src ahk
+gitAddAndCommit(commit_msg, save_dir) {
+  try {
+    ; 添加所有未忽略的文件
+    output := RunGitCommandInDir("add -A", save_dir)
+    
+    ; 检查是否有文件需要提交
+    GameSaverLog("检查是否有文件需要提交")
+    output := RunGitCommandInDir("status --porcelain", save_dir)
+    if (output == "") {
+      msg := "没有文件需要提交。"
+      tmpMsg(msg)
+      GameSaverLog(msg)
+      return true
+    }
+    
+    ; 执行提交
+    GameSaverLog('执行 git commit -m "' commit_msg '" 在目录: ' save_dir)
+    cmd := 'commit -m "' commit_msg '"'
+    output := RunGitCommandInDir(cmd, save_dir)
+    GameSaverLog("Git commit 输出: " output)
+    
+    GameSaverLog("Git 提交成功")
+    return true
+  } catch Error as e {
+    msg := "Git 操作失败: " e.Message
+    MsgBox(msg)
+    GameSaverLog(msg)
+    return false
+  }
+}
+#+end_src
+
 ** Post
 :PROPERTIES:
 :CUSTOM_ID: 6976a1ae-848d-44e4-9102-0b6141b09b39
@@ -424,6 +916,14 @@ bossIsComing(){
   winMinimizeAll('ahk_group NSFW')
   Run 'emacsclient -e "(zr-moyu-quit-window)"',, 'Hide'
 }
+#+end_src
+
+*** include
+:PROPERTIES:
+:CUSTOM_ID: fe93c96b-97b4-4f15-9d37-997856b63295
+:END:
+#+begin_src ahk
+#Include '*i %A_ScriptDir%/../_post_local.ahk'
 #+end_src
 
 ** Bind
@@ -506,6 +1006,10 @@ GroupAdd 'EmacsParty', 'ahk_exe WindowsTerminal.exe'
 #+end_src
 
 #+begin_src ahk
+#HotIf WinActive('ahk_group games')
+Capslock & 5::SaveGame()
+Capslock & 9::LoadGame()
+
 cmdTitle := 'Command Prompt'
 #HotIf WinActive(cmdTitle)
 <^p::Up
