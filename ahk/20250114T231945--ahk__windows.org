@@ -543,6 +543,7 @@ LoadGameFromCommit(config, commit_hash) {
   }
 
   RunGitCommandInDir("reset --hard", config.save_dir)
+  RunGitCommandInDir("clean -df", config.save_dir)
   GameSaverLog("选择的提交哈希: " commit_hash)
 
   ; 检查是否有分支指向该 commit
