@@ -20,7 +20,6 @@
 :PROPERTIES:
 :CUSTOM_ID: 92ec3b0a-3362-4cd6-8790-d486db17253a
 :END:
-#+attr_babel: :id 854459db-7348-41a9-ac8c-d6a2388f759f
 #+begin_src conf :tangle (zr-org-by-tangle-dir "gitconfig") :mkdirp t :var proxy=(plist-get (cdr (plstore-get zr-local-pls "proxy")) :proxy) host=(plist-get (cdr (plstore-get zr-local-pls "proxy")) :host)
 [user]
     email = kkkykin@foxmail.com
@@ -37,12 +36,14 @@
 	proxy = $proxy
 #+end_src
 
-#+attr_babel: :id ee921021-4682-4c08-86dd-747dca0ea5c4
-#+begin_src conf :tangle (if (eq system-type 'windows-nt) (zr-org-by-tangle-dir "gitconfig") "no")
+#+begin_src conf :tangle no
 [color]
-    ui = always
+ui = always
+#+end_src
+
+#+begin_src conf :tangle (if (eq system-type 'windows-nt) (zr-org-by-tangle-dir "gitconfig") "no")
 [core]
-	sshCommand = C:/Windows/System32/OpenSSH/ssh.exe
+sshCommand = C:/Windows/System32/OpenSSH/ssh.exe
 [gc]
-	auto = 256
+auto = 256
 #+end_src
