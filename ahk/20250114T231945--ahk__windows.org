@@ -956,7 +956,6 @@ Capslock & F10::runMacro('F10')
 Capslock & F11::runMacro('F11')
 Capslock & F12::runMacro('F12')
 
-Capslock::Esc
 Capslock & Esc::SetCapsLockState !GetKeyState('CapsLock', 'T') 
 Capslock & PrintScreen::capturePrintWindow
 
@@ -1012,6 +1011,9 @@ GroupAdd 'EmacsParty', 'ahk_exe WindowsTerminal.exe'
 #+end_src
 
 #+begin_src ahk
+#HotIf not WinActive('ahk_group games')
+Capslock::Esc
+
 #HotIf WinActive('ahk_group games')
 Capslock & 5::SaveGame()
 Capslock & 9::LoadGame()
