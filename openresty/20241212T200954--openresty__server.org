@@ -359,6 +359,12 @@ local server_options = {
         options = {
             ["max-connection-per-server"] = "2"
         }
+    },
+    {
+        pattern = "^http://[0-9.]+:5244/d/",
+        options = {
+            ["max-connection-per-server"] = "1"
+        }
     }
 }
 
