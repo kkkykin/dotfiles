@@ -253,3 +253,692 @@ GM_cookie.list({}, function(cookies, error) {
   }
 })();
 #+end_src
+
+** qr-decoder
+:PROPERTIES:
+:CUSTOM_ID: f6c588d9-ad10-4bee-9609-112e1f1aae4a
+:END:
+#+begin_src js :tangle (zr-org-by-tangle-dir "qr-decoder.js")
+// ==UserScript==
+// @name         二维码解码器
+// @namespace    http://tampermonkey.net/
+// @version      1.2
+// @description  右键图片解码二维码，支持打开链接、复制文本，支持 Data URL、剪贴板和历史记录
+// @author       Claude
+// @match        *://*/*
+// @grant        GM_setClipboard
+// @grant        GM_openInTab
+// @grant        GM_addStyle
+// @grant        GM_notification
+// @grant        GM_registerMenuCommand
+// @grant        GM_unregisterMenuCommand
+// @grant        GM_setValue
+// @grant        GM_getValue
+// @require      https://cdn.jsdmirror.cn/npm/jsqr@1.4.0/dist/jsQR.js
+// @license      MIT
+// ==/UserScript==
+
+(function() {
+  'use strict';
+
+  // 添加样式
+  GM_addStyle(`
+        .qr-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 100000;
+        }
+        
+        .qr-modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        
+        .qr-result-text {
+            margin: 15px 0;
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 4px;
+            word-break: break-all;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .qr-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+        
+        .qr-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        
+        .qr-btn-primary {
+            background: #007bff;
+            color: white;
+        }
+        
+        .qr-btn-primary:hover {
+            background: #0056b3;
+        }
+        
+        .qr-btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .qr-btn-secondary:hover {
+            background: #545b62;
+        }
+        
+        .qr-loading {
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .qr-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .qr-shortcut-hint {
+            font-size: 12px;
+            color: #666;
+            margin-top: 10px;
+            text-align: center;
+        }
+        
+        .qr-history-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 100001;
+        }
+        
+        .qr-history-content {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .qr-history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .qr-history-list {
+            flex: 1;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+        }
+        
+        .qr-history-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .qr-history-item:hover {
+            background: #f5f5f5;
+        }
+        
+        .qr-history-item:last-child {
+            border-bottom: none;
+        }
+        
+        .qr-history-time {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .qr-history-text {
+            word-break: break-all;
+            margin-bottom: 5px;
+        }
+        
+        .qr-history-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 5px;
+        }
+        
+        .qr-history-btn {
+            padding: 4px 8px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .qr-history-btn-open {
+            background: #007bff;
+            color: white;
+        }
+        
+        .qr-history-btn-copy {
+            background: #28a745;
+            color: white;
+        }
+        
+        .qr-empty-history {
+            text-align: center;
+            color: #666;
+            padding: 40px;
+        }
+    `);
+
+  let menuCommandId = null;
+  let clipboardCommandId = null;
+  let historyCommandId = null;
+
+  // 创建模态框
+  const modal = document.createElement('div');
+  modal.className = 'qr-modal';
+  modal.innerHTML = `
+        <div class="qr-modal-content">
+            <h3>二维码解码结果</h3>
+            <div id="qr-result-container">
+                <div class="qr-loading">
+                    <div class="qr-spinner"></div>
+                    <p>正在解码...</p>
+                </div>
+            </div>
+            <div class="qr-buttons" id="qr-buttons" style="display: none;">
+                <button class="qr-btn qr-btn-primary" id="qr-open-btn" style="display: none;">打开</button>
+                <button class="qr-btn qr-btn-secondary" id="qr-copy-btn">复制</button>
+                <button class="qr-btn qr-btn-secondary" id="qr-cancel-btn">取消</button>
+            </div>
+            <div class="qr-shortcut-hint">
+                Enter: 打开 | Ctrl+C: 复制 | Esc: 取消
+            </div>
+        </div>
+    `;
+  document.body.appendChild(modal);
+
+  // 创建历史记录模态框
+  const historyModal = document.createElement('div');
+  historyModal.className = 'qr-history-modal';
+  historyModal.innerHTML = `
+        <div class="qr-history-content">
+            <div class="qr-history-header">
+                <h3>解码历史记录</h3>
+                <button class="qr-btn qr-btn-secondary" id="qr-history-close-btn">关闭</button>
+            </div>
+            <div id="qr-history-list" class="qr-history-list">
+                <div class="qr-empty-history">暂无历史记录</div>
+            </div>
+        </div>
+    `;
+  document.body.appendChild(historyModal);
+
+  let currentImage = null;
+  let qrResult = null;
+
+  // 检测鼠标悬停的元素
+  let hoveredElement = null;
+  
+  // 注册全局菜单项
+  clipboardCommandId = GM_registerMenuCommand('📋 从剪贴板解码二维码', function() {
+    modal.style.display = 'flex';
+    decodeFromClipboard();
+  });
+  
+  // 注册历史记录菜单项
+  historyCommandId = GM_registerMenuCommand('📚 查看解码历史', function() {
+    showHistory();
+  });
+  
+  // 监听右键菜单
+  document.addEventListener('contextmenu', function(e) {
+    const target = e.target;
+    
+    // 检查是否是图片元素
+    const isImage = target.tagName === 'IMG' || 
+          (target.style && target.style.backgroundImage && 
+           target.style.backgroundImage !== 'none') ||
+          (target.tagName === 'CANVAS');
+    
+    if (isImage) {
+      // 保存当前右键的图片元素
+      window.qrScannerRightClickedElement = target;
+    } else {
+      window.qrScannerRightClickedElement = null;
+    }
+  });
+  
+  // 注册图片右键菜单
+  menuCommandId = GM_registerMenuCommand('🔍 解码图片二维码', function() {
+    if (window.qrScannerRightClickedElement) {
+      currentImage = window.qrScannerRightClickedElement;
+      modal.style.display = 'flex';
+      decodeQRCode();
+    } else {
+      GM_notification({
+        title: '二维码解码器',
+        text: '请先在图片上右键',
+        timeout: 2000
+      });
+    }
+  });
+
+  // 解码二维码
+  function decodeQRCode() {
+    const resultContainer = document.getElementById('qr-result-container');
+    const buttons = document.getElementById('qr-buttons');
+    
+    // 显示加载状态
+    resultContainer.innerHTML = `
+            <div class="qr-loading">
+                <div class="qr-spinner"></div>
+                <p>正在解码...</p>
+            </div>
+        `;
+    buttons.style.display = 'none';
+
+    // 获取图片
+    let imgSrc;
+    if (currentImage.tagName === 'IMG') {
+      imgSrc = currentImage.src;
+    } else if (currentImage.tagName === 'CANVAS') {
+      // Canvas 元素
+      imgSrc = currentImage.toDataURL();
+    } else {
+      // 背景图片
+      const bgImage = currentImage.style.backgroundImage;
+      imgSrc = bgImage.slice(5, -2); // 去掉 url(" 和 ")
+    }
+
+    // 创建 canvas 来处理图片
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    
+    img.onload = function() {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.drawImage(img, 0, 0);
+      
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const code = jsQR(imageData.data, imageData.width, imageData.height);
+      
+      if (code) {
+        qrResult = code.data;
+        showResult(code.data);
+      } else {
+        showError('未能检测到二维码');
+      }
+    };
+    
+    img.onerror = function() {
+      showError('图片加载失败');
+    };
+    
+    img.src = imgSrc;
+  }
+  
+  // 从剪贴板解码
+  function decodeFromClipboard() {
+    const resultContainer = document.getElementById('qr-result-container');
+    const buttons = document.getElementById('qr-buttons');
+    
+    // 显示加载状态
+    resultContainer.innerHTML = `
+            <div class="qr-loading">
+                <div class="qr-spinner"></div>
+                <p>正在读取剪贴板...</p>
+            </div>
+        `;
+    buttons.style.display = 'none';
+    
+    // 尝试读取剪贴板
+    navigator.clipboard.read().then(items => {
+      for (const item of items) {
+        const imageTypes = item.types.filter(type => type.startsWith('image/'));
+        if (imageTypes.length > 0) {
+          const imageType = imageTypes[0];
+          item.getType(imageType).then(blob => {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+              const img = new Image();
+              img.onload = function() {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
+                
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const code = jsQR(imageData.data, imageData.width, imageData.height);
+                
+                if (code) {
+                  qrResult = code.data;
+                  showResult(code.data);
+                } else {
+                  showError('剪贴板图片中未检测到二维码');
+                }
+              };
+              img.onerror = function() {
+                showError('剪贴板图片加载失败');
+              };
+              img.src = e.target.result;
+            };
+            reader.readAsDataURL(blob);
+          }).catch(() => {
+            showError('读取剪贴板图片失败');
+          });
+          return;
+        }
+      }
+      // 检查是否有文本内容（可能是 Data URL）
+      navigator.clipboard.readText().then(text => {
+        if (text.startsWith('data:image/')) {
+          // 是 Data URL
+          const img = new Image();
+          img.onload = function() {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+            
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const code = jsQR(imageData.data, imageData.width, imageData.height);
+            
+            if (code) {
+              qrResult = code.data;
+              showResult(code.data);
+            } else {
+              showError('剪贴板 Data URL 中未检测到二维码');
+            }
+          };
+          img.onerror = function() {
+            showError('剪贴板 Data URL 加载失败');
+          };
+          img.src = text;
+        } else {
+          showError('剪贴板中没有图片或 Data URL');
+        }
+      }).catch(() => {
+        showError('读取剪贴板文本失败');
+      });
+    }).catch(() => {
+      // 如果无法读取剪贴板，提示用户
+      resultContainer.innerHTML = `
+                <div style="text-align: center; padding: 20px;">
+                    <p>无法访问剪贴板，请确保：</p>
+                    <p>1. 浏览器支持剪贴板 API</p>
+                    <p>2. 已授予剪贴板读取权限</p>
+                    <p>3. 剪贴板中有图片内容</p>
+                </div>
+            `;
+      buttons.style.display = 'flex';
+      document.getElementById('qr-open-btn').style.display = 'none';
+    });
+  }
+
+  // 保存历史记录
+  function saveHistory(result) {
+    try {
+      let history = GM_getValue('qrHistory', []);
+      const historyItem = {
+        id: Date.now(),
+        result: result,
+        timestamp: new Date().toISOString(),
+        isUrl: isValidUrl(result)
+      };
+      
+      // 添加到历史记录开头
+      history.unshift(historyItem);
+      
+      // 限制历史记录数量（最多50条）
+      if (history.length > 50) {
+        history = history.slice(0, 50);
+      }
+      
+      GM_setValue('qrHistory', history);
+    } catch (e) {
+      console.error('保存历史记录失败:', e);
+    }
+  }
+
+  // 显示历史记录
+  function showHistory() {
+    const historyList = document.getElementById('qr-history-list');
+    let history = [];
+    
+    try {
+      history = GM_getValue('qrHistory', []);
+    } catch (e) {
+      console.error('读取历史记录失败:', e);
+    }
+    
+    if (history.length === 0) {
+      historyList.innerHTML = '<div class="qr-empty-history">暂无历史记录</div>';
+    } else {
+      historyList.innerHTML = history.map(item => `
+                <div class="qr-history-item" data-id="${item.id}">
+                    <div class="qr-history-time">${formatTime(item.timestamp)}</div>
+                    <div class="qr-history-text">${escapeHtml(item.result)}</div>
+                    <div class="qr-history-actions">
+                        ${item.isUrl ? `<button class="qr-history-btn qr-history-btn-open" data-result="${escapeHtml(item.result)}">打开</button>` : ''}
+                        <button class="qr-history-btn qr-history-btn-copy" data-result="${escapeHtml(item.result)}">复制</button>
+                    </div>
+                </div>
+            `).join('');
+      
+      // 添加事件监听
+      historyList.querySelectorAll('.qr-history-btn-open').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          const result = this.getAttribute('data-result');
+          GM_openInTab(result, { active: true });
+        });
+      });
+      
+      historyList.querySelectorAll('.qr-history-btn-copy').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          const result = this.getAttribute('data-result');
+          GM_setClipboard(result);
+          GM_notification({
+            title: '二维码解码器',
+            text: '已复制到剪贴板',
+            timeout: 2000
+          });
+        });
+      });
+    }
+    
+    historyModal.style.display = 'flex';
+  }
+
+  // 格式化时间
+  function formatTime(timestamp) {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diff = now - date;
+    
+    if (diff < 60000) {
+      return '刚刚';
+    } else if (diff < 3600000) {
+      return Math.floor(diff / 60000) + ' 分钟前';
+    } else if (diff < 86400000) {
+      return Math.floor(diff / 3600000) + ' 小时前';
+    } else {
+      return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+    }
+  }
+
+  // 显示结果
+  function showResult(result) {
+    const resultContainer = document.getElementById('qr-result-container');
+    const buttons = document.getElementById('qr-buttons');
+    const openBtn = document.getElementById('qr-open-btn');
+    
+    resultContainer.innerHTML = `<div class="qr-result-text">${escapeHtml(result)}</div>`;
+    buttons.style.display = 'flex';
+    
+    // 检查是否是 URL
+    if (isValidUrl(result)) {
+      openBtn.style.display = 'inline-block';
+    } else {
+      openBtn.style.display = 'none';
+    }
+    
+    // 保存到历史记录
+    saveHistory(result);
+  }
+
+  // 显示错误
+  function showError(message) {
+    const resultContainer = document.getElementById('qr-result-container');
+    const buttons = document.getElementById('qr-buttons');
+    
+    resultContainer.innerHTML = `<p style="color: red; text-align: center;">${message}</p>`;
+    buttons.style.display = 'flex';
+    document.getElementById('qr-open-btn').style.display = 'none';
+  }
+
+  // HTML 转义
+  function escapeHtml(text) {
+    const map = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, m => map[m]);
+  }
+
+  // 验证 URL
+  function isValidUrl(string) {
+    try {
+      new URL(string);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // 按钮事件
+  document.getElementById('qr-open-btn').addEventListener('click', function() {
+    if (qrResult && isValidUrl(qrResult)) {
+      GM_openInTab(qrResult, { active: true });
+      closeModal();
+    }
+  });
+
+  document.getElementById('qr-copy-btn').addEventListener('click', function() {
+    if (qrResult) {
+      GM_setClipboard(qrResult);
+      GM_notification({
+        title: '二维码解码器',
+        text: '已复制到剪贴板',
+        timeout: 2000
+      });
+    }
+  });
+
+  document.getElementById('qr-cancel-btn').addEventListener('click', closeModal);
+
+  // 关闭模态框
+  function closeModal() {
+    modal.style.display = 'none';
+    qrResult = null;
+  }
+
+  
+  // 点击模态框背景关闭
+  modal.addEventListener('click', function(e) {
+    if (e.target === modal) {
+      closeModal();
+    }
+  });
+
+  // 历史记录关闭按钮
+  document.getElementById('qr-history-close-btn').addEventListener('click', function() {
+    historyModal.style.display = 'none';
+  });
+
+  // 点击历史记录模态框背景关闭
+  historyModal.addEventListener('click', function(e) {
+    if (e.target === historyModal) {
+      historyModal.style.display = 'none';
+    }
+  });
+
+  // 键盘快捷键
+  document.addEventListener('keydown', function(e) {
+    // 主模态框快捷键
+    if (modal.style.display === 'flex') {
+      if (e.key === 'Escape') {
+        closeModal();
+      } else if (e.ctrlKey && e.key === 'c') {
+        e.preventDefault();
+        document.getElementById('qr-copy-btn').click();
+      } else if (e.key === 'Enter' && qrResult && isValidUrl(qrResult)) {
+        e.preventDefault();
+        document.getElementById('qr-open-btn').click();
+      }
+    }
+    // 历史记录模态框快捷键
+    else if (historyModal.style.display === 'flex') {
+      if (e.key === 'Escape') {
+        historyModal.style.display = 'none';
+      }
+    }
+  });
+
+})();
+#+end_src
