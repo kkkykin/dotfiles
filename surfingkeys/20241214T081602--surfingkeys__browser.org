@@ -484,41 +484,6 @@ function FindProxyForURL(url, host) {
 }
 #+end_src
 
-** QRCode
-:PROPERTIES:
-:CUSTOM_ID: 9d549487-6a6b-49c4-ae77-7e0de65cbdde
-:END:
-#+begin_src js
-function openLinkInQRCode() {
-  Hints.create('img', function(element) {
-    const imageUrl = element.src;
-
-    RUNTIME('request', {
-      url: 'https://cli.im/Api/Browser/deqr',
-      headers: {
-        'accept': 'application/json, text/javascript, */*; q=0.01',
-        'content-type': 'application/x-www-form-urlencoded; charset=UTF-8',
-        'x-requested-with': 'XMLHttpRequest'
-      },
-      data: `data=${encodeURIComponent(imageUrl)}`
-    }, function(response) {
-      try {
-        const result = JSON.parse(response.text);
-        if (result.status === 1 && result.data && result.data.RawData) {
-          tabOpenLink(result.data.RawData);
-        } else {
-          Front.showBanner('二维码解析失败');
-        }
-      } catch (e) {
-        Front.showBanner('响应解析错误');
-      }
-    });
-  });
-}
-
-mapkey(',q', '打开二维码中链接', openLinkInQRCode);
-#+end_src
-
 ** dwim
 :PROPERTIES:
 :CUSTOM_ID: 60ddd28f-3a84-4104-9ff7-2a352320fe9b
@@ -549,6 +514,112 @@ if (match) {
   const deepwikiUrl = `https://deepwiki.com/${user}/${repo}`;  
   tabOpenLink(deepwikiUrl);
 }
+#+end_src
+
+** external
+:PROPERTIES:
+:CUSTOM_ID: a81eca7e-fa2d-43bd-af96-ce2315a31dab
+:END:
+#+begin_src js
+function fetchUrl(url, onload, name) {
+  // 自动提取名称
+  if (name === undefined || name === null) {
+    const cleanUrl = url.split(/[?#]/)[0];
+    name = cleanUrl.substring(cleanUrl.lastIndexOf('/') + 1) || 'unknown';
+  }
+
+  RUNTIME('request', {
+    url: url,
+    headers: {
+      'accept': 'application/javascript, text/javascript, */*; q=0.01'
+    }
+  }, function(response) {
+    if (response.text) {
+      onload(response.text);
+    } else {
+      Front.showBanner(`${name} 加载失败`);
+    }
+  });
+}
+
+function loadScript(url, onload, name) {
+  fetchUrl(url, function(scriptText) {
+    // 使用Function构造函数代替eval，更安全且可控制作用域
+    const scriptFunc = new Function(scriptText);
+    scriptFunc();
+
+    // 调用原始回调
+    onload();
+  }, name);
+}
+#+end_src
+
+*** QRCode
+:PROPERTIES:
+:CUSTOM_ID: 9d549487-6a6b-49c4-ae77-7e0de65cbdde
+:END:
+#+begin_src js
+loadScript(
+  'https://cdn.jsdmirror.cn/npm/jsqr@1.4.0/dist/jsQR.js',
+  () => {
+    <<qr-decode>>
+  },
+  'jsQR'
+);
+#+end_src
+
+#+name: qr-decode
+#+begin_src js :tangle no
+function openLinkInQRCode() {
+  Hints.create('img', function(element) {
+    const imageUrl = element.src;
+
+    // 直接处理 data:image URLs
+    if (imageUrl.startsWith('data:image/')) {
+      processImageData(imageUrl);
+    } else {
+      // 使用 RUNTIME 获取其他图片数据
+      RUNTIME('requestImage', {
+        url: imageUrl
+      }, function(response) {
+        if (response.text) {
+          processImageData(response.text);
+        } else {
+          Front.showBanner('图片获取失败');
+        }
+      });
+    }
+  });
+
+  function processImageData(dataUrl) {
+    // 原有的图片处理逻辑
+    try {
+      const img = new Image();
+      img.onload = function() {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+        if (code) {
+          tabOpenLink(code.data);
+          Front.showBanner('二维码解析成功: ' + code.data);
+        } else {
+          Front.showBanner('二维码解析失败');
+        }
+      };
+      img.src = dataUrl;
+    } catch (e) {
+      Front.showBanner('图片处理错误: ' + e.message);
+    }
+  }
+}
+
+mapkey(',q', '打开二维码中链接', openLinkInQRCode);
 #+end_src
 
 * local variables
