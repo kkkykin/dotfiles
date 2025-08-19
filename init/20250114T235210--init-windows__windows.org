@@ -4,11 +4,16 @@
 #+identifier: 20250114T235210
 
 * tangle
+:PROPERTIES:
+:CUSTOM_ID: f821084b-cde6-4f20-b2c6-653052a03c34
+:END:
 #+begin_src elisp
 (make-directory "_tangle" t)
 (let (org-confirm-babel-evaluate
       (zr-local-pls (plstore-open "init.pls")))
-  (org-babel-tangle))
+  (org-babel-tangle nil "^bat$")
+  (let ((coding-system-for-write 'utf-8-with-signature))
+    (org-babel-tangle nil "^powershell$")))
 #+end_src
 
 * profile
@@ -215,7 +220,177 @@ ENDLOCAL
 :CUSTOM_ID: e56356f4-7700-435b-b354-55e246a3b53b
 :END:
 
+** Toggle-WindowsUpdate
+:PROPERTIES:
+:CUSTOM_ID: eaa546a8-f4e2-4173-9e95-ee60389fcfaa
+:END:
+#+begin_src powershell :comments no :tangle (zr-org-by-tangle-dir "toggle-windows-update.ps1")
+#Requires -RunAsAdministrator
+
+param (
+    [ValidateSet("Suspend", "Resume")]
+    [string]$Action,
+    [int]$Weeks
+)
+
+# 注册表路径
+$regPath = "HKLM:\SOFTWARE\Microsoft\WindowsUpdate\UX\Settings"
+
+# 显示通知函数
+function Show-Notification {
+    param(
+        [string]$Title,
+        [string]$Message,
+        [string]$ActionText = "打开更新设置"
+    )
+    
+    try {
+        Add-Type -AssemblyName System.Windows.Forms
+        
+        # 创建NotifyIcon
+        $balloon = New-Object System.Windows.Forms.NotifyIcon
+        $balloon.Icon = [System.Drawing.SystemIcons]::Information
+        $balloon.BalloonTipTitle = $Title
+        $balloon.BalloonTipText = $Message
+        $balloon.BalloonTipIcon = "Info"
+        $balloon.Visible = $true
+        
+        # 显示通知
+        $balloon.ShowBalloonTip(10000) # 显示10秒
+        
+        # 点击事件
+        $balloon.Add_BalloonTipClicked({
+            Start-Process "ms-settings:windowsupdate"
+        })
+        
+        # 10秒后自动关闭
+        $job = Start-Job -ScriptBlock {
+            param($balloonPath)
+            Start-Sleep -Seconds 10
+            if (Test-Path $balloonPath) {
+                $balloon = Get-Item $balloonPath | Import-Clixml
+                if ($balloon -and $balloon.Visible) {
+                    $balloon.Dispose()
+                }
+            }
+        } -ArgumentList "$env:TEMP\balloon.xml"
+        
+        # 保存NotifyIcon对象以便后台作业访问
+        $balloon | Export-Clixml -Path "$env:TEMP\balloon.xml"
+        
+        return
+    }
+    catch {
+        Write-Warning "通知显示失败: $_"
+    }
+}
+
+# 检查当前更新状态
+function Check-UpdateStatus {
+    $pauseUpdates = Get-ItemProperty -Path $regPath -Name "PauseUpdatesExpiryTime" -ErrorAction SilentlyContinue
+    
+    if ($pauseUpdates) {
+        $expiryTime = [DateTime]::Parse($pauseUpdates.PauseUpdatesExpiryTime)
+        $currentTime = Get-Date
+        
+        if ($expiryTime -gt $currentTime) {
+            $daysRemaining = ($expiryTime - $currentTime).Days
+            Write-Host "Windows更新已暂停，将在 $daysRemaining 天后恢复。" -ForegroundColor Yellow
+            return $true
+        } else {
+            Write-Host "Windows更新暂停已过期。" -ForegroundColor Red
+            return $false
+        }
+    } else {
+        Write-Host "Windows更新当前处于活动状态。" -ForegroundColor Green
+        return $false
+    }
+}
+
+# 暂停更新
+function Suspend-Updates {
+    param(
+        [int]$weeks = 1000
+    )
+    
+    $startTime = Get-Date
+    $endTime = $startTime.AddDays($weeks * 7)
+    
+    # 格式化为ISO 8601格式
+    $startTimeStr = $startTime.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+    $endTimeStr = $endTime.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+    
+    # 设置注册表值
+    Set-ItemProperty -Path $regPath -Name "PauseFeatureUpdatesStartTime" -Value $startTimeStr -Type String -Force
+    Set-ItemProperty -Path $regPath -Name "PauseFeatureUpdatesEndTime" -Value $endTimeStr -Type String -Force
+    Set-ItemProperty -Path $regPath -Name "PauseQualityUpdatesStartTime" -Value $startTimeStr -Type String -Force
+    Set-ItemProperty -Path $regPath -Name "PauseQualityUpdatesEndTime" -Value $endTimeStr -Type String -Force
+    Set-ItemProperty -Path $regPath -Name "PauseUpdatesStartTime" -Value $startTimeStr -Type String -Force
+    Set-ItemProperty -Path $regPath -Name "PauseUpdatesExpiryTime" -Value $endTimeStr -Type String -Force
+    
+    Write-Host "Windows更新已暂停 $weeks 周，将于 $endTime 恢复。" -ForegroundColor Yellow
+    
+    # 显示通知
+    Show-Notification -Title "Windows更新已暂停" -Message "更新已暂停 $weeks 周，将于 $endTime 恢复。"
+}
+
+# 恢复更新
+function Resume-Updates {
+    # 删除暂停相关的注册表项
+    $pauseKeys = @(
+        "PauseFeatureUpdatesStartTime",
+        "PauseFeatureUpdatesEndTime",
+        "PauseQualityUpdatesStartTime",
+        "PauseQualityUpdatesEndTime",
+        "PauseUpdatesStartTime",
+        "PauseUpdatesExpiryTime"
+    )
+    
+    foreach ($key in $pauseKeys) {
+        Remove-ItemProperty -Path $regPath -Name $key -ErrorAction SilentlyContinue -Force
+    }
+    
+    Write-Host "Windows更新已恢复。" -ForegroundColor Green
+    
+    # 显示通知
+    Show-Notification -Title "Windows更新已恢复" -Message "Windows更新已恢复。"
+}
+
+# 主程序逻辑
+$isPaused = Check-UpdateStatus
+
+# 处理命令行参数
+if ($Action -eq "Resume") {
+    # 明确要求恢复更新
+    Resume-Updates
+}
+elseif ($Weeks -gt 0) {
+    # 指定了暂停周数，无论当前状态如何都重新设置暂停时间
+    Suspend-Updates -weeks $Weeks
+}
+elseif ($Action -eq "Suspend") {
+    # 明确要求暂停但未指定周数，使用默认
+    Suspend-Updates
+}
+else {
+    # 没有指定参数，根据当前状态自动决定
+    if ($isPaused) {
+        Resume-Updates
+    } else {
+        Suspend-Updates
+    }
+}
+
+# 清理临时文件
+if (Test-Path "$env:TEMP\balloon.xml") {
+    Remove-Item "$env:TEMP\balloon.xml" -Force
+}
+#+end_src
+
 ** skip-online-account
+:PROPERTIES:
+:CUSTOM_ID: 369095a1-aa9d-4009-9d67-87cb9480e60a
+:END:
 #+begin_src bat
 reg add HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\OOBE /v BypassNRO /t REG_DWORD /d 1 /f shutdown /r /t 0
 #+end_src
@@ -223,6 +398,9 @@ reg add HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\OOBE /v BypassNRO /t REG_
 * Custom
 
 ** Explorer Network Driver
+:PROPERTIES:
+:CUSTOM_ID: dfb6afbf-dc39-4afd-a5be-d9e935311654
+:END:
 #+begin_src bat :eval no
 reg add HKLM\SYSTEM\CurrentControlSet\Services\WebClient\Parameters /v BasicAuthLevel /t reg_dword /d 2 /f
 reg add HKLM\SYSTEM\CurrentControlSet\Services\WebClient\Parameters /v FileSizeLimitInBytes /t reg_dword /d 0xffffffff /f
@@ -233,6 +411,9 @@ net start WebClient
 #+end_src
 
 * Service
+:PROPERTIES:
+:CUSTOM_ID: 6645c844-7504-45d0-86b4-11de2bdd07ba
+:END:
 #+name: services
 | name    | prog   | args                                                                                     | task-args |
 |---------+--------+------------------------------------------------------------------------------------------+-----------|
