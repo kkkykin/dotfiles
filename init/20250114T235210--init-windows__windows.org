@@ -1,4 +1,4 @@
-#+title:      init-windows
+﻿#+title:      init-windows
 #+date:       [2025-01-14 Tue 23:52]
 #+filetags:   :windows:
 #+identifier: 20250114T235210
@@ -384,6 +384,53 @@ else {
 # 清理临时文件
 if (Test-Path "$env:TEMP\balloon.xml") {
     Remove-Item "$env:TEMP\balloon.xml" -Force
+}
+#+end_src
+
+** save-with-sudo
+:PROPERTIES:
+:CUSTOM_ID: b55d374f-2bac-42ad-8da5-55dc220d4ecf
+:END:
+#+begin_src powershell :tangle (zr-org-by-tangle-dir "save-with-sudo.ps1")
+param(
+    [string]$FilePath
+)
+
+# 处理管道输入或直接输入
+if (Test-Path $FilePath) {
+    $content = $input | Out-String
+} else {
+    Write-Error "No file path specified."
+    exit 1
+}
+
+# 创建临时文件（在用户临时目录中）
+$tempFile = [System.IO.Path]::GetTempFileName()
+
+try {
+    # 将内容写入临时文件
+    Out-File -Encoding utf8 -FilePath "$tempFile" -InputObject "$content"
+
+    # 备份权限
+    $acl = Get-Acl $FilePath
+    
+    $cw = (Get-Location).Path
+    sudo -D "$cw" mv -f "$tempFile" "$FilePath"
+    
+    # 检查执行结果
+    if ($LASTEXITCODE -ne 0) {
+        # 恢复权限
+        Set-Acl $FilePath $acl
+
+        Write-Error "Failed to save file with sudo. Exit code: $LASTEXITCODE"
+        exit $LASTEXITCODE
+    }
+}
+catch {
+    Write-Error "Error occurred: $_"
+    # 如果出错，保留临时文件以便恢复
+    Write-Warning "Temporary file preserved at: $tempFile"
+    exit 1
 }
 #+end_src
 
