@@ -12,7 +12,9 @@
   (plstore-close zr-local-pls)
   (org-babel-tangle nil nil "^lua$")
   (let ((coding-system-for-write 'cp936-dos))
-    (org-babel-tangle nil nil "^bat$")))
+    (org-babel-tangle nil nil "^bat$"))
+  (let ((coding-system-for-write 'utf-8-with-signature))
+    (org-babel-tangle nil nil "^powershell$")))
 
 (mkdir "_prefs/profiles/dummy" t)
 
@@ -842,6 +844,69 @@ endlocal
 :PROPERTIES:
 :CUSTOM_ID: 022803ac-a59b-4a28-8216-1177a91df368
 :END:
+#+begin_src powershell :tangle (zr-org-by-tangle-dir "Delete-OldFiles.ps1")
+<#
+.SYNOPSIS
+    删除指定目录下修改日期早于指定天数的文件。
+
+.DESCRIPTION
+    递归检索给定目录中 LastWriteTime 早于 (当前时间 - N 天) 的所有文件并删除。
+    支持 -WhatIf 与 -Confirm 开关，便于先预览后执行。
+
+.PARAMETER Path
+    要扫描的目录路径（支持相对/绝对路径）。
+
+.PARAMETER DaysOld
+    文件修改时间与当前时间相差超过该天数即视为过期，默认为 7。
+
+.PARAMETER Recurse
+    是否递归子目录。默认：$true。
+
+.EXAMPLE
+    .\Delete-OldFiles.ps1 -Path "D:\Logs" -DaysOld 7
+    删除 D:\Logs 目录及其子目录中 7 天以前的日志文件。
+
+.EXAMPLE
+    .\Delete-OldFiles.ps1 -Path .\Temp -DaysOld 3 -Recurse:$false -WhatIf
+    仅预览删除当前目录下（不含子目录）3 天前的文件，并不真正删除。
+#>
+
+[CmdletBinding(SupportsShouldProcess = $true)]
+param(
+    [Parameter(Mandatory = $true, Position = 0)]
+    [ValidateScript({
+        if (-not (Test-Path -LiteralPath $_ -PathType Container)) {
+            throw "目录不存在：$_"
+        }
+        $true
+    })]
+    [string]$Path,
+
+    [Parameter(Position = 1)]
+    [int]$DaysOld = 7,
+
+    [switch]$Recurse = $true
+)
+
+$cutoffDate = (Get-Date).AddDays(-$DaysOld)
+
+Get-ChildItem -LiteralPath $Path `
+              -File `
+              -Recurse:$Recurse |
+    Where-Object { $_.LastWriteTime -lt $cutoffDate } |
+    ForEach-Object {
+        if ($PSCmdlet.ShouldProcess($_.FullName, "删除文件")) {
+            try {
+                Remove-Item -LiteralPath $_.FullName -Force -ErrorAction Stop
+                Write-Verbose "已删除：$($_.FullName)"
+            }
+            catch {
+                Write-Error "删除失败：$($_.Exception.Message)"
+            }
+        }
+    }
+#+end_src
+
 #+begin_src bat :tangle (zr-org-by-tangle-dir "ring.bat")
 @echo off
 <<parse-bat-env>>
@@ -849,6 +914,8 @@ endlocal
 set dir="%BASE_DIR%\ring"
 if not exist %dir% (
   md %dir%
+) else (
+  powershell -ExecutionPolicy Bypass -File "%BASE_DIR%\Delete-OldFiles.ps1" -Path %dir% -DaysOld 7
 )
 "%dumpcap_path%" -i "%interface%" -f "%filter%" -b filesize:%filesize% -w "%dir%\%hostname%.pcap"
 pause
