@@ -1,0 +1,81 @@
+#+title:      sing-box
+#+date:       [2025-08-22 Fri 16:25]
+#+filetags:   :network:
+#+identifier: 20250822T162554
+
+* tangle
+#+begin_src elisp
+(zr-org-babel-json-format "config")
+(org-babel-tangle)
+#+end_src
+
+* config
+:PROPERTIES:
+:CUSTOM_ID: 3aeea361-850d-4cc8-b292-065568c194d3
+:END:
+#+name: config
+#+begin_src json :tangle (zr-org-by-tangle-dir "config.json") :mkdirp t
+{
+  "dns": {
+    "servers": [
+      {
+        "server": "8.8.8.8",
+        "tag": "google",
+        "type": "tls"
+      },
+      {
+        "server": "223.5.5.5",
+        "tag": "local",
+        "type": "udp"
+      }
+    ],
+    "strategy": "ipv4_only"
+  },
+  "inbounds": [
+    {
+      "set_system_proxy": false,
+      "tag": "mixed-in",
+      "type": "mixed"
+    }
+  ],
+  "outbounds": [
+    {
+      "tag": "direct",
+      "type": "direct"
+    },
+    {
+      "server": "127.0.0.1",
+      "server_port": 10808,
+      "tag": "trojan-go",
+      "type": "socks",
+      "version": "5"
+    }
+  ],
+  "route": {
+    "default_domain_resolver": {
+      "client_subnet": "8.8.8.8",
+      "rewrite_ttl": 60,
+      "server": "local"
+    },
+    "rule_set": [
+      {
+        "download_detour": "trojan-go",
+        "format": "binary",
+        "tag": "geoip-cloudflare",
+        "type": "remote",
+        "update_interval": "7d",
+        "url": "https://raw.githubusercontent.com/Chocolate4U/Iran-sing-box-rules/rule-set/geoip-cloudflare.srs"
+      }
+    ],
+    "rules": [
+      {
+        "action": "route-options",
+        "override_address": "162.159.138.33",
+        "rule_set": [
+          "geoip-cloudflare"
+        ]
+      }
+    ]
+  }
+}
+#+end_src
