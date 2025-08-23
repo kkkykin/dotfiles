@@ -36,6 +36,7 @@ const {
   getBrowserName,
   mapkey,
   tabOpenLink,
+  unmap,
   Hints,
   Front,
 } = api;
@@ -44,9 +45,15 @@ const {
 :PROPERTIES:
 :CUSTOM_ID: 26c182f8-317e-4ca3-bc8c-fe5110e04971
 :END:
-#+begin_src js
+#+begin_src js :var my_gemini_api=(auth-source-pick-first-password :host "gemini.api")
 settings.clickablePat = /(https?:\/\/|thunder:\/\/|magnet:)\S+/ig;
 settings.interceptedErrors = ["*"];
+
+settings.defaultLLMProvider = "gemini";
+settings.llm = {
+  gemini: { apiKey: my_gemini_api },
+  ollama: { model: 'qwen2.5-coder:32b' }
+};
 #+end_src
 ** utils
 :PROPERTIES:
@@ -513,6 +520,17 @@ if (match) {
   const repo = match[2];  
   const deepwikiUrl = `https://deepwiki.com/${user}/${repo}`;  
   tabOpenLink(deepwikiUrl);
+}
+#+end_src
+
+** bind
+:PROPERTIES:
+:CUSTOM_ID: f9830fb5-c95c-48b3-9d67-fdf2ee3122d7
+:END:
+#+begin_src js
+if (document.title.endsWith(' · FreshRSS')) {
+  unmap('j');
+  unmap('k');
 }
 #+end_src
 
