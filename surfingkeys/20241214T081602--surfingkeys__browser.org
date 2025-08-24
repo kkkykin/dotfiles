@@ -529,6 +529,7 @@ if (match) {
 :END:
 #+begin_src js
 if (document.title.endsWith(' · FreshRSS')) {
+  unmap('f');
   unmap('j');
   unmap('k');
 }
