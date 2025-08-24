@@ -456,448 +456,136 @@ show-console-readout=false
 :PROPERTIES:
 :CUSTOM_ID: a4ff4630-0327-47ab-8d24-a8ca1071ac9c
 :tangle-dir: _tangle/scripts
-:header-args:python: :shebang (string-join '("#!/usr/bin/env -S uv run -s" "# /// script" "# requires-python = \">=3.12\"" "# dependencies = [\"aria2p\"]" "# [[tool.uv.index]]" "# url = \"https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple/\"" "# ///") "\n")
+:header-args:python: :shebang (string-join '("#!/usr/bin/env -S uv run -s" "# /// script" "# requires-python = \">=3.12\"" "# [[tool.uv.index]]" "# url = \"https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple/\"" "# ///") "\n")
 :header-args:python+: :var aria2_secret=(auth-source-pick-first-password :host "aria2.localhost") :mkdirp t
 :END:
-
-** common
-#+name: comment-begin
-#+begin_src python
-import sys
-import re
-import sqlite3
-from pathlib import Path
-from aria2p import Client, ClientException
-
-downloading_limits = {
-  r"^https://d\.pcs\.baidu\.com": 1,
-  r"^https://[^/]+\.mypikpak\.com": 5,
-  r"^https://pixeldrain\.com": 3
-}
-
-client = Client(
-  host = 'http://127.0.0.1',
-  port = 6800,
-  secret = aria2_secret
-)
-
-# Database setup
-DB_PATH = Path.home() / ".aria2_event_handler.db"
-
-DB_STATUS = {
-  'init': 0,
-  'customize': 10,
-  'wait': 20,
-  'download': 30
-}
-
-def init_db():
-  """Initialize the SQLite database."""
-  with sqlite3.connect(DB_PATH) as conn:
-    conn.execute("""
-    CREATE TABLE IF NOT EXISTS downloads (
-      gid TEXT PRIMARY KEY,
-      status INT DEFAULT 0,
-      name TEXT,
-      regexp TEXT
-    )
-    """)
-
-init_db()
-
-def get_gid_status(gid):
-  """"""
-  with sqlite3.connect(DB_PATH) as conn:
-    cursor = conn.execute("SELECT status FROM downloads WHERE gid = ?", (gid,))
-    return cursor.fetchone()[0]
-
-def set_gid_status(gid, status):
-  """更新 gid 状态"""
-  code = DB_STATUS[status]
-  if code:
-    with sqlite3.connect(DB_PATH) as conn:
-      conn.execute("UPDATE downloads SET status = ? WHERE gid = ?", (code, gid,))
-
-def delete_the_task(gid, *_):
-  """删除任务"""
-  with sqlite3.connect(DB_PATH) as conn:
-    conn.execute(
-      "DELETE FROM downloads WHERE gid = ?" , (gid,)
-    )
-
-def find_next_task(gid):
-  """找到之前战术暂停的任务"""
-  with sqlite3.connect(DB_PATH) as conn:
-    cursor = conn.execute(
-      "SELECT gid, regexp FROM downloads WHERE gid != ? AND regexp = (SELECT regexp FROM downloads WHERE gid = ?) AND status = ?"
-      , (gid, gid, DB_STATUS['wait'],)
-    )
-    result = cursor.fetchall()
-    if result:
-      waiting = [i['gid'] for i in client.tell_waiting(0, 10, ['gid'])]
-      for gid, regexp in result:
-        if gid not in waiting:
-          delete_the_task(gid)
-        else:
-          return (gid, regexp,)
-    else:
-      return None
-
-def delete_this_continue_next(gid, *_):
-  """删除这个继续下一个"""
-  next = find_next_task(gid)
-  delete_the_task(gid)
-  if next is not None:
-    client.unpause(next[0])
-
-def count_active_downloads(regexp, gid):
-  """Count active downloads for a regexp."""
-  with sqlite3.connect(DB_PATH) as conn:
-    cursor = conn.execute(
-      "SELECT COUNT(*) FROM downloads WHERE regexp = ? AND status = ? AND gid != ?"
-      , (regexp, DB_STATUS['download'], gid,)
-    )
-    return cursor.fetchone()[0]
-#+end_src
-
-#+name: common-end
-#+begin_src python
-if __name__ == "__main__":
-  if len(sys.argv) != 4:
-    sys.exit(1)
-
-  gid = sys.argv[1]
-  num_files = sys.argv[2]
-  file_path = sys.argv[3]
-  event_handler(gid, num_files, file_path)
-#+end_src
-
-** download-start
-:PROPERTIES:
-:CUSTOM_ID: addfab41-01f1-42ee-8868-42f0be601d27
-:END:
-
-#+name: pac
-#+begin_src python
-import re
-from typing import List, Tuple, Union
-
-class ProxyConfig:
-  def __init__(self):
-    self.proxy_mode = "byhost"  # "always", "bypass", or "byhost"
-    self.proxies = [
-      "HTTP 127.0.0.1:10808",
-      "SOCKS5 127.0.0.1:1080",
-      "SOCKS5 127.0.0.1:10808"
-    ]
-    self.autoproxy_hosts = [
-      [],
-      [],
-      [
-        "github.com"
-        , "pixeldrain.com"
-        , "workupload.com"
-        , "uploadhaven.com"
-      ]
-    ]
-
-  def match_host(self, host: str, rule_list: List[str]) -> bool:
-    """Check if host matches any pattern in the rule list using shell-style wildcards."""
-    for pattern in rule_list:
-      # Convert shell wildcard pattern to regex
-      regex_pattern = re.escape(pattern).replace(r'\*', '.*').replace(r'\?', '.')
-      if re.fullmatch(regex_pattern, host):
-        return True
-    return False
-
-  def find_proxy_for_host(self, host: str) -> str:
-    """Determine the appropriate proxy for the given host."""
-    last_pos = 0
-    
-    if self.proxy_mode == 'always':
-      return self.proxies[0]
-    
-    elif self.proxy_mode == 'bypass':
-      current_host = host
-      while True:
-        if self.match_host(current_host, self.autoproxy_hosts[0]):
-          return 'DIRECT'
-        last_pos = current_host.find('.') + 1
-        if last_pos < 1:
-          break
-        current_host = current_host[last_pos:]
-      return self.proxies[0]
-    
-    else:  # byhost mode
-      for i, proxy in enumerate(self.proxies):
-        current_host = host
-        while True:
-          if i < len(self.autoproxy_hosts) and self.match_host(current_host, self.autoproxy_hosts[i]):
-            return proxy
-          last_pos = current_host.find('.') + 1
-          if last_pos < 1:
-            break
-          current_host = current_host[last_pos:]
-      return 'DIRECT'
-
-  def find_proxy_for_url(self, url: str, host: str) -> str:
-    """Public method to find proxy for URL with error handling."""
-    try:
-      return self.find_proxy_for_host(host)
-    except Exception:
-      return 'DIRECT'  # Fallback to direct connection on error
-
-  def format_proxy_for_aria2(self, proxy_str: str) -> Union[dict, None]:
-    """Convert proxy string to aria2 options format."""
-    if proxy_str == 'DIRECT':
-      return None
-      
-    parts = proxy_str.split()
-    if len(parts) != 2:
-      return None
-      
-    proxy_type, proxy_addr = parts
-    
-    # Convert to aria2 proxy format
-    return {"all-proxy": f"http://{proxy_addr}"}
-#+end_src
-
-#+begin_src python :tangle (zr-org-by-tangle-dir "download-start.py")
-<<comment-begin>>
-<<pac>>
-
-proxy_config = ProxyConfig()
-
-def get_customized_gids():
-  """Retrieve all customized GIDs from the database."""
-  with sqlite3.connect(DB_PATH) as conn:
-    cursor = conn.execute("SELECT gid FROM downloads WHERE status > ?", (DB_STATUS['customize'],))
-    return {row[0] for row in cursor.fetchall()}
-
-customized_gids = get_customized_gids()
-
-server_options = [
-  (r"^https://d\.pcs\.baidu\.com", 
-  {"max-connection-per-server": "2",
-   "user-agent": "pan.baidu.com"}),
-  (r"^https://[^/]+\.mypikpak\.com/",
-  {"max-connection-per-server": "2"}),
-  (r"^https://pixeldrain\.com", 
-  {"max-connection-per-server": "1"}),
-  (r"^https://[a-zA-Z0-9]+\.workupload\.com", 
-  {"max-connection-per-server": "1"}),
-  (r"^https://download[0-9]+\.uploadhaven\.com", 
-  {"max-connection-per-server": "2"})
-]
-
-def insert_gid_to_db(gid, *_):
-  """"""
-  with sqlite3.connect(DB_PATH) as conn:
-    conn.execute("INSERT OR IGNORE INTO downloads (gid) VALUES (?)", (gid,))
-
-on_download_start_functions = []
-
-def event_handler(gid, count, file=None):
-  """Handle aria2 events and trigger hooks."""
-  info = {}
-  insert_gid_to_db(gid)
-  
-  uris = client.get_uris(gid)
-  info['uris'] = uris
-  info['used_uri'] = next((uri for uri in uris if uri.get('status') == 'used'), None)
-  for func in on_download_start_functions:
-    if func(gid, info):
-      break
-
-def change_option_for_uri(gid, info):
-  """Change download options based on URI patterns."""
-  if gid in customized_gids:
-    return
-  
-  used_uri = info['used_uri']
-  
-  if not used_uri:
-    return
-  
-  uri = used_uri.get('uri')
-  if not uri:
-    return
-
-  # Parse URL to get host
-  from urllib.parse import urlparse
-  host = urlparse(uri).hostname
-  
-  # Get proxy configuration
-  proxy_str = proxy_config.find_proxy_for_url(uri, host)
-  aria2_proxy_options = proxy_config.format_proxy_for_aria2(proxy_str)
-  
-  # Find matching server options
-  opts = {}
-  for pattern, options in server_options:
-    if re.match(pattern, uri):
-      opts.update(options)
-  
-  # Merge with proxy options if needed
-  if aria2_proxy_options and aria2_proxy_options != 'DIRECT':
-    opts.update(aria2_proxy_options)
-  else:
-    opts.update({'all-proxy':''})
-
-  if opts:
-    set_gid_status(gid, 'customize')
-    
-    client.pause(gid)
-    client.change_option(gid, opts)
-    client.unpause(gid)
-  set_gid_status(gid, 'wait')
-
-def pause_it_if_too_much(gid, info):
-  """"""
-  uri = info['used_uri'].get('uri')
-  flag = True
-  for pattern, limit in downloading_limits.items():
-    if re.match(pattern, uri):
-      with sqlite3.connect(DB_PATH) as conn:
-        conn.execute(
-          "UPDATE downloads SET regexp = ? WHERE gid = ? AND regexp IS NULL" , (pattern, gid,)
-        )
-      active_cnt = count_active_downloads(pattern, gid)
-      if active_cnt >= limit:
-        try:
-          client.pause(gid)
-        except ClientException as e:
-          print(f"无法暂停任务: {e}")
-        return True
-      else:
-        set_gid_status(gid, 'download')
-        flag = False
-  if flag:
-    set_gid_status(gid, 'download')
-
-def add_some_uri(gid, info):
-  """添加一些其他源"""
-  uri = info['used_uri'].get('uri')
-  if uri.startswith('https://pixeldrain.com/'):
-    client.change_uri(gid, 1, [], ['https://habitica-assets.kkky.eu.org/' + uri])
-
-# Register the hook
-on_download_start_functions.append(add_some_uri)
-on_download_start_functions.append(change_option_for_uri)
-on_download_start_functions.append(pause_it_if_too_much)
-
-<<common-end>>
-#+end_src
-
-** download-pause
-:PROPERTIES:
-:CUSTOM_ID: 81750791-44ef-4863-b2be-3a9d85affd03
-:END:
-#+begin_src python :tangle (zr-org-by-tangle-dir "download-pause.py")
-<<comment-begin>>
-
-on_download_pause_functions = []
-
-def event_handler(gid, count, file=None):
-  """Handle aria2 events and trigger hooks."""
-  info = {}
-
-  info['file'] = file
-  for func in on_download_pause_functions:
-    if func(gid, info):
-      break
-
-def check_customize(gid, *_):
-  """Check if."""
-  return get_gid_status(gid) == DB_STATUS['customize']
-
-def pause_this_continue_next(gid, *_):
-  """设置该 gid 状态并找到之前战术暂停的任务继续"""
-  next = find_next_task(gid)
-  set_gid_status(gid, 'wait')
-  if next is not None:
-    next_gid, regexp = next
-    if (count_active_downloads(regexp, next_gid)
-        < downloading_limits[regexp]):
-      client.unpause(next_gid)
-
-on_download_pause_functions.append(check_customize)
-on_download_pause_functions.append(pause_this_continue_next)
-
-<<common-end>>
-#+end_src
 
 ** download-complete
 :PROPERTIES:
 :CUSTOM_ID: ee794415-ca8a-43bd-9055-21ed97f2f4d1
 :END:
 #+begin_src python :tangle (zr-org-by-tangle-dir "download-complete.py")
-<<comment-begin>>
-
-on_download_complete_functions = []
 on_bt_download_complete_functions = []
+on_download_complete_functions = []
+
+def update_fdroid_repo(gid, file):
+  """更新 fdroid repo"""
+  if file.endswith('.apk'):
+    from update_fdroid_repo import update_fdroid_repo;
+    return update_fdroid_repo(file)
+  
 
 def event_handler(gid, count, file=None):
   """Handle aria2 events and trigger hooks."""
-  info = {}
-  
-  info['file'] = file
   if int(count) > 1:
-    hooks = on_bt_download_complete_functions
+    for func in on_bt_download_complete_functions:
+      if func(gid, count):
+        break
   else:
-    hooks = on_download_complete_functions
-  for func in hooks:
-    if func(gid, info):
-      break
+    for func in on_download_complete_functions:
+      if func(gid, file):
+        break
 
 # Register completion hooks
-on_download_complete_functions.append(delete_this_continue_next)
-on_bt_download_complete_functions.append(delete_the_task)
-
-<<common-end>>
+on_download_complete_functions.append(update_fdroid_repo)
 #+end_src
 
-** download-error
+*** update_fdroid_repo
 :PROPERTIES:
-:CUSTOM_ID: fab3918c-bae9-4be5-b092-cf244b6ecc18
+:CUSTOM_ID: 394e05c8-f9e4-4a99-a223-bba878f0b471
 :END:
-#+begin_src python :tangle (zr-org-by-tangle-dir "download-error.py")
-<<comment-begin>>
+#+begin_src python :tangle (zr-org-by-tangle-dir "update_fdroid_repo.py")
+import os
+import shutil
+import subprocess
+from datetime import datetime
 
-on_download_error_functions = []
+fdroid_path = '/mnt/fdroid'
 
-def event_handler(gid, count, file=None):
-  """Handle aria2 events and trigger hooks."""
-  info = {}
+def is_fdroid_path_writable():
+  """检查 fdroid_path 是否可写"""
+  return os.access(fdroid_path, os.W_OK)
+
+def generate_timestamped_filename(original_filename):
+  """生成带时间戳的文件名"""
+  base_name = os.path.basename(original_filename)
+  timestamp = datetime.now().strftime('%Y%m%dT%H%M%S')
+  return f"{timestamp}--{base_name}"
+
+
+def move_apk_file(file_path):
+  """移动 APK 文件到 repo 目录"""
+  try:
+    base_name = os.path.basename(file_path)
+    new_filename = generate_timestamped_filename(base_name)
+    
+    repo_path = os.path.join(fdroid_path, 'repo')
+    if not os.path.exists(repo_path):
+      os.makedirs(repo_path)
+    
+    dest_path = os.path.join(repo_path, new_filename)
+    shutil.move(file_path, dest_path)
+    print(f"Moved {file_path} to {dest_path}")
+    return dest_path
+    
+  except Exception as e:
+    print(f"Error moving file {file_path}: {str(e)}")
+    raise
+
+
+def execute_fdroid_commands(log_file):
+  """执行 fdroid 命令并记录日志"""
+  try:
+    with open(log_file, 'a') as log:
+      log.write(f"\n=== {datetime.now().isoformat()} ===\n")
+      
+      # 执行 fdroid update
+      result1 = subprocess.run(['fdroid', 'update'], 
+                            cwd=fdroid_path, 
+                            capture_output=True, 
+                            text=True)
+      log.write("fdroid update output:\n")
+      log.write(result1.stdout)
+      if result1.stderr:
+        log.write("fdroid update errors:\n")
+        log.write(result1.stderr)
+      
+      # 执行 fdroid deploy -v
+      result2 = subprocess.run(['fdroid', 'deploy', '-v'], 
+                            cwd=fdroid_path, 
+                            capture_output=True, 
+                            text=True)
+      log.write("fdroid deploy -v output:\n")
+      log.write(result2.stdout)
+      if result2.stderr:
+        log.write("fdroid deploy -v errors:\n")
+        log.write(result2.stderr)
+    
+    print("fdroid commands executed successfully")
+    return True
+    
+  except Exception as e:
+    print(f"Error executing fdroid commands: {str(e)}")
+    return False
+
+
+def update_fdroid_repo(file):
+  """更新 fdroid 仓库"""
+  # 检查 fdroid_path 是否可写
+  if not is_fdroid_path_writable():
+    print(f"Error: {fdroid_path} is not writable")
+    return False
   
-  info['file'] = file
-  for func in on_download_error_functions:
-    if func(gid, info):
-      break
-
-on_download_error_functions.append(delete_this_continue_next)
-
-<<common-end>>
-#+end_src
-
-** download-stop
-:PROPERTIES:
-:CUSTOM_ID: af5d336e-bc64-4130-b179-5f3830022822
-:END:
-#+begin_src python :tangle (zr-org-by-tangle-dir "download-stop.py")
-<<comment-begin>>
-
-on_download_stop_functions = []
-
-def event_handler(gid, count, file=None):
-  """Handle aria2 events and trigger hooks."""
-  info = {}
-  
-  info['file'] = file
-  for func in on_download_stop_functions:
-    if func(gid, info):
-      break
-
-on_download_stop_functions.append(delete_this_continue_next)
-
-<<common-end>>
+  try:
+    # 移动 APK 文件
+    flag = move_apk_file(file)
+    
+    # 执行 fdroid 命令并记录日志
+    log_file = os.path.join(fdroid_path, 'fdroid_update.log')
+    execute_fdroid_commands(log_file)
+    return flag
+    
+  except Exception as e:
+    print(f"Error processing file {file}: {str(e)}")
+    return False
 #+end_src
