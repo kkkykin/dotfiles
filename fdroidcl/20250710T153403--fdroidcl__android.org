@@ -18,7 +18,10 @@
 :CUSTOM_ID: d3541119-b937-4825-9fe4-05681457105e
 :END:
 #+begin_src toml :tangle (zr-org-by-tangle-dir "config.toml") :mkdirp t
-setups = []
+[[repos]]
+id = 'kkky'
+url = 'https://dadadawauuuo.kkky.eu.org/fdroid/repo'
+enabled = true
 
 [[repos]]
 id = 'f-droid'
@@ -29,4 +32,29 @@ enabled = true
 id = 'f-droid-archive'
 url = 'https://mirrors.tuna.tsinghua.edu.cn/fdroid/archive'
 enabled = false
+
+[[setups]]
+id = 'base'
+apps = [
+'InfinityLoop1309.NewPipeEnhanced',
+'com.ichi2.anki',
+'com.network.proxy',
+'com.retroarch.aarch64',
+'com.seazon.feedme',
+'com.tailscale.ipn',
+'com.termux',
+'com.termux.api',
+'cyou.joiplay.joiplay',
+'cyou.joiplay.runtime.rpgmaker',
+'de.felixnuesse.extract',
+'io.github.muntashirakon.AppManager',
+'io.nekohasekai.sfa',
+'is.xyz.mpv.ytdl',
+'moe.shizuku.privileged.api',
+'org.courville.nova',
+'org.gnu.emacs',
+'org.koreader.launcher',
+'player.phonograph.plus'
+]
+repos = ['kkky', 'f-droid', 'f-droid-archive']
 #+end_src
