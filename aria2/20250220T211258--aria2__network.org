@@ -456,7 +456,7 @@ show-console-readout=false
 :PROPERTIES:
 :CUSTOM_ID: a4ff4630-0327-47ab-8d24-a8ca1071ac9c
 :tangle-dir: _tangle/scripts
-:header-args:python: :shebang (string-join '("#!/usr/bin/env -S uv run -s" "# /// script" "# requires-python = \">=3.12\"" "# [[tool.uv.index]]" "# url = \"https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple/\"" "# ///") "\n")
+:header-args:python: :shebang "#!/usr/bin/env python"
 :header-args:python+: :var aria2_secret=(auth-source-pick-first-password :host "aria2.localhost") :mkdirp t
 :END:
 
@@ -490,7 +490,7 @@ on_download_complete_functions = []
 def update_fdroid_repo(gid, file):
   """更新 fdroid repo"""
   if file.endswith('.apk'):
-    from update_fdroid_repo import update_fdroid_repo;
+    from update_fdroid_repo import update_fdroid_repo
     return update_fdroid_repo(file)
   
 
