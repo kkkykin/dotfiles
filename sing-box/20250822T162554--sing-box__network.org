@@ -7,8 +7,17 @@
 #+begin_src elisp
 (zr-org-babel-json-format "client-config")
 (zr-org-babel-json-format "server-config")
-(let ((zr-local-pls (plstore-open "sing-box.pls")))
+(let ((zr-local-pls (plstore-open "sing-box.pls"))
+      (client-dir "_tangle/client/")
+      (delete-by-moving-to-trash))
+  (delete-directory "_tangle" t)
   (org-babel-tangle)
+  (mkdir client-dir t)
+  (dolist (f (directory-files "." nil "^_.+.json" t))
+    (copy-file f client-dir t))
+  (call-process "sing-box" nil 0 nil "merge"
+                (expand-file-name "_500-merge.json" client-dir)
+                "-C" "_tangle/tmp/")
   (plstore-close zr-local-pls))
 #+end_src
 
@@ -23,15 +32,27 @@
 
 ** client
 :PROPERTIES:
-:tangle-dir: _tangle/client
+:tangle-dir: _tangle/tmp
 :CUSTOM_ID: 4acfcf10-2bef-4815-af7a-fd5f0271c77f
 :END:
 
+*** base
+:PROPERTIES:
+:CUSTOM_ID: fed30130-cdf9-42cb-805c-50dbb7b4c5bf
+:END:
 #+header: :var hy_ip=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "hy")) :ip)) 1 -1)
+#+header: :var jsdelivr="https://fastly.jsdelivr.net"
 #+name: client-config
-#+begin_src json :tangle (zr-org-by-tangle-dir "config.json") :mkdirp t
+#+begin_src json :tangle (zr-org-by-tangle-dir "500-base.json") :mkdirp t
 {
   "dns": {
+    "final": "dns_alidns_doh_ip",
+    "rules": [
+      {
+        "ip_accept_any": true,
+        "server": "hosts-in"
+      }
+    ],
     "servers": [
       {
         "server": "8.8.8.8",
@@ -40,8 +61,9 @@
       },
       {
         "server": "223.5.5.5",
-        "tag": "local",
-        "type": "udp"
+        "server_port": 443,
+        "tag": "dns_alidns_doh_ip",
+        "type": "https"
       }
     ],
     "strategy": "ipv4_only"
@@ -60,6 +82,14 @@
       "type": "direct"
     },
     {
+      "interrupt_exist_connections": false,
+      "outbounds": [
+        "hy"
+      ],
+      "tag": "auto",
+      "type": "urltest"
+    },
+    {
       "obfs": {
         "password": "$hy_obfs_pass",
         "type": "salamander"
@@ -73,59 +103,44 @@
         "server_name": "$hy_host"
       },
       "type": "hysteria2"
-    },
-    {
-      "server": "127.0.0.1",
-      "server_port": 10808,
-      "tag": "trojan-go",
-      "type": "socks",
-      "version": "5"
     }
   ],
   "route": {
     "auto_detect_interface": true,
     "default_domain_resolver": {
-      "client_subnet": "8.8.8.8",
-      "rewrite_ttl": 60,
-      "server": "local"
+      "server": "dns_alidns_doh_ip"
     },
+    "final": "direct",
     "rule_set": [
       {
-        "download_detour": "hy",
+        "format": "binary",
+        "tag": "geoip-private",
+        "type": "remote",
+        "url": "$jsdelivr/gh/chocolate4u/Iran-sing-box-rules@rule-set/geoip-private.srs"
+      },
+      {
         "format": "binary",
         "tag": "geoip-cn",
         "type": "remote",
-        "url": "https://raw.githubusercontent.com/SagerNet/sing-geoip/rule-set/geoip-cn.srs"
+        "url": "$jsdelivr/gh/chocolate4u/Iran-sing-box-rules@rule-set/geoip-cn.srs"
       },
       {
-        "download_detour": "direct",
         "format": "binary",
         "tag": "geosite-cn",
         "type": "remote",
-        "url": "https://testingcf.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo/geosite/cn.srs"
+        "url": "$jsdelivr/gh/chocolate4u/Iran-sing-box-rules@rule-set/geosite-cn.srs"
       },
       {
-        "download_detour": "hy",
-        "format": "binary",
-        "tag": "geosite-!cn",
-        "type": "remote",
-        "url": "https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-geolocation-!cn.srs"
-      },
-      {
-        "download_detour": "trojan-go",
         "format": "binary",
         "tag": "geoip-cloudflare",
         "type": "remote",
-        "update_interval": "7d",
-        "url": "https://raw.githubusercontent.com/Chocolate4U/Iran-sing-box-rules/rule-set/geoip-cloudflare.srs"
+        "url": "$jsdelivr/gh/chocolate4u/Iran-sing-box-rules@rule-set/geoip-cloudflare.srs"
       },
       {
-        "download_detour": "trojan-go",
         "format": "binary",
         "tag": "geosite-cloudflare",
         "type": "remote",
-        "update_interval": "7d",
-        "url": "https://raw.githubusercontent.com/Chocolate4U/Iran-sing-box-rules/rule-set/geosite-cloudflare.srs"
+        "url": "$jsdelivr/gh/chocolate4u/Iran-sing-box-rules@rule-set/geosite-cloudflare.srs"
       }
     ],
     "rules": [
@@ -138,22 +153,40 @@
         ]
       },
       {
-        "outbound": "hy",
-        "rule_set": [
-          "geosite-!cn",
-          "geoip-!cn"
-        ]
-      },
-      {
         "outbound": "direct",
         "rule_set": [
           "geosite-cn",
-          "geoip-cn"
+          "geoip-cn",
+          "geoip-private"
+        ]
+      },
+      {
+        "outbound": "auto",
+        "rule_set": [
+          "global-rules"
         ]
       }
     ]
   }
 }
+#+end_src
+
+*** proxy
+:PROPERTIES:
+:CUSTOM_ID: 71dde8a4-cea2-4a9d-8e22-9e7d7fbb85f7
+:END:
+#+begin_src json :tangle (zr-org-by-tangle-dir "500-global-rules.json")
+<<gen-gloabl-rules()>>
+#+end_src
+
+#+name: gen-gloabl-rules
+#+begin_src elisp
+(let ((raw (multisession-value zr-net-proxy-rules-hash))
+      suffix)
+  (maphash (lambda (k v) (push k suffix)) raw)
+  (json-serialize
+   `((route . (rule_set [((tag . "global-rules")
+                          (rules . [((domain_suffix . ,(vconcat suffix)))]))])))))
 #+end_src
 
 ** server
