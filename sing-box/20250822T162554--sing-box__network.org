@@ -68,7 +68,7 @@
 #+begin_src json :tangle (zr-org-by-tangle-dir "500-main.json") :mkdirp t
 {
   "dns": {
-    "final": "google",
+    "final": "ali-quic",
     "rules": [
       {
         "ip_accept_any": true,
@@ -80,21 +80,34 @@
       },
       {
         "rule_set": "geosite-cn",
-        "server": "dns_alidns_doh_ip"
+        "server": "ali-doh"
+      },
+      {
+        "server": "cf-dot"
       }
     ],
     "servers": [
       {
         "detour": "auto",
-        "server": "8.8.8.8",
-        "tag": "google",
+        "server": "1.1.1.1",
+        "tag": "cf-dot",
         "type": "tls"
       },
       {
-        "server": "223.5.5.5",
-        "server_port": 443,
-        "tag": "dns_alidns_doh_ip",
+        "detour": "auto",
+        "server": "8.8.8.8",
+        "tag": "google-doh",
         "type": "https"
+      },
+      {
+        "server": "223.5.5.5",
+        "tag": "ali-doh",
+        "type": "https"
+      },
+      {
+        "server": "223.5.5.5",
+        "tag": "ali-quic",
+        "type": "quic"
       }
     ],
     "strategy": "$dns_strategy"
@@ -178,10 +191,20 @@
   "route": {
     "auto_detect_interface": true,
     "default_domain_resolver": {
-      "server": "google"
+      "server": "ali-quic"
     },
     "final": "auto",
     "rule_set": [
+      {
+        "rules": [
+          {
+            "domain_suffix": [
+              ".sagernet.org"
+            ]
+          }
+        ],
+        "tag": "proxy-rules"
+      },
       {
         "format": "binary",
         "tag": "geoip-cn",
@@ -202,6 +225,12 @@
       },
       {
         "format": "binary",
+        "tag": "geosite-discord",
+        "type": "remote",
+        "url": "$jsdelivr/gh/chocolate4u/Iran-sing-box-rules@rule-set/geosite-discord.srs"
+      },
+      {
+        "format": "binary",
         "tag": "geosite-adblock",
         "type": "remote",
         "url": "$jsdelivr/gh/chocolate4u/Iran-sing-box-rules@rule-set/geosite-adblock.srs"
@@ -210,7 +239,10 @@
     "rules": [
       {
         "outbound": "auto",
-        "rule_set": "global-rules"
+        "rule_set": [
+          "geosite-discord",
+          "proxy-rules"
+        ]
       },
       {
         "action": "resolve"
@@ -237,7 +269,7 @@
 :PROPERTIES:
 :CUSTOM_ID: 71dde8a4-cea2-4a9d-8e22-9e7d7fbb85f7
 :END:
-#+begin_src json :tangle (zr-org-by-tangle-dir "500-global-rules.json")
+#+begin_src json :tangle no
 <<gen-gloabl-rules()>>
 #+end_src
 
