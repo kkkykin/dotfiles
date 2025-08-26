@@ -184,7 +184,7 @@ if __name__ == "__main__":
 :PROPERTIES:
 :CUSTOM_ID: 829dd96c-1f86-400f-821d-836657796bd1
 :END:
-#+header: :var arg_ips=(expand-file-name "_tangle/ips/better-cf")
+#+header: :var arg_ips=(expand-file-name (format "_tangle/ips/better%s-cf" (if (zr-net-has-public-ipv6-addr-p) "-v6" "")))
 #+header: :var arg_url="https://cf-speedtest-v2.acfun.win/300mb.test"
 #+header: :var arg_tll=150
 #+header: :var results_dir=(expand-file-name "_results")
