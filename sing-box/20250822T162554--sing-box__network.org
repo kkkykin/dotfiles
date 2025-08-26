@@ -173,7 +173,7 @@
   "route": {
     "auto_detect_interface": true,
     "default_domain_resolver": {
-      "server": "dns_alidns_doh_ip"
+      "server": "google"
     },
     "final": "auto",
     "rule_set": [
@@ -197,6 +197,10 @@
       }
     ],
     "rules": [
+      {
+        "outbound": "auto",
+        "rule_set": "global-rules"
+      },
       {
         "action": "resolve"
       },
@@ -222,7 +226,7 @@
 :PROPERTIES:
 :CUSTOM_ID: 71dde8a4-cea2-4a9d-8e22-9e7d7fbb85f7
 :END:
-#+begin_src json :tangle no
+#+begin_src json :tangle (zr-org-by-tangle-dir "500-global-rules.json")
 <<gen-gloabl-rules()>>
 #+end_src
 
