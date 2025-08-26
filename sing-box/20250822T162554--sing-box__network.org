@@ -39,9 +39,11 @@
 :PROPERTIES:
 :CUSTOM_ID: 3aeea361-850d-4cc8-b292-065568c194d3
 :header-args:json: :var hy_obfs_pass=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "hy")) :obfs-pass)) 1 -1)
-:header-args:json+: :var hy_user_name=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "hy")) :user-name)) 1 -1)
 :header-args:json+: :var hy_user_pass=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "hy")) :user-pass)) 1 -1)
 :header-args:json+: :var hy_host=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "hy")) :host)) 1 -1)
+:header-args:json+: :var vl_host=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vl")) :host)) 1 -1)
+:header-args:json+: :var vl_short_id=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vl")) :short-id)) 1 -1)
+:header-args:json+: :var vl_user_uuid=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vl")) :user-uuid)) 1 -1)
 :END:
 
 ** client
@@ -55,6 +57,8 @@
 :CUSTOM_ID: fed30130-cdf9-42cb-805c-50dbb7b4c5bf
 :END:
 #+header: :var hy_ip=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "hy")) :ip)) 1 -1)
+#+header: :var vl_ip=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vl")) :ip)) 1 -1)
+#+header: :var vl_pub_key=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vl")) :pub-key)) 1 -1)
 #+header: :var jsdelivr="https://fastly.jsdelivr.net"
 #+name: client-config
 #+begin_src json :tangle (zr-org-by-tangle-dir "500-main.json") :mkdirp t
@@ -101,10 +105,31 @@
     {
       "interrupt_exist_connections": false,
       "outbounds": [
+        "vl",
         "hy"
       ],
       "tag": "auto",
       "type": "urltest"
+    },
+    {
+      "flow": "xtls-rprx-vision",
+      "server": "$vl_ip",
+      "server_port": 38199,
+      "tag": "vl",
+      "tls": {
+        "enabled": true,
+        "reality": {
+          "enabled": true,
+          "public_key": "$vl_pub_key",
+          "short_id": "$vl_short_id"
+        },
+        "server_name": "$vl_host",
+        "utls": {
+          "enabled": true
+        }
+      },
+      "type": "vless",
+      "uuid": "$vl_user_uuid"
     },
     {
       "obfs": {
@@ -116,6 +141,9 @@
       "server_port": 30104,
       "tag": "hy",
       "tls": {
+        "alpn": [
+          "h3"
+        ],
         "enabled": true,
         "server_name": "$hy_host"
       },
@@ -255,8 +283,11 @@
 #+header: :var cf_token=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "cf")) :api-token)) 1 -1)
 #+header: :var hy_masq=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "hy")) :masq)) 1 -1)
 #+header: :var hy_email=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "hy")) :email)) 1 -1)
+#+header: :var vl_priv_key=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vl")) :priv-key)) 1 -1)
+#+header: :var hy_user_name=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "hy")) :user-name)) 1 -1)
+#+header: :var vl_user_name=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vl")) :user-name)) 1 -1)
 #+name: server-config
-#+begin_src json :tangle (zr-org-by-tangle-dir "config.json") :mkdirp t
+#+begin_src json :tangle (zr-org-by-tangle-dir "_500-main.json") :mkdirp t
 {
   "inbounds": [
     {
@@ -277,6 +308,9 @@
           "domain": "$hy_host",
           "email": "$hy_email"
         },
+        "alpn": [
+          "h3"
+        ],
         "enabled": true,
         "server_name": "$hy_host"
       },
@@ -286,6 +320,34 @@
         {
           "name": "$hy_user_name",
           "password": "$hy_user_pass"
+        }
+      ]
+    },
+    {
+      "listen": "::",
+      "listen_port": 38199,
+      "tag": "vless-vision-reality",
+      "tls": {
+        "enabled": true,
+        "reality": {
+          "enabled": true,
+          "handshake": {
+            "server": "$vl_host",
+            "server_port": 443
+          },
+          "private_key": "$vl_priv_key",
+          "short_id": [
+            "$vl_short_id"
+          ]
+        },
+        "server_name": "$vl_host"
+      },
+      "type": "vless",
+      "users": [
+        {
+          "flow": "xtls-rprx-vision",
+          "name": "$vl_user_name",
+          "uuid": "$vl_user_uuid"
         }
       ]
     }
