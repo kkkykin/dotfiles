@@ -19,7 +19,7 @@
   (mkdir tun-dir t)
   (call-process "sing-box" nil 0 nil "merge"
                 merge-file "-C" "_tangle/tmp/")
-  (dolist (f (directory-files "." nil "^_.+.json" t))
+  (dolist (f (directory-files "." nil "^_.+\\.json$" t))
     (make-symbolic-link f tun-dir t)
     (make-symbolic-link f client-dir t))
   (make-symbolic-link merge-file tun-dir t)
@@ -29,7 +29,7 @@
     (mkdir android-dir t)
     (dolist (c `(("main.json" . ,client-dir)
                  ("tun.json" . ,tun-dir)))
-      (call-process "sing-box" nil 0 nil "merge"
+      (call-process "sing-box" nil t nil "merge"
                     (expand-file-name (car c) android-dir)
                     "-C" (cdr c))))
   (plstore-close zr-local-pls))
