@@ -5,19 +5,33 @@
 
 * tangle
 #+begin_src elisp
-(zr-org-babel-json-format "client-config")
-(zr-org-babel-json-format "server-config")
-(let ((zr-local-pls (plstore-open "sing-box.pls"))
-      (client-dir "_tangle/client/")
-      (delete-by-moving-to-trash))
+(dolist (c '("client-config"
+             "server-config"
+             "android-tun"))
+  (zr-org-babel-json-format c))
+(let* ((zr-local-pls (plstore-open "sing-box.pls"))
+       (client-dir "_tangle/client/")
+       (tun-dir (expand-file-name "tun/" client-dir))
+       (merge-file (expand-file-name "_500-merge.json" client-dir))
+       (delete-by-moving-to-trash))
   (delete-directory "_tangle" t)
   (org-babel-tangle)
-  (mkdir client-dir t)
-  (dolist (f (directory-files "." nil "^_.+.json" t))
-    (copy-file f client-dir t))
+  (mkdir tun-dir t)
   (call-process "sing-box" nil 0 nil "merge"
-                (expand-file-name "_500-merge.json" client-dir)
-                "-C" "_tangle/tmp/")
+                merge-file "-C" "_tangle/tmp/")
+  (dolist (f (directory-files "." nil "^_.+.json" t))
+    (make-symbolic-link f tun-dir t)
+    (make-symbolic-link f client-dir t))
+  (make-symbolic-link merge-file tun-dir t)
+
+  (when-let* ((android-dir (and (eq system-type 'android)
+                                "/storage/emulated/0/sing-box/")))
+    (mkdir android-dir t)
+    (dolist (c `(("main.json" . ,client-dir)
+                 ("tun.json" . ,tun-dir)))
+      (call-process "sing-box" nil 0 nil "merge"
+                    (expand-file-name (car c) android-dir)
+                    "-C" (cdr c))))
   (plstore-close zr-local-pls))
 #+end_src
 
@@ -36,14 +50,14 @@
 :CUSTOM_ID: 4acfcf10-2bef-4815-af7a-fd5f0271c77f
 :END:
 
-*** base
+*** main
 :PROPERTIES:
 :CUSTOM_ID: fed30130-cdf9-42cb-805c-50dbb7b4c5bf
 :END:
 #+header: :var hy_ip=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "hy")) :ip)) 1 -1)
 #+header: :var jsdelivr="https://fastly.jsdelivr.net"
 #+name: client-config
-#+begin_src json :tangle (zr-org-by-tangle-dir "500-base.json") :mkdirp t
+#+begin_src json :tangle (zr-org-by-tangle-dir "500-main.json") :mkdirp t
 {
   "dns": {
     "final": "dns_alidns_doh_ip",
@@ -76,6 +90,9 @@
       "type": "mixed"
     }
   ],
+  "log": {
+    "level": "warn"
+  },
   "outbounds": [
     {
       "tag": "direct",
@@ -113,10 +130,14 @@
     "final": "direct",
     "rule_set": [
       {
-        "format": "binary",
-        "tag": "geoip-private",
-        "type": "remote",
-        "url": "$jsdelivr/gh/chocolate4u/Iran-sing-box-rules@rule-set/geoip-private.srs"
+        "rules": [
+          {
+            "domain_suffix": [
+              ".kkky.eu.org"
+            ]
+          }
+        ],
+        "tag": "custom-cf"
       },
       {
         "format": "binary",
@@ -145,25 +166,26 @@
     ],
     "rules": [
       {
+        "outbound": "auto",
+        "rule_set": [
+          "global-rules"
+        ]
+      },
+      {
         "action": "route-options",
         "override_address": "162.159.138.33",
         "rule_set": [
+          "custom-cf",
           "geoip-cloudflare",
           "geosite-cloudflare"
         ]
       },
       {
+        "ip_is_private": true,
         "outbound": "direct",
         "rule_set": [
           "geosite-cn",
-          "geoip-cn",
-          "geoip-private"
-        ]
-      },
-      {
-        "outbound": "auto",
-        "rule_set": [
-          "global-rules"
+          "geoip-cn"
         ]
       }
     ]
@@ -171,7 +193,7 @@
 }
 #+end_src
 
-*** proxy
+*** proxy-rules
 :PROPERTIES:
 :CUSTOM_ID: 71dde8a4-cea2-4a9d-8e22-9e7d7fbb85f7
 :END:
@@ -187,6 +209,41 @@
   (json-serialize
    `((route . (rule_set [((tag . "global-rules")
                           (rules . [((domain_suffix . ,(vconcat suffix)))]))])))))
+#+end_src
+
+*** tun
+:PROPERTIES:
+:tangle-dir: _tangle/client/tun
+:END:
+
+**** android
+:PROPERTIES:
+:CUSTOM_ID: 2970e9bb-61e8-4eb3-bc19-233858560385
+:END:
+#+name: android-tun
+#+begin_src json :tangle (if (eq system-type 'android) (zr-org-by-tangle-dir "_500-android.json") "no") :mkdirp t
+{
+  "inbounds": [
+    {
+      "address": "172.19.0.1/30",
+      "auto_route": true,
+      "include_package": [
+        "com.arlosoft.macrodroid",
+        "com.fooview.android.fooview",
+        "InfinityLoop1309.NewPipeEnhanced"
+      ],
+      "platform": {
+        "http_proxy": {
+          "enabled": true,
+          "server": "127.0.0.1",
+          "server_port": 10805
+        }
+      },
+      "strict_route": true,
+      "type": "tun"
+    }
+  ]
+}
 #+end_src
 
 ** server
@@ -234,7 +291,7 @@
     }
   ],
   "log": {
-    "level": "info"
+    "level": "warn"
   },
   "outbounds": [
     {
