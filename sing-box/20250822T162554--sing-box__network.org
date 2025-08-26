@@ -67,15 +67,20 @@
 #+begin_src json :tangle (zr-org-by-tangle-dir "500-main.json") :mkdirp t
 {
   "dns": {
-    "final": "dns_alidns_doh_ip",
+    "final": "google",
     "rules": [
       {
         "ip_accept_any": true,
         "server": "hosts-in"
+      },
+      {
+        "rule_set": "geosite-cn",
+        "server": "dns_alidns_doh_ip"
       }
     ],
     "servers": [
       {
+        "detour": "auto",
         "server": "8.8.8.8",
         "tag": "google",
         "type": "tls"
