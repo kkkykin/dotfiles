@@ -74,6 +74,10 @@
         "server": "hosts-in"
       },
       {
+        "action": "reject",
+        "rule_set": "geosite-adblock"
+      },
+      {
         "rule_set": "geosite-cn",
         "server": "dns_alidns_doh_ip"
       }
@@ -194,6 +198,12 @@
         "tag": "geoip-cloudflare",
         "type": "remote",
         "url": "$jsdelivr/gh/chocolate4u/Iran-sing-box-rules@rule-set/geoip-cloudflare.srs"
+      },
+      {
+        "format": "binary",
+        "tag": "geosite-adblock",
+        "type": "remote",
+        "url": "$jsdelivr/gh/chocolate4u/Iran-sing-box-rules@rule-set/geosite-adblock.srs"
       }
     ],
     "rules": [
