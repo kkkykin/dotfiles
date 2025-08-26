@@ -170,18 +170,8 @@
     "default_domain_resolver": {
       "server": "dns_alidns_doh_ip"
     },
-    "final": "direct",
+    "final": "auto",
     "rule_set": [
-      {
-        "rules": [
-          {
-            "domain_suffix": [
-              ".kkky.eu.org"
-            ]
-          }
-        ],
-        "tag": "custom-cf"
-      },
       {
         "format": "binary",
         "tag": "geoip-cn",
@@ -199,29 +189,11 @@
         "tag": "geoip-cloudflare",
         "type": "remote",
         "url": "$jsdelivr/gh/chocolate4u/Iran-sing-box-rules@rule-set/geoip-cloudflare.srs"
-      },
-      {
-        "format": "binary",
-        "tag": "geosite-cloudflare",
-        "type": "remote",
-        "url": "$jsdelivr/gh/chocolate4u/Iran-sing-box-rules@rule-set/geosite-cloudflare.srs"
       }
     ],
     "rules": [
       {
-        "outbound": "auto",
-        "rule_set": [
-          "global-rules"
-        ]
-      },
-      {
-        "action": "route-options",
-        "override_address": "162.159.138.33",
-        "rule_set": [
-          "custom-cf",
-          "geoip-cloudflare",
-          "geosite-cloudflare"
-        ]
+        "action": "resolve"
       },
       {
         "ip_is_private": true,
@@ -230,6 +202,11 @@
           "geosite-cn",
           "geoip-cn"
         ]
+      },
+      {
+        "outbound": "direct",
+        "override_address": "<<find-ip()>>",
+        "rule_set": "geoip-cloudflare"
       }
     ]
   }
@@ -240,7 +217,7 @@
 :PROPERTIES:
 :CUSTOM_ID: 71dde8a4-cea2-4a9d-8e22-9e7d7fbb85f7
 :END:
-#+begin_src json :tangle (zr-org-by-tangle-dir "500-global-rules.json")
+#+begin_src json :tangle no
 <<gen-gloabl-rules()>>
 #+end_src
 
@@ -399,4 +376,22 @@
     }
   ]
 }
+#+end_src
+
+* helper
+#+name: find-ip
+#+begin_src elisp
+(let* ((result-dir "../cloudflarest/_results/")
+       (results (directory-files result-dir t "^[^.]"))
+       (result "104.17.133.211"))
+  (when results
+    (let ((latest (car (last results))))
+      (with-temp-buffer
+        (insert-file-contents latest)
+        (goto-char (point-min))
+        (forward-line)
+        (let ((pos (point)))
+          (search-forward "," (pos-eol))
+          (setq result (buffer-substring pos (1- (point))))))))
+  result)
 #+end_src
