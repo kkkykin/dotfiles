@@ -44,6 +44,8 @@
 :header-args:json+: :var vl_host=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vl")) :host)) 1 -1)
 :header-args:json+: :var vl_short_id=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vl")) :short-id)) 1 -1)
 :header-args:json+: :var vl_user_uuid=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vl")) :user-uuid)) 1 -1)
+:header-args:json+: :var any_host=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "any")) :host)) 1 -1)
+:header-args:json+: :var any_pass=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "any")) :pass)) 1 -1)
 :END:
 
 ** client
@@ -59,6 +61,7 @@
 #+header: :var hy_ip=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "hy")) :ip)) 1 -1)
 #+header: :var vl_ip=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vl")) :ip)) 1 -1)
 #+header: :var vl_pub_key=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vl")) :pub-key)) 1 -1)
+#+header: :var any_ip=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "any")) :ip)) 1 -1)
 #+header: :var jsdelivr="https://fastly.jsdelivr.net"
 #+name: client-config
 #+begin_src json :tangle (zr-org-by-tangle-dir "500-main.json") :mkdirp t
@@ -105,6 +108,7 @@
     {
       "interrupt_exist_connections": false,
       "outbounds": [
+        "any",
         "vl",
         "hy"
       ],
@@ -130,6 +134,17 @@
       },
       "type": "vless",
       "uuid": "$vl_user_uuid"
+    },
+    {
+      "password": "$any_pass",
+      "server": "$any_ip",
+      "server_port": 39833,
+      "tag": "any",
+      "tls": {
+        "enabled": true,
+        "server_name": "$any_host"
+      },
+      "type": "anytls"
     },
     {
       "obfs": {
@@ -283,9 +298,10 @@
 #+header: :var cf_token=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "cf")) :api-token)) 1 -1)
 #+header: :var hy_masq=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "hy")) :masq)) 1 -1)
 #+header: :var hy_email=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "hy")) :email)) 1 -1)
-#+header: :var vl_priv_key=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vl")) :priv-key)) 1 -1)
 #+header: :var hy_user_name=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "hy")) :user-name)) 1 -1)
+#+header: :var vl_priv_key=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vl")) :priv-key)) 1 -1)
 #+header: :var vl_user_name=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vl")) :user-name)) 1 -1)
+#+header: :var any_email=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "any")) :email)) 1 -1)
 #+name: server-config
 #+begin_src json :tangle (zr-org-by-tangle-dir "_500-main.json") :mkdirp t
 {
@@ -348,6 +364,28 @@
           "flow": "xtls-rprx-vision",
           "name": "$vl_user_name",
           "uuid": "$vl_user_uuid"
+        }
+      ]
+    },
+    {
+      "listen": "::",
+      "listen_port": 39833,
+      "tls": {
+        "acme": {
+          "dns01_challenge": {
+            "api_token": "$cf_token",
+            "provider": "cloudflare"
+          },
+          "domain": "$any_host",
+          "email": "$any_email"
+        },
+        "enabled": true,
+        "server_name": "$any_host"
+      },
+      "type": "anytls",
+      "users": [
+        {
+          "password": "$any_pass"
         }
       ]
     }
