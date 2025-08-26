@@ -17,7 +17,7 @@
   (delete-directory "_tangle" t)
   (org-babel-tangle)
   (mkdir tun-dir t)
-  (call-process "sing-box" nil 0 nil "merge"
+  (call-process "sing-box" nil nil nil "merge"
                 merge-file "-C" "_tangle/tmp/")
   (dolist (f (directory-files "." nil "^_.+\\.json$" t))
     (make-symbolic-link f tun-dir t)
@@ -29,7 +29,7 @@
     (mkdir android-dir t)
     (dolist (c `(("main.json" . ,client-dir)
                  ("tun.json" . ,tun-dir)))
-      (call-process "sing-box" nil t nil "merge"
+      (call-process "sing-box" nil nil nil "merge"
                     (expand-file-name (car c) android-dir)
                     "-C" (cdr c))))
   (plstore-close zr-local-pls))
