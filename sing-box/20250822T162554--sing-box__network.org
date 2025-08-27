@@ -231,6 +231,12 @@
       },
       {
         "format": "binary",
+        "tag": "geosite-openai",
+        "type": "remote",
+        "url": "$jsdelivr/gh/chocolate4u/Iran-sing-box-rules@rule-set/geosite-openai.srs"
+      },
+      {
+        "format": "binary",
         "tag": "geosite-adblock",
         "type": "remote",
         "url": "$jsdelivr/gh/chocolate4u/Iran-sing-box-rules@rule-set/geosite-adblock.srs"
@@ -241,6 +247,7 @@
         "outbound": "auto",
         "rule_set": [
           "geosite-discord",
+          "geosite-openai",
           "proxy-rules"
         ]
       },
