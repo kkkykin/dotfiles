@@ -31,10 +31,35 @@
 #+begin_src python :tangle (zr-org-by-tangle-dir "find_best_ip.py")
 import csv
 import os
+import shutil
+from pathlib import Path
 import argparse
 import subprocess
 import sys
 from datetime import datetime
+
+def find_cloudflarest(name: str) -> str:
+  """
+  1. 如果 name 是绝对路径，直接返回；
+  2. 先去脚本所在目录找；
+  3. 再去系统 PATH 找；
+  4. 都找不到就抛 FileNotFoundError。
+  """
+  if os.path.isabs(name):
+    return name
+
+  script_dir = Path(__file__).resolve().parent
+  # 1) 脚本目录
+  local_exe = script_dir / name
+  if local_exe.is_file() and os.access(local_exe, os.X_OK):
+    return str(local_exe)
+
+  # 2) 系统 PATH
+  system_path = shutil.which(name)
+  if system_path is not None:
+    return system_path
+
+  raise FileNotFoundError(f'未找到可执行文件: {name}')
 
 def find_best_ip(csv_dict):
   """找到最好的 ip"""
@@ -45,11 +70,12 @@ def find_best_ip(csv_dict):
 
 def run_cloudflarest(cloudflarest_path, tll, results_dir, url, ip_file):
   """运行cloudflarest测试"""
+  cfst_path = find_cloudflarest(cloudflarest_path)
   timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
   result_path = os.path.join(results_dir, f"{timestamp}.csv")
   os.makedirs(results_dir, exist_ok=True)
   
-  subprocess.run([cloudflarest_path, '-tll', str(tll), '-f', ip_file,
+  subprocess.run([cfst_path, '-tll', str(tll), '-f', ip_file,
                   '-url', url, '-o', result_path, '-p', '0'],
                  stdout=subprocess.DEVNULL,
                  stderr=subprocess.DEVNULL)
@@ -216,6 +242,62 @@ else:
   sys.exit(1)
 #+end_src
 
+** cdn_speedtest
+:PROPERTIES:
+:CUSTOM_ID: 9db34ae4-3c62-46c0-933f-d490a26bb020
+:END:
+#+header: :var ip_dir=(zr-org-by-tangle-dir "ips")
+#+header: :var cdn_url_map=cdn_url_map[]
+#+header: :var result_dir=(expand-file-name "_results/")
+#+begin_src python :tangle (zr-org-by-tangle-dir "cdn_speedtest.py")
+from find_best_ip import find_best_ip, run_cloudflarest
+import os
+import argparse
+import sys
+
+def cdn_speed_test(cdn, type, opt):
+  """cdn ip 测速"""
+  ip_base_file_name = f"{cdn}-{type}"
+  ip_file_name = f"{ip_base_file_name}-better" if opt else ip_base_file_name
+  
+  cdn_dict = dict(cdn_url_map)
+  url = cdn_dict.get(cdn, None)
+  if url is not None:
+    best_ip = run_cloudflarest(
+      'cfst'
+      , 150
+      , os.path.join(result_dir, ip_base_file_name)
+      , url
+      , os.path.join(ip_dir, ip_file_name)
+    )
+  
+  if best_ip:
+    print(best_ip)
+  else:
+    print("未找到符合条件的IP")
+    sys.exit(1)
+
+def main():
+  parser = argparse.ArgumentParser(description='查找最佳 IP')
+
+  group = parser.add_mutually_exclusive_group(required=True)
+  group.add_argument('-4', '--ipv4', action='store_true', help='仅使用 IPv4')
+  group.add_argument('-6', '--ipv6', action='store_true', help='仅使用 IPv6')
+
+  parser.add_argument('--cdn', required=True, choices=['aws', 'cf'],
+                      help='aws/cf')
+  parser.add_argument('--opt', action='store_true',
+                      help='启用优化模式')
+
+  args = parser.parse_args()
+  ip_version = 4 if args.ipv4 else 6
+
+  cdn_speed_test(args.cdn, ip_version, args.opt)
+
+if __name__ == "__main__":
+  main()
+#+end_src
+
 * cidr
 :PROPERTIES:
 :tangle-dir: _tangle/ips
@@ -226,18 +308,18 @@ else:
 :PROPERTIES:
 :CUSTOM_ID: 7f65aa67-4c20-4d77-9f31-3d11c0b6e54a
 :END:
-#+begin_src org :tangle (zr-org-by-tangle-dir "better-cf") :mkdirp t
+#+begin_src org :tangle (zr-org-by-tangle-dir "cf-4-better") :mkdirp t
 162.158.0.0/15
 104.16.0.0/12
 #+end_src
 
-#+begin_src org :tangle (zr-org-by-tangle-dir "better-v6-cf")
+#+begin_src org :tangle (zr-org-by-tangle-dir "cf-6-better")
 2606:4700:d::/48
 2606:4700:e::/48
 2606:4700:f4::/48
 #+end_src
 
-#+begin_src org :tangle (zr-org-by-tangle-dir "v4-cf")
+#+begin_src org :tangle (zr-org-by-tangle-dir "cf-4")
 173.245.48.0/20
 103.21.244.0/22
 103.22.200.0/22
@@ -265,7 +347,7 @@ else:
 131.0.72.0/22
 #+end_src
 
-#+begin_src org :tangle (zr-org-by-tangle-dir "v6-cf")
+#+begin_src org :tangle (zr-org-by-tangle-dir "cf-6")
 2400:cb00:2049::/48
 2400:cb00:f00e::/48
 2606:4700::/32
@@ -364,3 +446,31 @@ else:
 2a06:98c1:54::/48
 2a06:98c1:58::/48
 #+end_src
+
+** cloudfront
+#+begin_src elisp
+(with-temp-buffer
+  (url-insert-file-contents-literally "https://ip-ranges.amazonaws.com/ip-ranges.json")
+  (let* ((json (json-parse-buffer))
+         (prefixes (gethash "prefixes" json))
+         (ipv6_prefixes (gethash "ipv6_prefixes" json))
+         (ips-dir (zr-org-by-tangle-dir "ips/"))
+         v4-prefixes v6-prefixes)
+    (mapc
+     (lambda (prefix)
+       (when (and (string= "CLOUDFRONT" (gethash "service" prefix))
+                  (not (string-prefix-p "cn-" (gethash "region" prefix))))
+         (if-let* ((v4-prefix (gethash "ip_prefix" prefix)))
+             (push v4-prefix v4-prefixes)
+           (push (gethash "ipv6_prefix" prefix) v6-prefixes))))
+     (vconcat prefixes ipv6_prefixes))
+    (write-region (string-join v4-prefixes "\n") nil (expand-file-name "aws-4" ips-dir))
+    (write-region (string-join v6-prefixes "\n") nil (expand-file-name "aws-6" ips-dir))))
+#+end_src
+
+* test-url
+#+name: cdn_url_map
+| cdn | url                                                                                                                         |
+|-----+-----------------------------------------------------------------------------------------------------------------------------|
+| cf  | https://cf-speedtest-v2.acfun.win/300mb.test                                                                                |
+| aws | https://images-assets.nasa.gov/video/GSFC_20100722_Hubble_m10619_Exoplanets/GSFC_20100722_Hubble_m10619_Exoplanets~orig.mp4 |
