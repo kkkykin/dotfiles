@@ -114,14 +114,6 @@
   },
   "inbounds": [
     {
-      "listen": "::",
-      "listen_port": 53,
-      "network": "udp",
-      "sniff_override_destination": true,
-      "tag": "dns-in",
-      "type": "direct"
-    },
-    {
       "listen_port": 10805,
       "set_system_proxy": false,
       "tag": "mixed-in",
@@ -252,16 +244,6 @@
     ],
     "rules": [
       {
-        "action": "sniff",
-        "inbound": "dns-in",
-        "sniffer": "dns"
-      },
-      {
-        "action": "hijack-dns",
-        "port": 53,
-        "protocol": "dns"
-      },
-      {
         "outbound": "auto",
         "rule_set": [
           "geosite-discord",
@@ -328,6 +310,41 @@
   (json-serialize
    `((route . (rule_set [((tag . "global-rules")
                           (rules . [((domain_suffix . ,(vconcat suffix)))]))])))))
+#+end_src
+
+*** platform
+
+**** pc
+:PROPERTIES:
+:CUSTOM_ID: cf7be985-bfaa-4ed0-8240-190e588c1fd2
+:END:
+#+begin_src json :tangle (if (eq system-type 'android) "no" (zr-org-by-tangle-dir "400-dns.json"))
+{
+  "inbounds": [
+    {
+      "listen": "::",
+      "listen_port": 53,
+      "network": "udp",
+      "sniff_override_destination": true,
+      "tag": "dns-in",
+      "type": "direct"
+    }
+  ],
+  "route": {
+    "rules": [
+      {
+        "action": "sniff",
+        "inbound": "dns-in",
+        "sniffer": "dns"
+      },
+      {
+        "action": "hijack-dns",
+        "port": 53,
+        "protocol": "dns"
+      }
+    ]
+  }
+}
 #+end_src
 
 *** tun
