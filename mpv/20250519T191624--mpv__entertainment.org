@@ -575,30 +575,36 @@ mp.add_key_binding('ctrl+o', 'Browse-url', browse_url)
 :END:
 MPV 网络字幕自动加载脚本
 根据视频URL自动在服务器上查找并加载字幕文件
+#+header: :var network_subtitle_conf=(expand-file-name "_tangle/script-opts/network-subtitle.lua")
 #+begin_src lua :tangle (zr-org-by-tangle-dir "network-subtitle.lua")
 local utils = require 'mp.utils'
 
--- 字幕规则配置表
--- key: 视频URL匹配模式
--- value: 字幕URL模式列表，${name} 会被替换为视频文件名（不含扩展名）
---        或者是一个回调函数，接受 base_name 和 video_url 参数，返回字幕URL列表
-local subtitle_rules = {
-  -- 示例：使用字符串模式
-  -- ["^http://[^/]+:5244/.+"] = {
-  --   "字幕/${name}.ass"
-  --   , "${name}.ass"
-  --   , "${name}.srt"
-  --   , "${name}.chs.ass"
-  -- },
+local function load_subtitle_config()
+  print(mp.get_script_name())
+  local config_file, err = io.open(network_subtitle_conf, "r")
   
-  -- 示例：使用回调函数
-  -- ["^http://[^/]+:5244/.+"] = function(base_name, video_url)
-  --   return {
-  --     "字幕/" .. base_name .. ".ass",
-  --     base_name .. ".ass"
-  --   }
-  -- end,
-}
+  if not config_file then
+    return {}
+  end
+  
+  local config_content = config_file:read("*all")
+  config_file:close()
+  
+  -- 执行配置文件内容
+  local config_func, load_err = load(config_content, config_path)
+  if not config_func then
+    return {}
+  end
+  
+  local success, config = pcall(config_func)
+  if not success then
+    return {}
+  end
+  
+  return config or {}
+end
+
+local subtitle_rules = load_subtitle_config()
 
 -- 获取文件名（不含扩展名）
 local function get_filename_without_ext(url)
@@ -695,6 +701,30 @@ end
 
 -- 监听文件加载事件
 mp.register_event("file-loaded", auto_load_subtitle)
+#+end_src
+***** config
+字幕规则配置表
+key: 视频URL匹配模式
+value: 字幕URL模式列表，${name} 会被替换为视频文件名（不含扩展名）
+       或者是一个回调函数，接受 base_name 和 video_url 参数，返回字幕URL列表
+#+begin_src lua
+return {
+  -- 示例：使用字符串模式
+  ["^http://[^/]+:5244/.+"] = {
+    "字幕/${name}.ass"
+    , "${name}.ass"
+    , "${name}.srt"
+    , "${name}.chs.ass"
+  },
+  
+  -- 示例：使用回调函数
+  ["^http://[^/]+:5244/.+"] = function(base_name, video_url)
+    return {
+      "字幕/" .. base_name .. ".ass",
+      base_name .. ".ass"
+    }
+  end,
+}
 #+end_src
 ** opts
 :PROPERTIES:
