@@ -114,6 +114,14 @@
   },
   "inbounds": [
     {
+      "listen": "::",
+      "listen_port": 53,
+      "network": "udp",
+      "sniff_override_destination": true,
+      "tag": "dns-in",
+      "type": "direct"
+    },
+    {
       "listen_port": 10805,
       "set_system_proxy": false,
       "tag": "mixed-in",
@@ -243,6 +251,16 @@
       }
     ],
     "rules": [
+      {
+        "action": "sniff",
+        "inbound": "dns-in",
+        "sniffer": "dns"
+      },
+      {
+        "action": "hijack-dns",
+        "port": 53,
+        "protocol": "dns"
+      },
       {
         "outbound": "auto",
         "rule_set": [
