@@ -265,6 +265,28 @@
 }
 #+end_src
 
+*** hosts
+:PROPERTIES:
+:CUSTOM_ID: b8b405ea-5649-4bb3-9abd-ab60a0332b85
+:END:
+#+begin_src json :tangle (zr-org-by-tangle-dir "500-hosts.json")
+<<gen-hosts()>>
+#+end_src
+
+#+name: gen-hosts
+#+begin_src elisp
+(let* ((default '((localhost . ["127.0.0.1" "::1"])))
+       (local-file "_hosts.eld")
+       (local (and (file-exists-p local-file)
+                   (with-temp-buffer
+                     (insert-file-contents local-file)
+                     (read (current-buffer))))))
+  (json-serialize
+   `((dns . (servers [((tag . "hosts-in")
+                       (type . "hosts")
+                       (predefined . ,(append local default)))])))))
+#+end_src
+
 *** proxy-rules
 :PROPERTIES:
 :CUSTOM_ID: 71dde8a4-cea2-4a9d-8e22-9e7d7fbb85f7
