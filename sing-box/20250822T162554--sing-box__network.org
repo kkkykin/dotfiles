@@ -112,6 +112,11 @@
     ],
     "strategy": "$dns_strategy"
   },
+  "experimental": {
+    "cache_file": {
+      "enabled": true
+    }
+  },
   "inbounds": [
     {
       "listen_port": 10808,
