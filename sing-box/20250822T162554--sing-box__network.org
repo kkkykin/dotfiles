@@ -340,6 +340,7 @@
           "server_port": 10805
         }
       },
+      "stack": "system",
       "strict_route": true,
       "type": "tun"
     }
