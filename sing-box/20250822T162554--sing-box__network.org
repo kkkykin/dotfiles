@@ -121,7 +121,7 @@
     }
   ],
   "log": {
-    "level": "warn"
+    "level": "info"
   },
   "outbounds": [
     {
@@ -442,7 +442,7 @@
     }
   ],
   "log": {
-    "level": "warn"
+    "level": "info"
   },
   "outbounds": [
     {
