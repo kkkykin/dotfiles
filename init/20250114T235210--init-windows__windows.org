@@ -158,7 +158,7 @@ start /b /abovenormal /d "%trojan-dir%" trojan-go.exe -config "%config%"
 :END:
 #+name: run_sing_box
 #+begin_src bat :var config-dir=(expand-file-name "../sing-box/_tangle/client/")
-start /b sing-box run -C "%config-dir%"
+sing-box run -C "%config-dir%"
 #+end_src
 
 ** main
