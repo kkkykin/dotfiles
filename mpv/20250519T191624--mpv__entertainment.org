@@ -569,6 +569,133 @@ end
 mp.register_event('start-file', observe)
 mp.add_key_binding('ctrl+o', 'Browse-url', browse_url)
 #+end_src
+**** network-subtitle
+:PROPERTIES:
+:CUSTOM_ID: 28598dbb-79cf-46ed-95e0-b667e50f2d76
+:END:
+MPV 网络字幕自动加载脚本
+根据视频URL自动在服务器上查找并加载字幕文件
+#+begin_src lua :tangle (zr-org-by-tangle-dir "network-subtitle.lua")
+local utils = require 'mp.utils'
+
+-- 字幕规则配置表
+-- key: 视频URL匹配模式
+-- value: 字幕URL模式列表，${name} 会被替换为视频文件名（不含扩展名）
+--        或者是一个回调函数，接受 base_name 和 video_url 参数，返回字幕URL列表
+local subtitle_rules = {
+  -- 示例：使用字符串模式
+  -- ["^http://[^/]+:5244/.+"] = {
+  --   "字幕/${name}.ass"
+  --   , "${name}.ass"
+  --   , "${name}.srt"
+  --   , "${name}.chs.ass"
+  -- },
+  
+  -- 示例：使用回调函数
+  -- ["^http://[^/]+:5244/.+"] = function(base_name, video_url)
+  --   return {
+  --     "字幕/" .. base_name .. ".ass",
+  --     base_name .. ".ass"
+  --   }
+  -- end,
+}
+
+-- 获取文件名（不含扩展名）
+local function get_filename_without_ext(url)
+  local filename = url:match("/([^/]+)$")
+  if not filename then return nil end
+  
+  -- 移除查询参数
+  filename = filename:gsub("%?.*$", "")
+  
+  -- 移除扩展名
+  local name_without_ext = filename:match("^(.+)%.[^.]+$")
+  return name_without_ext or filename
+end
+
+-- 生成字幕URL
+local function generate_subtitle_urls(video_url, patterns, is_callback_result)
+  local urls = {}
+  local base_name = get_filename_without_ext(video_url)
+  
+  if not base_name then
+    return urls
+  end
+  
+  -- 获取视频URL的目录部分
+  local dir_path = video_url:match("^(.+)/[^/]+$") or video_url
+  
+  for _, pattern in ipairs(patterns) do
+    local subtitle_url
+    
+    if is_callback_result then
+      -- 回调函数返回的结果，直接使用，不进行替换
+      subtitle_url = pattern
+    else
+      -- 字符串数组模式，需要替换 ${name}
+      subtitle_url = pattern:gsub("%${name}", function() return base_name end)
+    end
+    
+    -- 如果是相对路径，则拼接完整URL
+    if not subtitle_url:match("^[^:/]+://") then
+      subtitle_url = dir_path .. "/" .. subtitle_url
+    end
+    
+    table.insert(urls, subtitle_url)
+  end
+  
+  return urls
+end
+
+-- 查找匹配的字幕规则
+local function find_matching_rules(video_url)
+  for pattern, subtitle_patterns in pairs(subtitle_rules) do
+    if video_url:match(pattern) then
+      -- 如果是函数，则调用函数获取字幕模式
+      if type(subtitle_patterns) == "function" then
+        local base_name = get_filename_without_ext(video_url)
+        return subtitle_patterns(base_name, video_url), true
+      end
+      return subtitle_patterns, false
+    end
+  end
+end
+
+-- 尝试加载字幕
+local function try_load_subtitle(url)
+  mp.commandv("sub-add", url, "select")
+end
+
+-- 自动加载字幕
+local function auto_load_subtitle()
+  local video_url = mp.get_property("path")
+  
+  -- 只处理网络URL
+  if not video_url or not video_url:match("^[^:/]+://") then
+    return
+  end
+  
+  -- 查找匹配的规则
+  local subtitle_patterns, is_callback_result = find_matching_rules(video_url)
+  if not subtitle_patterns then
+    return
+  end
+  
+  -- 生成字幕URL
+  local subtitle_urls = generate_subtitle_urls(video_url, subtitle_patterns, is_callback_result)
+  if #subtitle_urls == 0 then
+    return
+  end
+  
+  -- 尝试加载字幕
+  for _, url in ipairs(subtitle_urls) do
+    try_load_subtitle(url)
+  end
+end
+
+-- 监听文件加载事件
+mp.register_event("file-loaded", auto_load_subtitle)
+#+end_src
 ** opts
 :PROPERTIES:
 :tangle-dir: _tangle/script-opts
