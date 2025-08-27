@@ -152,6 +152,15 @@ start /b mpd "%USERPROFILE%\scoop\persist\mpd\mpd.conf"
 start /b /abovenormal /d "%trojan-dir%" trojan-go.exe -config "%config%"
 #+end_src
 
+**** sing-box
+:PROPERTIES:
+:CUSTOM_ID: 7887775f-fe32-4451-ab50-1a40d33716e4
+:END:
+#+name: run_sing_box
+#+begin_src bat :var config-dir=(expand-file-name "../sing-box/_tangle/client/")
+start /b sing-box run -C "%config-dir%"
+#+end_src
+
 ** main
 :PROPERTIES:
 :CUSTOM_ID: 9376588a-03e6-48d7-b125-fe4025b5d1f5
@@ -172,6 +181,10 @@ if /i "%arg%"=="emacs" (
     call :kill_process trojan-go.exe
     call :wait_seconds 1
     call :run_trojan
+) else if /i "%arg%"=="sing-box" (
+    call :kill_process sing-box.exe
+    call :wait_seconds 1
+    call :run_sing_box
 ) else if /i "%arg%"=="alist" (
     call :kill_process alist.exe
     call :wait_seconds 1
@@ -191,7 +204,8 @@ if /i "%arg%"=="emacs" (
     call :wait_seconds 1
     call :run_ahk
     call :wait_seconds 2
-    call :run_trojan
+    rem call :run_trojan
+    call :run_sing_box
     call :wait_seconds 3
     call :run_gpg_agent
     call :wait_seconds 3
