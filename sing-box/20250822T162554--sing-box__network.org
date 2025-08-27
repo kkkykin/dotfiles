@@ -454,9 +454,9 @@
 
 * helper
 #+name: find-ip
-#+begin_src elisp
-(let* ((result-dir "../cloudflarest/_results/")
-       (results (directory-files result-dir t "^[^.]"))
+#+begin_src elisp :var cdn="cf" type=(if (zr-net-has-public-ipv6-addr-p) 6 4)
+(let* ((result-dir (format "../cloudflarest/_results/%s-%d/" cdn type))
+       (results (directory-files result-dir t "^[^.]+\\.csv$"))
        (result "104.17.133.211"))
   (when results
     (let ((latest (car (last results))))
