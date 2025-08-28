@@ -5,10 +5,12 @@
 
 * tangle
 #+begin_src elisp :var force-download="no" curl-args='("-xsocks5h://127.0.0.1:10808")
-(when (and (eq system-type 'android)
-           (string= "yes" force-download))
-  (let ((url "https://github.com/XIU2/CloudflareSpeedTest/releases/latest/download/cfst_linux_arm64.tar.gz")
-        (bin-dir "_tangle"))
+(when (string= "yes" force-download)
+  (let* ((bin-dir "_tangle")
+         (name (pcase system-type
+                 ('android "cfst_linux_arm64.tar.gz")
+                 ('gnu/linux "cfst_linux_amd64.tar.gz")))
+         (url (concat "https://github.com/XIU2/CloudflareSpeedTest/releases/latest/download/" name)))
     (call-process
      "bash" nil 0 nil "-c"
      (format "curl -sSL %s %s | tar -xzf - -C %s cfst"
