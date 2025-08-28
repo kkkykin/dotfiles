@@ -10,25 +10,25 @@
              "android-tun"))
   (zr-org-babel-json-format c))
 (let* ((zr-local-pls (plstore-open "sing-box.pls"))
+       (client-tmp-dir "_tangle/tmp/")
        (client-dir "_tangle/client/")
        (tun-dir (expand-file-name "tun/" client-dir))
-       (merge-file (expand-file-name "_500-merge.json" client-dir))
+       (merge-file (expand-file-name "500-merge.json" client-dir))
        (delete-by-moving-to-trash))
   (delete-directory "_tangle" t)
   (org-babel-tangle)
+  (dolist (f (directory-files "." t "^_.+\\.json$" t))
+    (make-symbolic-link f client-tmp-dir t))
   (mkdir tun-dir t)
   (call-process "sing-box" nil nil nil "merge"
-                merge-file "-C" "_tangle/tmp/")
-  (dolist (f (directory-files "." t "^_.+\\.json$" t))
-    (make-symbolic-link f tun-dir t)
-    (make-symbolic-link f client-dir t))
+                merge-file "-C" client-tmp-dir)
   (make-symbolic-link merge-file tun-dir t)
 
   (when-let* ((android-dir (and (eq system-type 'android)
                                 "/storage/emulated/0/sing-box/")))
     (mkdir android-dir t)
-    (dolist (c `(("main.json" . ,client-dir)
-                 ("tun.json" . ,tun-dir)))
+    (copy-file merge-file (expand-file-name "main.json" android-dir) t)
+    (dolist (c `(("tun.json" . ,tun-dir)))
       (call-process "sing-box" nil nil nil "merge"
                     (expand-file-name (car c) android-dir)
                     "-C" (cdr c))))
@@ -65,7 +65,7 @@
 #+header: :var jsdelivr="https://fastly.jsdelivr.net"
 #+header: :var dns_strategy=(if (zr-net-has-public-ipv6-addr-p) "prefer_ipv6" "ipv4_only")
 #+name: client-config
-#+begin_src json :tangle (zr-org-by-tangle-dir "500-main.json") :mkdirp t
+#+begin_src json :tangle (zr-org-by-tangle-dir "_500-main.json") :mkdirp t
 {
   "dns": {
     "final": "ali-quic",
@@ -281,7 +281,7 @@
 :PROPERTIES:
 :CUSTOM_ID: b8b405ea-5649-4bb3-9abd-ab60a0332b85
 :END:
-#+begin_src json :tangle (zr-org-by-tangle-dir "500-hosts.json")
+#+begin_src json :tangle (zr-org-by-tangle-dir "_500-hosts.json")
 <<gen-hosts()>>
 #+end_src
 
@@ -323,7 +323,7 @@
 :PROPERTIES:
 :CUSTOM_ID: cf7be985-bfaa-4ed0-8240-190e588c1fd2
 :END:
-#+begin_src json :tangle (if (eq system-type 'android) "no" (zr-org-by-tangle-dir "400-dns.json"))
+#+begin_src json :tangle (if (eq system-type 'android) "no" (zr-org-by-tangle-dir "_400-dns.json"))
 {
   "inbounds": [
     {
@@ -362,7 +362,7 @@
 :CUSTOM_ID: 2970e9bb-61e8-4eb3-bc19-233858560385
 :END:
 #+name: android-tun
-#+begin_src json :tangle (if (eq system-type 'android) (zr-org-by-tangle-dir "_500-android.json") "no") :mkdirp t
+#+begin_src json :tangle (if (eq system-type 'android) (zr-org-by-tangle-dir "500-android.json") "no") :mkdirp t
 {
   "inbounds": [
     {
@@ -402,7 +402,7 @@
 #+header: :var vl_user_name=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vl")) :user-name)) 1 -1)
 #+header: :var any_email=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "any")) :email)) 1 -1)
 #+name: server-config
-#+begin_src json :tangle (zr-org-by-tangle-dir "_500-main.json") :mkdirp t
+#+begin_src json :tangle (zr-org-by-tangle-dir "500-main.json") :mkdirp t
 {
   "inbounds": [
     {
