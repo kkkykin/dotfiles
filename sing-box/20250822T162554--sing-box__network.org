@@ -19,7 +19,7 @@
        (rule-sets-dir (expand-file-name "rule-sets/"
                                         (or android-dir "_tangle/")))
        (delete-by-moving-to-trash))
-  (delete-directory "_tangle" t)
+  (delete-directory client-tmp-dir t)
   (org-babel-tangle)
   (dolist (f (directory-files "." t "^_.+\\.json$" t))
     (make-symbolic-link f client-tmp-dir t))
