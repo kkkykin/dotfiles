@@ -259,6 +259,18 @@
       },
       {
         "format": "binary",
+        "tag": "geosite-twitter",
+        "type": "remote",
+        "url": "$jsdelivr/gh/chocolate4u/Iran-sing-box-rules@rule-set/geosite-twitter.srs"
+      },
+      {
+        "format": "binary",
+        "tag": "geosite-category-porn",
+        "type": "remote",
+        "url": "$jsdelivr/gh/chocolate4u/Iran-sing-box-rules@rule-set/geosite-category-porn.srs"
+      },
+      {
+        "format": "binary",
         "tag": "geosite-adblock",
         "type": "remote",
         "url": "$jsdelivr/gh/chocolate4u/Iran-sing-box-rules@rule-set/geosite-adblock.srs"
@@ -272,9 +284,11 @@
       {
         "outbound": "auto",
         "rule_set": [
+          "geosite-category-porn",
           "geosite-discord",
           "geosite-openai",
           "geosite-patreon",
+          "geosite-twitter",
           "proxy-rules"
         ]
       },
