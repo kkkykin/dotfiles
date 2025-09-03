@@ -217,6 +217,12 @@
       },
       {
         "format": "source",
+        "path": "$rule_sets_dir/direct.json",
+        "tag": "direct-rules",
+        "type": "local"
+      },
+      {
+        "format": "source",
         "path": "$rule_sets_dir/mitm.json",
         "tag": "mitm-rules",
         "type": "local"
@@ -282,6 +288,10 @@
         "rule_set": "mitm-rules"
       },
       {
+        "outbound": "direct",
+        "rule_set": "direct-rules"
+      },
+      {
         "outbound": "auto",
         "rule_set": [
           "geosite-category-porn",
@@ -333,24 +343,6 @@
    `((dns . (servers [((tag . "hosts-in")
                        (type . "hosts")
                        (predefined . ,(append local default)))])))))
-#+end_src
-
-*** proxy-rules
-:PROPERTIES:
-:CUSTOM_ID: 71dde8a4-cea2-4a9d-8e22-9e7d7fbb85f7
-:END:
-#+begin_src json :tangle no
-<<gen-gloabl-rules()>>
-#+end_src
-
-#+name: gen-gloabl-rules
-#+begin_src elisp
-(let ((raw (multisession-value zr-net-proxy-rules-hash))
-      suffix)
-  (maphash (lambda (k v) (push k suffix)) raw)
-  (json-serialize
-   `((route . (rule_set [((tag . "global-rules")
-                          (rules . [((domain_suffix . ,(vconcat suffix)))]))])))))
 #+end_src
 
 *** platform
@@ -552,9 +544,31 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
 
 #+name: gen-proxy-rule-set
 #+begin_src elisp
-(let* ((default '((domain_suffix [".sagernet.org"
-                                  ".v2ex.com"])))
+(let* ((raw (multisession-value zr-net-proxy-rules-hash))
        (local-file "_proxy.eld")
+       (local (and (file-exists-p local-file)
+                   (with-temp-buffer
+                     (insert-file-contents local-file)
+                     (read (current-buffer)))))
+       suffix)
+  (maphash (lambda (k v) (push k suffix)) raw)
+  (json-serialize
+   `((version . 1)
+     (rules . ,(vconcat (append local `((domain_suffix ,(vconcat suffix)))))))))
+#+end_src
+
+** direct
+:PROPERTIES:
+:CUSTOM_ID: f436f071-b706-45c3-a131-db6e6e84d786
+:END:
+#+begin_src json :tangle (zr-org-by-tangle-dir "direct.json") :mkdirp t
+<<gen-direct-rule-set()>>
+#+end_src
+
+#+name: gen-direct-rule-set
+#+begin_src elisp
+(let* ((default '((domain_suffix [])))
+       (local-file "_direct.eld")
        (local (and (file-exists-p local-file)
                    (with-temp-buffer
                      (insert-file-contents local-file)
