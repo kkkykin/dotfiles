@@ -420,6 +420,10 @@
 :PROPERTIES:
 :tangle-dir: _tangle/server
 :CUSTOM_ID: b85ab91b-1175-4b51-9f3c-f37a0b589979
+:header-args+: :var nv_user_name=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "nv")) :user-name)) 1 -1)
+:header-args+: :var nv_user_pass=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "nv")) :user-pass)) 1 -1)
+:header-args+: :var nv_host=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "nv")) :host)) 1 -1)
+:header-args+: :var nv_email=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "nv")) :email)) 1 -1)
 :END:
 
 #+header: :var cf_token=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "cf")) :api-token)) 1 -1)
@@ -433,6 +437,28 @@
 #+begin_src json :tangle (zr-org-by-tangle-dir "500-main.json") :mkdirp t
 {
   "inbounds": [
+    {
+      "listen": "::",
+      "listen_port": 443,
+      "tls": {
+        "acme": {
+          "dns01_challenge": {
+            "api_token": "$cf_token",
+            "provider": "cloudflare"
+          },
+          "domain": "$nv_host",
+          "email": "$nv_email"
+        },
+        "enabled": true
+      },
+      "type": "naive",
+      "users": [
+        {
+          "password": "$nv_user_pass",
+          "username": "$nv_user_name"
+        }
+      ]
+    },
     {
       "down_mbps": 500,
       "listen": "::",
@@ -525,6 +551,17 @@
       "type": "direct"
     }
   ]
+}
+#+end_src
+
+#+header: :var nv_ip=(plist-get (cdr (plstore-get zr-local-pls "nv")) (if (zr-net-has-public-ipv6-addr-p) :ipv6 :ip))
+#+header: :var key_log_file=(expand-file-name "key.log" "_tangle/naive/")
+#+begin_src json :tangle (expand-file-name "config.json" "_tangle/naive") :mkdirp t
+{
+  "listen": "socks://127.0.0.1:10807",
+  "proxy": "https://$nv_user_name:$nv_user_pass@$nv_host",
+  "host-resolver-rules": "MAP $nv_host $nv_ip",
+  "ssl-key-log-file": "$key_log_file"
 }
 #+end_src
 
