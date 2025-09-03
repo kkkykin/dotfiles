@@ -122,7 +122,7 @@
   },
   "inbounds": [
     {
-      "listen_port": 10808,
+      "listen_port": 10807,
       "set_system_proxy": false,
       "tag": "mixed-in",
       "type": "mixed"
@@ -141,7 +141,8 @@
       "outbounds": [
         "any",
         "vl",
-        "hy"
+        "hy",
+        "nv"
       ],
       "tag": "auto",
       "type": "urltest"
@@ -194,6 +195,12 @@
         "server_name": "$hy_host"
       },
       "type": "hysteria2"
+    },
+    {
+      "server": "127.0.0.1",
+      "server_port": 10808,
+      "tag": "nv",
+      "type": "http"
     },
     {
       "server": "127.0.0.1",
@@ -405,7 +412,7 @@
         "http_proxy": {
           "enabled": true,
           "server": "127.0.0.1",
-          "server_port": 10808
+          "server_port": 10807
         }
       },
       "stack": "system",
@@ -555,13 +562,11 @@
 #+end_src
 
 #+header: :var nv_ip=(plist-get (cdr (plstore-get zr-local-pls "nv")) (if (zr-net-has-public-ipv6-addr-p) :ipv6 :ip))
-#+header: :var key_log_file=(expand-file-name "key.log" "_tangle/naive/")
 #+begin_src json :tangle (expand-file-name "config.json" "_tangle/naive") :mkdirp t
 {
-  "listen": "socks://127.0.0.1:10807",
-  "proxy": "https://$nv_user_name:$nv_user_pass@$nv_host",
-  "host-resolver-rules": "MAP $nv_host $nv_ip",
-  "ssl-key-log-file": "$key_log_file"
+  "listen": "http://127.0.0.1:10808",
+  "proxy": "quic://$nv_user_name:$nv_user_pass@$nv_host",
+  "host-resolver-rules": "MAP $nv_host $nv_ip"
 }
 #+end_src
 

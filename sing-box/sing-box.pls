@@ -7,24 +7,27 @@
   :secret-user-name t :secret-user-uuid t :secret-priv-key t
   :secret-pub-key t)
  ("any" :secret-ip t :secret-ipv6 t :secret-host t :secret-pass t
-  :secret-email t))
+  :secret-email t)
+ ("nv" :secret-ip t :secret-ipv6 t :secret-host t :secret-user-name t
+  :secret-user-pass t :secret-email t))
 ;;; secret entries
 "-----BEGIN PGP MESSAGE-----
 
-hF4DhteJcpg+xyQSAQdAsJBwD6mDG2Mt7lIUbyfeaZaxYiUiOrXoGSy3N6JbkTkw
-eSUYKdWKv7AXZtFdg0ZeOOnyRxJ+7NLwKbKi84tP8jr/lZHNd/JsPwXsT+IS3PRX
-1OkBCQIQl0HSc+y47Iam3cuoOf7yMiTIWdTbZ2i3QXU2tY0vlRXANMsA7bU47noS
-BtEl6BxYvZ8PitMXtGuDuT7shkcIYrvEYIbDP+U8XNvRLwDQXZ88ocfidkfhR/DI
-A/hPVRHFZJVIhEBlyE2ItUmYEErTiBhTaNX3pYCt4eM/hiYr7nBodS3wgdyKaId3
-tiyq1V5cZ/uaDpZAl1m+iFEzvrJv65oHF+7kxKaEMorjioX6l23Ivql46/EWDaLV
-upkrxySiE4CLSE/+TcRMS7Tcc2pL/Ao0/Z4M7xlKvD0LAUhmfVa9dS6tWPW8AdCj
-LOn5oC155qlex3kQXULZkWJzVedy1070DPcDzN7gPN4t3GrL7Hj5pOh6etPIP6hg
-cxIy7DDNeTQ4rdGM65ItGjNqBEmza6l5d6YVBLYrT9TsWc45Oy30/3Pv+VTR4una
-GNFXuruvjf39NxUS8BdBWV6BYAd/J50gtGkWxGRNazl30dVttjqQUShgNC1D521p
-7BIlVK2DS+vXmEKTUkntjiQ9dH8E4LBUws0qlFOAZp5W58b4QvcMUi1PChiHgS9a
-jwJUoMz5tnHuZacdKAyqVmzQDgX3UHDPiyqIn8f+7ixD3wVt88YnvMkeyP9sacL0
-DWn44CP6r/X2mV/+CFgJDklf5HqRcqEZI6tqJs8cbWE+sRO1FxG97xoIPiFvs+rN
-sWM0NChf
-=g6aC
+hF4DhteJcpg+xyQSAQdADivpVL0KKDI0gwIwZ8Qk4uJurS8M4tvcmSexl+nPAXEw
+t0k59MYJ/w/0CdBoqMylJiI64gMGDC4gASiXsaXtYAH8fRge6v3NEo/7h3XNWLgM
+1OkBCQIQojOeMH0jUZ2eW+emNUP61xa2Rc6w7XGcVJqsMit/m4v4LX/FZcCUwz0M
+vRJS+R6dQ+DaEBtGGEqaQ8/ZNnAjiv/xGZBzNcUCTvf/sCvKsmoUZcW2R0VWCAyP
+9JZ5eU3f4iwG/MoJLMoEaNxoYUfEC2/nvguQtzKDDPTv3KRF9MzgmN8LRHmZK5BE
+LgDXs6xDiFVMes1UIy8QY8ter1YMi2iY1bRgBZ+H4qGGPGi7zGTGhd4+D63+4uV8
+I5Mg5wr9bKJaZfv7o/T4ytaklKafFBySe6AaUhnByA94wBR2C7gEmrLYpv/hG22u
+TBZkR4WZnQOg32s8Ehep+Xq+8CJj8pz6J4EG9MnNJjbJMrvHnZPDSlwnq/8Dceiv
+HEutDTTKuliWG9gyUl08S7LmWgbE36HR1hkhnYmyxub6nl2dodrY6DbTiNT5BNbm
+JkT8kkQqlOhaxkO2H5K6HNxcehvAmhYOP5bVpDAyaI9pWyCU94KyUNBwwwykhY1Q
+ZHJ4t9ysmv14T55ZpbZOBGSTv/i2hvhUVkGBqhA1LR8jnAiVtOhdo31tonv4VmJS
+MXMTnNAQIA/4MRwh8Sww2fYk4YZhkbXRHKTMCrPJAEbYUUO1OZ0QAyTCm5XLmSz1
+QKI3TgembMKhlXwFLHyDbJ8Aoi4RkQKCtWe4ku9SKUCCzj6fekctEi3PgwfE9fAj
+Su1CeBOL0d5lfKOlmLDLk+RQjMXQHNQmn96XoQCnnPk+JpI51B8HUxlXaaFEsPZp
+7Q==
+=mxkB
 -----END PGP MESSAGE-----
 "

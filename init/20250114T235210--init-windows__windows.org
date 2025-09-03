@@ -131,6 +131,16 @@ start /b alist server
 start /b mpd "%USERPROFILE%\scoop\persist\mpd\mpd.conf"
 #+end_src
 
+#+name: run_sing_box
+#+begin_src bat :var config-dir=(expand-file-name "../sing-box/_tangle/client/")
+start /b sing-box run -C "%config-dir%"
+#+end_src
+
+#+name: run_naive
+#+begin_src bat :var config=(expand-file-name "../sing-box/_tangle/naive/config.json")
+start /b naive "%config%"
+#+end_src
+
 **** trojan
 :PROPERTIES:
 :header-args+: :var trojan-dir=(concat (getenv "USERPROFILE") "\\scoop\\app\\trojan-go")
@@ -150,15 +160,6 @@ start /b mpd "%USERPROFILE%\scoop\persist\mpd\mpd.conf"
 #+name: run_trojan
 #+begin_src bat :var config=(expand-file-name "../trojan-go/_tangle/config.json")
 start /b /abovenormal /d "%trojan-dir%" trojan-go.exe -config "%config%"
-#+end_src
-
-**** sing-box
-:PROPERTIES:
-:CUSTOM_ID: 7887775f-fe32-4451-ab50-1a40d33716e4
-:END:
-#+name: run_sing_box
-#+begin_src bat :var config-dir=(expand-file-name "../sing-box/_tangle/client/")
-start /b sing-box run -C "%config-dir%"
 #+end_src
 
 ** main
@@ -185,6 +186,10 @@ if /i "%arg%"=="emacs" (
     call :kill_process sing-box.exe
     call :wait_seconds 1
     call :run_sing_box
+) else if /i "%arg%"=="naive" (
+    call :kill_process naive.exe
+    call :wait_seconds 1
+    call :run_naive
 ) else if /i "%arg%"=="alist" (
     call :kill_process alist.exe
     call :wait_seconds 1
@@ -222,6 +227,8 @@ if /i "%arg%"=="emacs" (
     call :run_mpd
     call :wait_seconds 3
     call :run_git_pull %git_pull_dir_2%
+    call :wait_seconds 3
+    call :run_naive
 ) else (
   echo "Please give an valid argument."
 )
