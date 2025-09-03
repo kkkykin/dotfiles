@@ -535,6 +535,64 @@ if (document.title.endsWith(' · FreshRSS')) {
 }
 #+end_src
 
+** webback
+:PROPERTIES:
+:CUSTOM_ID: 865b3264-6f3a-4324-82e1-1f7600fad28c
+:END:
+#+begin_src js
+function cleanupUrl(url) {
+  return url.replace(/\?[^\?]*$/, '').replace(/\#[^\#]*$/, '');
+}
+
+function getWaybackSnapshot(url, callback) {
+  // 清理 URL，移除查询参数和哈希片段
+  let waybackApiUrl = 'https://archive.org/wayback/available?url=' + encodeURIComponent(url);
+
+  RUNTIME('request', {
+    url: waybackApiUrl,
+    method: 'GET'
+  }, function(response) {
+    if (response.error) {
+      callback({ error: response.error });
+      return;
+    }
+
+    try {
+      let data = JSON.parse(response.text);
+      callback({ archived_snapshots: data.archived_snapshots || {} });
+    } catch (e) {
+      callback({ error: "Failed to parse Wayback Machine response" });
+    }
+  });
+}
+
+function openClosestWaybackSnapshot(url) {
+  getWaybackSnapshot(cleanupUrl(url), function(result) {
+    if (result.error) {
+      Front.showBanner("Error checking Wayback Machine: " + result.error, 3000);
+    } else if (result.archived_snapshots.closest && result.archived_snapshots.closest.available) {
+      tabOpenLink(result.archived_snapshots.closest.url.replace(/^http:\/\//, "https://"));
+    } else {
+      Front.showBanner("No archived snapshot found for this page", 3000);
+    }
+  })
+}
+
+mapkey(',ww', 'Open current page in Wayback Machine', function() {
+  openClosestWaybackSnapshot(window.location.href);
+});
+
+mapkey(',wW', 'Open selected url in Wayback Machine', function() {
+  Hints.create('*[href]', el => {
+    openClosestWaybackSnapshot(el.href);
+  });
+});
+
+mapkey(',ws', 'Save current page in Wayback Machine', function() {
+  tabOpenLink('https://web.archive.org/save/' + cleanupUrl(window.location.href));
+});
+#+end_src
+
 ** external
 :PROPERTIES:
 :CUSTOM_ID: a81eca7e-fa2d-43bd-af96-ce2315a31dab
