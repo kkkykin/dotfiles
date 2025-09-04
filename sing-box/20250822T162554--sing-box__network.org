@@ -79,13 +79,29 @@
       },
       {
         "action": "reject",
-        "rule_set": "geosite-adblock"
+        "rule_set": "geosite-adblockplus"
       },
       {
-        "rule_set": "geosite-cn",
+        "rule_set": "geosite-geolocation-cn",
         "server": "ali-doh"
       },
       {
+        "client_subnet": "114.114.114.114/24",
+        "mode": "and",
+        "rules": [
+          {
+            "invert": true,
+            "rule_set": "geosite-geolocation-!cn"
+          },
+          {
+            "rule_set": "geoip-cn"
+          }
+        ],
+        "server": "cf-dot",
+        "type": "logical"
+      },
+      {
+        "rule_set": "geosite-geolocation-!cn",
         "server": "cf-dot"
       }
     ],
@@ -117,7 +133,8 @@
   },
   "experimental": {
     "cache_file": {
-      "enabled": true
+      "enabled": true,
+      "store_rdrc": true
     }
   },
   "inbounds": [
@@ -214,7 +231,7 @@
     "default_domain_resolver": {
       "server": "ali-quic"
     },
-    "final": "auto",
+    "final": "direct",
     "rule_set": [
       {
         "format": "source",
@@ -236,57 +253,39 @@
       },
       {
         "format": "binary",
-        "tag": "geoip-cn",
-        "type": "remote",
-        "url": "$jsdelivr/gh/chocolate4u/Iran-sing-box-rules@rule-set/geoip-cn.srs"
-      },
-      {
-        "format": "binary",
-        "tag": "geosite-cn",
-        "type": "remote",
-        "url": "$jsdelivr/gh/chocolate4u/Iran-sing-box-rules@rule-set/geosite-cn.srs"
-      },
-      {
-        "format": "binary",
         "tag": "geoip-cloudflare",
         "type": "remote",
         "url": "$jsdelivr/gh/chocolate4u/Iran-sing-box-rules@rule-set/geoip-cloudflare.srs"
       },
       {
         "format": "binary",
-        "tag": "geosite-discord",
+        "tag": "geoip-cn",
         "type": "remote",
-        "url": "$jsdelivr/gh/chocolate4u/Iran-sing-box-rules@rule-set/geosite-discord.srs"
+        "url": "$jsdelivr/gh/SagerNet/sing-geoip@rule-set/geoip-cn.srs"
       },
       {
         "format": "binary",
-        "tag": "geosite-openai",
+        "tag": "geosite-geolocation-cn",
         "type": "remote",
-        "url": "$jsdelivr/gh/chocolate4u/Iran-sing-box-rules@rule-set/geosite-openai.srs"
+        "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-geolocation-cn.srs"
       },
       {
         "format": "binary",
-        "tag": "geosite-patreon",
+        "tag": "geosite-geolocation-!cn",
         "type": "remote",
-        "url": "$jsdelivr/gh/chocolate4u/Iran-sing-box-rules@rule-set/geosite-patreon.srs"
-      },
-      {
-        "format": "binary",
-        "tag": "geosite-twitter",
-        "type": "remote",
-        "url": "$jsdelivr/gh/chocolate4u/Iran-sing-box-rules@rule-set/geosite-twitter.srs"
+        "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-geolocation-!cn.srs"
       },
       {
         "format": "binary",
         "tag": "geosite-category-porn",
         "type": "remote",
-        "url": "$jsdelivr/gh/chocolate4u/Iran-sing-box-rules@rule-set/geosite-category-porn.srs"
+        "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-category-porn.srs"
       },
       {
         "format": "binary",
-        "tag": "geosite-adblock",
+        "tag": "geosite-adblockplus",
         "type": "remote",
-        "url": "$jsdelivr/gh/chocolate4u/Iran-sing-box-rules@rule-set/geosite-adblock.srs"
+        "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-adblockplus.srs"
       }
     ],
     "rules": [
@@ -302,10 +301,6 @@
         "outbound": "auto",
         "rule_set": [
           "geosite-category-porn",
-          "geosite-discord",
-          "geosite-openai",
-          "geosite-patreon",
-          "geosite-twitter",
           "proxy-rules"
         ]
       },
@@ -316,7 +311,7 @@
         "ip_is_private": true,
         "outbound": "direct",
         "rule_set": [
-          "geosite-cn",
+          "geosite-geolocation-cn",
           "geoip-cn"
         ]
       },
@@ -324,6 +319,24 @@
         "outbound": "direct",
         "override_address": "<<find-ip()>>",
         "rule_set": "geoip-cloudflare"
+      },
+      {
+        "mode": "and",
+        "outbound": "direct",
+        "rules": [
+          {
+            "rule_set": "geoip-cn"
+          },
+          {
+            "invert": true,
+            "rule_set": "geosite-geolocation-!cn"
+          }
+        ],
+        "type": "logical"
+      },
+      {
+        "outbound": "auto",
+        "rule_set": "geosite-geolocation-!cn"
       }
     ]
   }
