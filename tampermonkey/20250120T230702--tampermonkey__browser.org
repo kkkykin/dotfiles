@@ -274,7 +274,7 @@ GM_cookie.list({}, function(cookies, error) {
 // @grant        GM_unregisterMenuCommand
 // @grant        GM_setValue
 // @grant        GM_getValue
-// @require      https://cdn.jsdmirror.cn/npm/jsqr@1.4.0/dist/jsQR.js
+// @require      https://fastly.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js
 // @license      MIT
 // ==/UserScript==
 
