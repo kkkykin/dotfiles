@@ -608,8 +608,8 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
        suffix)
   (maphash (lambda (k v) (push k suffix)) raw)
   (json-serialize
-   `((version . 1)
-     (rules . ,(vconcat (append local `((domain_suffix ,(vconcat suffix)))))))))
+   `((version . 3)
+     (rules . ,(vconcat local (vector `((domain_suffix . ,(vconcat suffix)))))))))
 #+end_src
 
 ** direct
@@ -622,15 +622,15 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
 
 #+name: gen-direct-rule-set
 #+begin_src elisp
-(let* ((default '((domain_suffix [])))
+(let* ((default [((domain_suffix . []))])
        (local-file "_direct.eld")
        (local (and (file-exists-p local-file)
                    (with-temp-buffer
                      (insert-file-contents local-file)
                      (read (current-buffer))))))
   (json-serialize
-   `((version . 1)
-     (rules . ,(vconcat (append local default))))))
+   `((version . 3)
+     (rules . ,(vconcat local default)))))
 #+end_src
 
 ** mitm
@@ -638,28 +638,26 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
 :CUSTOM_ID: 6e15e6bb-74d3-4b61-8cc5-a6a733cc9eec
 :END:
 #+begin_src json :tangle (zr-org-by-tangle-dir "mitm.json") :mkdirp t
-{
-  "version": 1,
-  "rules": [
-    {
-      "type": "logical",
-      "mode": "and",
-      "rules": [
-        {
-          "process_path_regex": [
-            "[\\\\/]mitmproxy(\\.exe)?$"
-          ],
-          "invert": true
-        },
-        {
-          "domain_suffix": [
-            ".it-just-a-placeholder"
-          ]
-        }
-      ]
-    }
-  ]
-}
+<<gen-mitm-rule-set()>>
+#+end_src
+
+#+name: gen-mitm-rule-set
+#+begin_src elisp
+(let* ((place-holder [((domain_suffix . [".it-just-a-placeholder"]))])
+       (local-file "_mitm.eld")
+       (local (and (file-exists-p local-file)
+                   (with-temp-buffer
+                     (insert-file-contents local-file)
+                     (read (current-buffer))))))
+  (json-serialize
+   `((version . 3)
+     (rules . [((type . "logical")
+                (mode . "and")
+                (rules
+                 . ,(vconcat [((process_path_regex
+                                . ["[\\\\/]mitmproxy(\\.exe)?$"])
+                               (invert . t))]
+                             (or local place-holder))))]))))
 #+end_src
 
 * helper
