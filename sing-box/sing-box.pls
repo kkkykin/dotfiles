@@ -1,5 +1,5 @@
 ;;; public entries -*- mode: plstore -*- 
-(("cf" :secret-api-token t)
+(("cf" :secret-api-token t) ("clash" :secret-secret t)
  ("hy" :secret-ip t :secret-ipv6 t :secret-obfs-pass t
   :secret-user-name t :secret-user-pass t :secret-masq t :secret-host
   t :secret-email t)
@@ -13,21 +13,21 @@
 ;;; secret entries
 "-----BEGIN PGP MESSAGE-----
 
-hF4DhteJcpg+xyQSAQdADivpVL0KKDI0gwIwZ8Qk4uJurS8M4tvcmSexl+nPAXEw
-t0k59MYJ/w/0CdBoqMylJiI64gMGDC4gASiXsaXtYAH8fRge6v3NEo/7h3XNWLgM
-1OkBCQIQojOeMH0jUZ2eW+emNUP61xa2Rc6w7XGcVJqsMit/m4v4LX/FZcCUwz0M
-vRJS+R6dQ+DaEBtGGEqaQ8/ZNnAjiv/xGZBzNcUCTvf/sCvKsmoUZcW2R0VWCAyP
-9JZ5eU3f4iwG/MoJLMoEaNxoYUfEC2/nvguQtzKDDPTv3KRF9MzgmN8LRHmZK5BE
-LgDXs6xDiFVMes1UIy8QY8ter1YMi2iY1bRgBZ+H4qGGPGi7zGTGhd4+D63+4uV8
-I5Mg5wr9bKJaZfv7o/T4ytaklKafFBySe6AaUhnByA94wBR2C7gEmrLYpv/hG22u
-TBZkR4WZnQOg32s8Ehep+Xq+8CJj8pz6J4EG9MnNJjbJMrvHnZPDSlwnq/8Dceiv
-HEutDTTKuliWG9gyUl08S7LmWgbE36HR1hkhnYmyxub6nl2dodrY6DbTiNT5BNbm
-JkT8kkQqlOhaxkO2H5K6HNxcehvAmhYOP5bVpDAyaI9pWyCU94KyUNBwwwykhY1Q
-ZHJ4t9ysmv14T55ZpbZOBGSTv/i2hvhUVkGBqhA1LR8jnAiVtOhdo31tonv4VmJS
-MXMTnNAQIA/4MRwh8Sww2fYk4YZhkbXRHKTMCrPJAEbYUUO1OZ0QAyTCm5XLmSz1
-QKI3TgembMKhlXwFLHyDbJ8Aoi4RkQKCtWe4ku9SKUCCzj6fekctEi3PgwfE9fAj
-Su1CeBOL0d5lfKOlmLDLk+RQjMXQHNQmn96XoQCnnPk+JpI51B8HUxlXaaFEsPZp
-7Q==
-=mxkB
+hF4DhteJcpg+xyQSAQdAXWTInAukQmLNU+GL8zj77eeWDlC5aQOqFKpz6JgBEGgw
+iQjfa+6l4DMUVNJr74xMmskvLeK7zqoXXKEmtqur2cuYqa67KuAx0Hawh1tb4xFL
+1OkBCQIQ7tYX94wZoUWm5MSyFSConmO4wVUMyrk7ZVcXSf2OT/Mu8LYM9zt6k9MV
+aOO6WiNruuCo9ifiIQxfg8+qylhYujy6g26ZeLh7CGkWvlYXQk/1CXIzn6q7prve
+lc1RnC8G8qXohhvkirYEcpMnImj2rv47yNh91uW61rMINQM/RURrQ6J7QCRxTfVw
+cCDDacMMJmC0r4TfHo2spCgVt8kQbtAQCE6ri4pLnWuB49jpkMJBN//OEetoZxl1
+4udCL5KtgwzJTDDWQ4jKyvjDayrjgKB9B7GS/DdAx6lq0tPIyQHOWIYLfgqUXgf2
+gfwNKv6tgAR5ioLQEWVrodcoGL2OzNBi1/954sGlkEnV9EVCKVpherUGIGWG9J/s
+rMnBKxOTSFZRRtay4rUgVdnIDl0csXnk9/BBZpefBdbOVKnvF8fdI825fjhrWVQW
+ekuvBD2DA+12fe8dFRmftU6HK0BYzrQYSsW/w7VQNYIN+mzUEGx0I/vPuIWxUh1A
+X3lw2pV8OvcCpQad3FdS6xntY5rT4f8024zfa8QXyv7HrI68A1kLcjZgw0FzmpfL
+BSTF1vza54neHr6t3GMQF4TiswqeXeYX2B7lRiyFeGwwcImBvJGi2md1L3W68Gcv
+VBdKQM7lqVr1pXRJeNbhZcOMSnQtAUsTJ1sqHAXB3frL+WQNWLjEhSnt5a3uNXXA
+fvd/CXza8bxum9TfiDaf+A23haT1m9CxyiO+QdmwRcH7yNtoVhPijWDPiXPZ02kt
+QZ03E+bwOEA6WjJkhXn4sZ27dH7gb4mnEdaeKg0XZMxxQpHJlqsv
+=oEL6
 -----END PGP MESSAGE-----
 "

@@ -67,6 +67,7 @@
 #+header: :var rule_sets_dir=(expand-file-name rule-sets-dir)
 #+header: :var jsdelivr="https://fastly.jsdelivr.net"
 #+header: :var dns_strategy=(if (zr-net-has-public-ipv6-addr-p) "prefer_ipv6" "ipv4_only")
+#+header: :var clash_secret=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "clash")) :secret)) 1 -1)
 #+name: client-config
 #+begin_src json :tangle (zr-org-by-tangle-dir "_500-main.json") :mkdirp t
 {
@@ -135,6 +136,15 @@
     "cache_file": {
       "enabled": true,
       "store_rdrc": true
+    },
+    "clash_api": {
+      "access_control_allow_origin": [
+        "http://127.0.0.1",
+        "https://yacd.metacubex.one"
+      ],
+      "access_control_allow_private_network": true,
+      "external_controller": "127.0.0.1:9090",
+      "secret": "$clash_secret"
     }
   },
   "inbounds": [
