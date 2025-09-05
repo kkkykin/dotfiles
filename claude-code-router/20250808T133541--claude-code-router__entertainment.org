@@ -5,10 +5,19 @@
 * tangle
 #+begin_src elisp
 (let* ((target (zr-org-by-tangle-dir "config.json"))
+       (plugin-dir "_plugins")
+       (plugins '(("zai.js" . "https://gist.github.com/musistudio/b35402d6f9c95c64269c7666b8405348/raw/gistfile1.txt")
+                  ("gemini-cli.js" . "https://gist.github.com/musistudio/1c13a65f35916a7ab690649d3df8d1cd/raw/gemini-cli.js")
+                  ("qwen-cli.js" . "https://gist.github.com/musistudio/f5a67841ced39912fd99e42200d5ca8b/raw/qwen-cli.js")
+                  ("revo-cli.js" . "https://gist.github.com/SaseQ/c2a20a38b11276537ec5332d1f7a5e53/raw/rovo-cli.js")))
        (conf (pcase system-type
                ('windows-nt (substitute-in-file-name "$userprofile/.claude-code-router/config.json"))
                (_ (expand-file-name "~/.claude-code-router/config.json"))))
        (conf-dir (file-name-directory conf)))
+  (mkdir plugin-dir t)
+  (dolist (p plugins)
+    (call-process "curl" nil 0 nil "-Lxsocks5h://127.0.0.1:10807"
+                  "-o" (expand-file-name (car p) plugin-dir) (cdr p)))
   (mkdir conf-dir t)
   (zr-org-babel-json-format "config")
   (org-babel-tangle)
@@ -25,14 +34,79 @@
 #+name: config
 #+header: :var modelscope_api_key=(auth-source-pick-first-password :host "modelscope.api")
 #+header: :var gemini_api_key=(auth-source-pick-first-password :host "gemini.api")
+#+header: :var iflow_api_key=(auth-source-pick-first-password :host "iflow.api")
+#+header: :var revo_email=(plist-get (car (auth-source-search :host "atlassion.api")) :user)
+#+header: :var revo_token=(auth-source-pick-first-password :host "atlassion.api")
+#+header: :var plugin_dir=(expand-file-name "_plugins")
 #+begin_src json :comments no :mkdirp t :tangle (zr-org-by-tangle-dir "config.json")
 {
   "API_TIMEOUT_MS": 600000,
   "HOST": "127.0.0.1",
   "LOG": true,
   "NON_INTERACTIVE_MODE": false,
-  "PROXY_URL": "http://127.0.0.1:10808",
+  "PROXY_URL": "http://127.0.0.1:10807",
   "Providers": [
+    {
+      "api_base_url": "https://generativelanguage.googleapis.com/v1beta/models/",
+      "api_key": "placeholder",
+      "models": [
+        "gemini-2.5-flash",
+        "gemini-2.5-pro"
+      ],
+      "name": "gemini-cli",
+      "transformer": {
+        "use": [
+          "gemini-cli"
+        ]
+      }
+    },
+    {
+      "api_base_url": "https://api.atlassian.com/rovodev/v2/proxy/ai/v1/openai/v1/chat/completions",
+      "api_key": "placeholder",
+      "models": [
+        "gpt-5-2025-08-07"
+      ],
+      "name": "rovo-cli",
+      "transformer": {
+        "use": [
+          "rovo-cli"
+        ]
+      }
+    },
+    {
+      "api_base_url": "https://portal.qwen.ai/v1/chat/completions",
+      "api_key": "placeholder",
+      "models": [
+        "qwen3-coder-plus"
+      ],
+      "name": "qwen-cli",
+      "transformer": {
+        "use": [
+          "qwen-cli"
+        ]
+      }
+    },
+    {
+      "api_base_url": "http://0.0.0.0/v1/chat/completions",
+      "api_key": "placeholder",
+      "models": [
+        "0727-360B-API"
+      ],
+      "name": "GLM",
+      "transformer": {
+        "use": [
+          "zai"
+        ]
+      }
+    },
+    {
+      "api_base_url": "https://apis.iflow.cn/v1/chat/completions",
+      "api_key": "$iflow_api_key",
+      "models": [
+        "qwen3-coder"
+      ],
+      "name": "iflow"
+    },
     {
       "api_base_url": "https://api-inference.modelscope.cn/v1/chat/completions",
       "api_key": "$modelscope_api_key",
@@ -77,11 +151,73 @@
   ],
   "Router": {
     "background": "gemini,gemini-2.5-flash",
-    "default": "modelscope,Qwen/Qwen3-Coder-480B-A35B-Instruct",
+    "default": "iflow,qwen3-coder",
+    "image": "gemini,gemini-2.5-pro",
     "longContext": "gemini,gemini-2.5-pro",
-    "longContextThreshold": 60000,
+    "longContextThreshold": 20000,
     "think": "modelscope,Qwen/Qwen3-235B-A22B-Thinking-2507",
     "webSearch": "gemini,gemini-2.5-flash"
-  }
+  },
+  "StatusLine": {
+    "currentStyle": "default",
+    "default": {
+      "modules": [
+        {
+          "color": "bright_green",
+          "icon": "🌿",
+          "text": "{{gitBranch}}",
+          "type": "gitBranch"
+        },
+        {
+          "color": "bright_blue",
+          "icon": "📁",
+          "text": "{{workDirName}}",
+          "type": "workDir"
+        },
+        {
+          "color": "bright_yellow",
+          "icon": "🤖",
+          "text": "{{model}}",
+          "type": "model"
+        },
+        {
+          "color": "bright_magenta",
+          "icon": "📊",
+          "text": "{{inputTokens}} → {{outputTokens}}",
+          "type": "usage"
+        }
+      ]
+    },
+    "enabled": true,
+    "powerline": {
+      "modules": []
+    }
+  },
+  "transformers": [
+    {
+      "name": "gemini-cli",
+      "options": {
+        "project": "your-google-cloud-project-id"
+      },
+      "path": "$plugin_dir/gemini-cli.js"
+    },
+    {
+      "name": "qwen-cli",
+      "path": "$plugin_dir/qwen-cli.js"
+    },
+    {
+      "name": "zai",
+      "options": {},
+      "path": "$plugin_dir/zai.js"
+    },
+    {
+      "name": "revo-cli",
+      "options": {
+        "api_token": "$revo_token",
+        "email": "$revo_email"
+      },
+      "path": "$plugin_dir/revo-cli.js"
+    }
+  ]
 }
 #+end_src
