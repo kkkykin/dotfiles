@@ -4,7 +4,7 @@
 #+identifier: 20250706T162855
 
 * tangle
-#+begin_src elisp :var force-download="no" curl-args='("-xsocks5h://127.0.0.1:10808")
+#+begin_src elisp :var force-download="no" curl-args='("-xsocks5h://127.0.0.1:10807")
 (zr-org-babel-json-format "config")
 (let ((zr-local-pls (plstore-open "trojan-go.pls"))
       (geoip-url "https://github.com/v2fly/geoip/releases/latest/download/geoip.dat")
@@ -39,7 +39,7 @@
     "username": ""
   },
   "local_addr": "127.0.0.1",
-  "local_port": 10808,
+  "local_port": 10809,
   "log_file": "",
   "log_level": 1,
   "mux": {

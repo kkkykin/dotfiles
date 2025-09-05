@@ -789,7 +789,7 @@ stop(){
 #+header: :var script_path=(expand-file-name "../cloudflarest/_tangle/trojan_go.py")
 #+begin_src sh :tangle (zr-org-by-tangle-dir "trojan-go")
 stat(){
-  curl -m1 -xsocks5h://127.0.0.1:10808 http://127.0.0.1:1
+  curl -m1 -xsocks5h://127.0.0.1:10809 http://127.0.0.1:1
   [ $? -eq 56 ]
 }
 

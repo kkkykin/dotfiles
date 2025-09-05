@@ -26,5 +26,5 @@
 :CUSTOM_ID: 29794aaa-412d-4a1c-833e-9089fb6528d0
 :END:
 #+begin_src conf-windows :tangle (zr-org-by-tangle-dir "rc.ini") :mkdirp t
-https-proxy=socks5h://127.0.0.1:10808
+https-proxy=socks5h://127.0.0.1:10807
 #+end_src

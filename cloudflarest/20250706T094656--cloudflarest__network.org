@@ -4,7 +4,7 @@
 #+identifier: 20250706T094656
 
 * tangle
-#+begin_src elisp :var force-download="no" curl-args='("-xsocks5h://127.0.0.1:10808")
+#+begin_src elisp :var force-download="no" curl-args='("-xsocks5h://127.0.0.1:10807")
 (when (string= "yes" force-download)
   (let* ((bin-dir "_tangle")
          (name (pcase system-type
