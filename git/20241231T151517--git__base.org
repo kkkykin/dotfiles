@@ -20,7 +20,7 @@
 :PROPERTIES:
 :CUSTOM_ID: 92ec3b0a-3362-4cd6-8790-d486db17253a
 :END:
-#+begin_src conf :tangle (zr-org-by-tangle-dir "gitconfig") :mkdirp t :var proxy=(plist-get (cdr (plstore-get zr-local-pls "proxy")) :proxy) host=(plist-get (cdr (plstore-get zr-local-pls "proxy")) :host)
+#+begin_src conf :tangle (zr-org-by-tangle-dir "gitconfig") :mkdirp t
 [user]
     email = kkkykin@foxmail.com
     name = kkky
@@ -32,8 +32,8 @@
     tool = vimdiff
 [pull]
 	ff = only
-[http "https://$host"]
-	proxy = $proxy
+[http "https://github.com"]
+	proxy = socks5h://127.0.0.1:10807
 #+end_src
 
 #+begin_src conf :tangle no
