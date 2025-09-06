@@ -30,6 +30,7 @@
               (android-target-dir "/storage/emulated/0/Android/media/io.nekohasekai.sfa/"))
     (mkdir android-dir t)
     (copy-file merge-file (expand-file-name "main.json" android-dir) t)
+    (copy-directory rule-sets-dir (expand-file-name "rule-sets/" android-dir))
     (dolist (c `(("tun.json" . ,tun-dir)))
       (call-process "sing-box" nil nil nil "merge"
                     (expand-file-name (car c) android-dir)
