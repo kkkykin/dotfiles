@@ -14,10 +14,7 @@
        (client-dir "_tangle/client/")
        (tun-dir (expand-file-name "tun/" client-dir))
        (merge-file (expand-file-name "500-merge.json" client-dir))
-       (android-dir (and (eq system-type 'android)
-                         "/storage/emulated/0/sing-box/"))
-       (rule-sets-dir (expand-file-name "rule-sets/"
-                                        (or android-dir "_tangle/")))
+       (rule-sets-dir (expand-file-name "rule-sets/" "_tangle/"))
        (delete-by-moving-to-trash))
   (delete-directory client-tmp-dir t)
   (org-babel-tangle)
@@ -28,12 +25,26 @@
                 merge-file "-C" client-tmp-dir)
   (make-symbolic-link merge-file tun-dir t)
 
-  (when android-dir
+  (when-let* (((eq 'android system-type))
+              (android-dir "/storage/emulated/0/io.nekohasekai.sfa/")
+              (android-target-dir "/storage/emulated/0/Android/media/io.nekohasekai.sfa/"))
+    (mkdir android-dir t)
     (copy-file merge-file (expand-file-name "main.json" android-dir) t)
     (dolist (c `(("tun.json" . ,tun-dir)))
       (call-process "sing-box" nil nil nil "merge"
                     (expand-file-name (car c) android-dir)
-                    "-C" (cdr c))))
+                    "-C" (cdr c)))
+    (zr-android-call-rish
+     (string-join
+      (list (format "rm -rf %s" (shell-quote-argument android-target-dir))
+            (format "sed -i 's,%s,%s,g' %s/*.json"
+                    (expand-file-name "_tangle/")
+                    android-target-dir
+                    android-dir)
+            (format "mv %s %s"
+                    (shell-quote-argument android-dir)
+                    (shell-quote-argument android-target-dir)))
+      " && ")))
   (plstore-close zr-local-pls))
 #+end_src
 
