@@ -595,7 +595,7 @@
 
 * rule-sets
 :PROPERTIES:
-:tangle-dir: _tangle/rule-sets
+:tangle-dir: (expand-file-name rule-sets-dir)
 :END:
 https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
 
