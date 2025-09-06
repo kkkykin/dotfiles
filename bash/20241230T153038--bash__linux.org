@@ -102,6 +102,11 @@ fi
 
 ** termux
 
+*** ssl_cert
+#+begin_src sh :tangle (zr-org-by-tangle-dir "termux")
+export SSL_CERT_FILE=$PREFIX/etc/tls/cert.pem
+#+end_src
+
 *** splash-screen
 :PROPERTIES:
 :CUSTOM_ID: ba4e3893-d838-4df9-8fe2-5b14189c555f
