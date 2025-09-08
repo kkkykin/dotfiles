@@ -23,7 +23,7 @@
   (mkdir hosts-dir t)
   (dolist (h hosts-uris)
     (let ((f (expand-file-name (car h) hosts-dir)))
-      ;; (push f hosts-files)
+      (push f hosts-files)
       (call-process "curl" nil 0 nil "-Lo" f (cdr h))))
   (org-babel-tangle)
   (dolist (f (directory-files "." t "^_.+\\.json$" t))
@@ -39,6 +39,7 @@
     (mkdir android-dir t)
     (copy-file merge-file (expand-file-name "main.json" android-dir) t)
     (copy-directory rule-sets-dir android-dir)
+    (copy-directory hosts-dir android-dir)
     (dolist (c `(("tun.json" . ,tun-dir)))
       (call-process "sing-box" nil nil nil "merge"
                     (expand-file-name (car c) android-dir)
@@ -313,6 +314,12 @@
       },
       {
         "format": "binary",
+        "tag": "geosite-github",
+        "type": "remote",
+        "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-github.srs"
+      },
+      {
+        "format": "binary",
         "tag": "geosite-microsoft",
         "type": "remote",
         "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-microsoft.srs"
@@ -336,6 +343,7 @@
       {
         "outbound": "auto",
         "rule_set": [
+          "geosite-github",
           "geosite-category-porn",
           "proxy-rules"
         ]
@@ -650,17 +658,23 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
 
 #+name: gen-proxy-rule-set
 #+begin_src elisp
-(let* ((raw (multisession-value zr-net-proxy-rules-hash))
+(let* ((rules (zr-net-read-proxy-rules))
+       (proxy (gethash "proxy" rules))
+       (hosts (gethash "autoproxy_hosts" rules))
        (local-file "_proxy.eld")
        (local (and (file-exists-p local-file)
                    (with-temp-buffer
                      (insert-file-contents local-file)
                      (read (current-buffer)))))
        suffix)
-  (maphash (lambda (k v) (push k suffix)) raw)
+  (cl-mapc
+   (lambda (p h)
+     (when (string= "HTTP 127.0.0.1:10808" p)
+       (push h suffix)))
+   proxy hosts)
   (json-serialize
    `((version . 3)
-     (rules . ,(vconcat local (vector `((domain_suffix . ,(vconcat suffix)))))))))
+     (rules . ,(vconcat local (vector `((domain_suffix . ,(apply #'vconcat suffix)))))))))
 #+end_src
 
 ** direct
