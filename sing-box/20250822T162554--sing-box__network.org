@@ -458,6 +458,18 @@
 }
 #+end_src
 
+*** log timestamp
+:PROPERTIES:
+:CUSTOM_ID: cf1faa67-36f3-4e44-bec2-312bac3dd217
+:END:
+#+begin_src json :tangle (if (eq system-type 'gnu/linux) "no" (zr-org-by-tangle-dir "_500-log.json"))
+{
+  "log": {
+    "timestamp": true
+  }
+}
+#+end_src
+
 ** server
 :PROPERTIES:
 :tangle-dir: _tangle/server
