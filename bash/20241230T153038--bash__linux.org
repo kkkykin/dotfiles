@@ -104,7 +104,7 @@ fi
 
 *** ssl_cert
 #+begin_src sh :tangle (zr-org-by-tangle-dir "termux")
-export SSL_CERT_FILE=$PREFIX/etc/tls/cert.pem
+export SSL_CERT_DIR=$PREFIX/etc/tls/
 #+end_src
 
 *** splash-screen
