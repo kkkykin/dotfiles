@@ -12,11 +12,19 @@
 (let* ((zr-local-pls (plstore-open "sing-box.pls"))
        (client-tmp-dir "_tangle/tmp/")
        (client-dir "_tangle/client/")
+       (hosts-dir "_tangle/hosts/")
+       (hosts-uris '(("github" . "https://gitlab.com/ineo6/hosts/-/raw/master/hosts")))
+       hosts-files
        (tun-dir (expand-file-name "tun/" client-dir))
        (merge-file (expand-file-name "500-merge.json" client-dir))
        (rule-sets-dir (expand-file-name "rule-sets/" "_tangle/"))
        (delete-by-moving-to-trash))
   (delete-directory client-tmp-dir t)
+  (mkdir hosts-dir t)
+  (dolist (h hosts-uris)
+    (let ((f (expand-file-name (car h) hosts-dir)))
+      ;; (push f hosts-files)
+      (call-process "curl" nil 0 nil "-Lo" f (cdr h))))
   (org-babel-tangle)
   (dolist (f (directory-files "." t "^_.+\\.json$" t))
     (make-symbolic-link f client-tmp-dir t))
@@ -305,6 +313,12 @@
       },
       {
         "format": "binary",
+        "tag": "geosite-microsoft",
+        "type": "remote",
+        "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-microsoft.srs"
+      },
+      {
+        "format": "binary",
         "tag": "geosite-adblockplus",
         "type": "remote",
         "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-adblockplus.srs"
@@ -334,6 +348,7 @@
         "outbound": "direct",
         "rule_set": [
           "geosite-geolocation-cn",
+          "geosite-microsoft",
           "geoip-cn"
         ]
       },
@@ -376,6 +391,7 @@
 #+name: gen-hosts
 #+begin_src elisp
 (let* ((default '((localhost . ["127.0.0.1" "::1"])))
+       (hosts (vconcat hosts-files))
        (local-file "_hosts.eld")
        (local (and (file-exists-p local-file)
                    (with-temp-buffer
@@ -384,6 +400,7 @@
   (json-serialize
    `((dns . (servers [((tag . "hosts-in")
                        (type . "hosts")
+                       (path . ,hosts)
                        (predefined . ,(append local default)))])))))
 #+end_src
 
