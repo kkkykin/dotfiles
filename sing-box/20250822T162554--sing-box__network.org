@@ -13,7 +13,8 @@
        (client-tmp-dir "_tangle/tmp/")
        (client-dir "_tangle/client/")
        (hosts-dir "_tangle/hosts/")
-       (hosts-uris '(("github" . "https://gitlab.com/ineo6/hosts/-/raw/master/hosts")))
+       (hosts-uris '(;; ("github" . "https://gitlab.com/ineo6/hosts/-/raw/master/hosts")
+                     ))
        hosts-files
        (tun-dir (expand-file-name "tun/" client-dir))
        (merge-file (expand-file-name "500-merge.json" client-dir))
@@ -314,18 +315,6 @@
       },
       {
         "format": "binary",
-        "tag": "geosite-github",
-        "type": "remote",
-        "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-github.srs"
-      },
-      {
-        "format": "binary",
-        "tag": "geosite-microsoft",
-        "type": "remote",
-        "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-microsoft.srs"
-      },
-      {
-        "format": "binary",
         "tag": "geosite-adblockplus",
         "type": "remote",
         "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-adblockplus.srs"
@@ -343,7 +332,6 @@
       {
         "outbound": "auto",
         "rule_set": [
-          "geosite-github",
           "geosite-category-porn",
           "proxy-rules"
         ]
@@ -356,7 +344,6 @@
         "outbound": "direct",
         "rule_set": [
           "geosite-geolocation-cn",
-          "geosite-microsoft",
           "geoip-cn"
         ]
       },
