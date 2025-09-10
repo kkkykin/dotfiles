@@ -161,8 +161,8 @@
     },
     "clash_api": {
       "access_control_allow_origin": [
-        "http://127.0.0.1",
-        "https://yacd.metacubex.one"
+        "https://board.zash.run.place",
+        "http://127.0.0.1"
       ],
       "access_control_allow_private_network": true,
       "external_controller": "127.0.0.1:9090",
