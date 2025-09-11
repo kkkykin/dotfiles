@@ -16,6 +16,10 @@
        (hosts-uris '(;; ("github" . "https://gitlab.com/ineo6/hosts/-/raw/master/hosts")
                      ))
        hosts-files
+
+       clash-subscribes
+       (sub-dir "_tangle/sub/")
+
        (tun-dir (expand-file-name "tun/" client-dir))
        (merge-file (expand-file-name "500-merge.json" client-dir))
        (rule-sets-dir (expand-file-name "rule-sets/" "_tangle/"))
@@ -26,6 +30,54 @@
     (let ((f (expand-file-name (car h) hosts-dir)))
       (push f hosts-files)
       (call-process "curl" nil 0 nil "-Lo" f (cdr h))))
+  
+  (mkdir client-tmp-dir t)
+
+  (setq clash-subscribes (plist-get (cdr (plstore-get zr-local-pls "clash")) :sub))
+  (dolist (sub clash-subscribes)
+    (condition-case nil
+        (let* ((uri (cdr sub))
+               (content
+                (org-file-contents (if (string-prefix-p "https://" uri)
+                                       (format "https://clash2sfa.xmdhs.com/sub?disableUrlTest=true&sub=%s"
+                                               (url-hexify-string uri))
+                                     uri)
+                                   t))
+               (obj (json-parse-string content :object-type 'alist))
+               (outbounds (alist-get "outbounds" obj nil nil #'string=))
+               (name (car sub))
+               (selector (format "s[%s]" name))
+               (urltest (format "u[%s]" name))
+               tags
+               obds)
+          (write-region content nil
+                        (expand-file-name
+                         (file-name-with-extension name "json")
+                         sub-dir))
+          (mapc
+           (lambda (obd)
+             (when-let* (((not (string= "direct" (alist-get "type" obd nil nil #'string=))))
+                         (tag (format "%s[%s]" (alist-get "tag" obd nil nil #'string=) name)))
+               (push tag tags)
+               (push (push `(tag . ,tag) obd) obds)))
+           outbounds)
+          (let* ((extra (vector
+                         `((type . "selector")
+                           (tag . ,selector)
+                           (outbounds . ,(vconcat (cons urltest tags)))
+                           (default . ,urltest)
+                           (interrupt_exist_connections . :false))
+                         `((type . "urltest")
+                           (tag . ,urltest)
+                           (outbounds . ,(vconcat tags)))))
+                 (merged (zr-merge-json-objects extra (vconcat obds)))
+                 (json `((outbounds . ,merged))))
+            (write-region (json-serialize json) nil
+                          (expand-file-name (format "_600-%s.json" name)
+                                            client-tmp-dir))))
+      (wrong-type-argument (message "Sub: %s not work." (car sub)))
+      (json-end-of-file (message "Sub: %s json not valid." (car sub)))))
+
   (org-babel-tangle)
   (dolist (f (directory-files "." t "^_.+\\.json$" t))
     (make-symbolic-link f client-tmp-dir t))
@@ -130,13 +182,13 @@
     ],
     "servers": [
       {
-        "detour": "this-way",
+        "detour": "s[this-way]",
         "server": "1.1.1.1",
         "tag": "cf-dot",
         "type": "tls"
       },
       {
-        "detour": "this-way",
+        "detour": "s[this-way]",
         "server": "8.8.8.8",
         "tag": "google-doh",
         "type": "https"
@@ -186,6 +238,19 @@
       "type": "direct"
     },
     {
+      "default": "u[self0]",
+      "interrupt_exist_connections": false,
+      "outbounds": [
+        "u[self0]",
+        "any",
+        "vl",
+        "hy",
+        "nv"
+      ],
+      "tag": "s[self0]",
+      "type": "selector"
+    },
+    {
       "interrupt_exist_connections": false,
       "outbounds": [
         "any",
@@ -193,7 +258,7 @@
         "hy",
         "nv"
       ],
-      "tag": "self0",
+      "tag": "u[self0]",
       "type": "urltest"
     },
     {
@@ -330,7 +395,7 @@
         "rule_set": "direct-rules"
       },
       {
-        "outbound": "this-way",
+        "outbound": "s[this-way]",
         "rule_set": [
           "geosite-category-porn",
           "proxy-rules"
@@ -367,7 +432,7 @@
         "type": "logical"
       },
       {
-        "outbound": "this-way",
+        "outbound": "s[this-way]",
         "rule_set": "geosite-geolocation-!cn"
       }
     ]
@@ -379,19 +444,25 @@
 :PROPERTIES:
 :CUSTOM_ID: aaba4108-33b4-4d2f-aba4-1bbd1dca6aad
 :END:
-#+begin_src json :tangle (zr-org-by-tangle-dir "_500-selector.json")
+#+begin_src json :tangle (zr-org-by-tangle-dir "_400-selector.json")
 <<gen-this-way()>>
 #+end_src
 
 #+name: gen-this-way
 #+begin_src elisp
-(json-serialize
- '((outbounds
-    . [((type . "selector")
-        (tag . "this-way")
-        (outbounds . ["self0"])
-        (default . "self0")
-        (interrupt_exist_connections . :false))])))
+(let* ((self ["s[self0]"])
+       (urltest ["v[this-way]"])
+       (sub (vconcat (mapcar (lambda (sub) (format "s[%s]" (car sub))) clash-subscribes)))
+       (outbounds (vconcat self sub)))
+  (json-serialize
+   `((outbounds
+      . [((type . "selector")
+          (tag . "s[this-way]")
+          (outbounds . ,(vconcat urltest outbounds))
+          (default . ,(elt self 0)))
+         ((type . "urltest")
+          (tag . ,(elt urltest 0))
+          (outbounds . ,outbounds))]))))
 #+end_src
 
 *** hosts

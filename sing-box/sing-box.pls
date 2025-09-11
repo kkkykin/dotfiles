@@ -1,5 +1,5 @@
 ;;; public entries -*- mode: plstore -*- 
-(("cf" :secret-api-token t) ("clash" :secret-secret t)
+(("cf" :secret-api-token t) ("clash" :secret-secret t :secret-sub t)
  ("hy" :secret-ip t :secret-ipv6 t :secret-obfs-pass t
   :secret-user-name t :secret-user-pass t :secret-masq t :secret-host
   t :secret-email t)
@@ -13,21 +13,23 @@
 ;;; secret entries
 "-----BEGIN PGP MESSAGE-----
 
-hF4DhteJcpg+xyQSAQdAXWTInAukQmLNU+GL8zj77eeWDlC5aQOqFKpz6JgBEGgw
-iQjfa+6l4DMUVNJr74xMmskvLeK7zqoXXKEmtqur2cuYqa67KuAx0Hawh1tb4xFL
-1OkBCQIQ7tYX94wZoUWm5MSyFSConmO4wVUMyrk7ZVcXSf2OT/Mu8LYM9zt6k9MV
-aOO6WiNruuCo9ifiIQxfg8+qylhYujy6g26ZeLh7CGkWvlYXQk/1CXIzn6q7prve
-lc1RnC8G8qXohhvkirYEcpMnImj2rv47yNh91uW61rMINQM/RURrQ6J7QCRxTfVw
-cCDDacMMJmC0r4TfHo2spCgVt8kQbtAQCE6ri4pLnWuB49jpkMJBN//OEetoZxl1
-4udCL5KtgwzJTDDWQ4jKyvjDayrjgKB9B7GS/DdAx6lq0tPIyQHOWIYLfgqUXgf2
-gfwNKv6tgAR5ioLQEWVrodcoGL2OzNBi1/954sGlkEnV9EVCKVpherUGIGWG9J/s
-rMnBKxOTSFZRRtay4rUgVdnIDl0csXnk9/BBZpefBdbOVKnvF8fdI825fjhrWVQW
-ekuvBD2DA+12fe8dFRmftU6HK0BYzrQYSsW/w7VQNYIN+mzUEGx0I/vPuIWxUh1A
-X3lw2pV8OvcCpQad3FdS6xntY5rT4f8024zfa8QXyv7HrI68A1kLcjZgw0FzmpfL
-BSTF1vza54neHr6t3GMQF4TiswqeXeYX2B7lRiyFeGwwcImBvJGi2md1L3W68Gcv
-VBdKQM7lqVr1pXRJeNbhZcOMSnQtAUsTJ1sqHAXB3frL+WQNWLjEhSnt5a3uNXXA
-fvd/CXza8bxum9TfiDaf+A23haT1m9CxyiO+QdmwRcH7yNtoVhPijWDPiXPZ02kt
-QZ03E+bwOEA6WjJkhXn4sZ27dH7gb4mnEdaeKg0XZMxxQpHJlqsv
-=oEL6
+hF4DhteJcpg+xyQSAQdA20z6RjxdlEsSDdO+P1t8zPu8VG/NQ9+0OF0Wx/wXV28w
+ka2h372ULuDCLimGQt6c7Lgjj+NRBuLfo8EqG9txD4hYrHx7WtlFC+n0McCfrP6r
+1OkBCQIQLFcW+Ad/zxVinMqtKo3qNwwXcU+3gPu+R4enviEEVT6F6w83e0tvaj0B
+0vbfzYSWkajGBwBGleeyKKbM3k7qo549C/PVGa6+D+MID3nHclNJSuYNNZevDZZM
+wgwAaxRTnACJyV/xb4RE6QZ7NI8dgteKjUzp2zTotK1ynVzbKy8mgVICsm6uFUyx
+0jI9fEiw6VqgbSLSBfalGcyIbLbMkexsChFrFcQMOc88SomANVbjUZGfE5nHPioh
+JaUuoOv+SSwdRYrgS9KTESZDoq9OFkaBErEJtefFdtsO33TwTGGx1iLEP4+Rc0wW
+Gf68hY+boXf+91SwJFir2DBJSyrHoiUkQdPbap5rBOAJuVPhmnZ6AdZMW503Zzg2
+ZFaUPDRNAAvE2O4eUy0ebrgY+qCXQH1uuEYJwI7+CpXob5HTnpfk9o3Y76U+ZFw8
+hzI360jRFbY57+6BL9ExXjn7DB8qcu7avdLjREMJiS9NOHbIHyUzR63jNuWY2xPS
+A7aUSbXz6gyIV664iaKqxwuXiRKD6o6vCuTzChYYUIqQOmxY3v4TH2e7cVZbNiiW
++ygC8VlUh4BOm00d9ZFkY6RhMTO1Al6qx4HpHHe28r08S06AcSWebO6vNQWuQca7
+4K5q+UGH9MwbmUXUeXMz0EPcOE5Z8PHOovts3k6nFrX5vqG3kzA6wihMxEELOeOS
+z30sERnHYTS0Bo4irGUWZBlNX0bzokP5FE0p7+uXk0mSUjrvNBAZUT/OJLSrpzm0
+UsoLADOWbo15YLL8mgEo1mXZ581o2jmhsJQ0VU5mU91Vamu41UvJoY6GZb27Qpbg
+lVf0RUcvzv74x1RRulhdNCNKQX/GwdRYPEhBVaecvZ9AwlN6Yq5m1/725sDk3WhP
+P6evCQ==
+=hJvv
 -----END PGP MESSAGE-----
 "
