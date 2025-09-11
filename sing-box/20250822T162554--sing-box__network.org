@@ -130,13 +130,13 @@
     ],
     "servers": [
       {
-        "detour": "auto",
+        "detour": "this-way",
         "server": "1.1.1.1",
         "tag": "cf-dot",
         "type": "tls"
       },
       {
-        "detour": "auto",
+        "detour": "this-way",
         "server": "8.8.8.8",
         "tag": "google-doh",
         "type": "https"
@@ -193,7 +193,7 @@
         "hy",
         "nv"
       ],
-      "tag": "auto",
+      "tag": "self0",
       "type": "urltest"
     },
     {
@@ -330,7 +330,7 @@
         "rule_set": "direct-rules"
       },
       {
-        "outbound": "auto",
+        "outbound": "this-way",
         "rule_set": [
           "geosite-category-porn",
           "proxy-rules"
@@ -367,12 +367,31 @@
         "type": "logical"
       },
       {
-        "outbound": "auto",
+        "outbound": "this-way",
         "rule_set": "geosite-geolocation-!cn"
       }
     ]
   }
 }
+#+end_src
+
+*** select
+:PROPERTIES:
+:CUSTOM_ID: aaba4108-33b4-4d2f-aba4-1bbd1dca6aad
+:END:
+#+begin_src json :tangle (zr-org-by-tangle-dir "_500-selector.json")
+<<gen-this-way()>>
+#+end_src
+
+#+name: gen-this-way
+#+begin_src elisp
+(json-serialize
+ '((outbounds
+    . [((type . "selector")
+        (tag . "this-way")
+        (outbounds . ["self0"])
+        (default . "self0")
+        (interrupt_exist_connections . :false))])))
 #+end_src
 
 *** hosts
