@@ -17,7 +17,10 @@
                      ))
        hosts-files
 
-       clash-subscribes
+       (clash-pls (cdr (plstore-get zr-local-pls "clash")))
+       (clash-subscribes (plist-get clash-pls :sub))
+       (sublink-domain (or (plist-get clash-pls :sublink)
+                           "linuxdo.icmpmiao.cc"))
        (sub-dir "_tangle/sub/")
 
        (tun-dir (expand-file-name "tun/" client-dir))
@@ -33,20 +36,22 @@
   
   (mkdir client-tmp-dir t)
 
-  (setq clash-subscribes (plist-get (cdr (plstore-get zr-local-pls "clash")) :sub))
   (dolist (sub clash-subscribes)
     (condition-case nil
         (let* ((uri (cdr sub))
                (content
-                (org-file-contents (if (or (string-prefix-p "file://" uri)
-                                           (file-exists-p uri))
-                                       uri
-                                     ;; only support https protocol
-                                     ;; (format "https://clash2sfa.xmdhs.com/sub?disableUrlTest=true&sub=%s"
-                                     ;;         (url-hexify-string uri))
-                                     (format "https://linuxdo.icmpmiao.cc/singbox?config=%s&ua=&selectedRules=%%5B%%5D&customRules=%%5B%%5D"
-                                             (url-hexify-string uri)))
-                                   t))
+                (org-file-contents
+                 (cond
+                  ((string-prefix-p "sb://" uri)
+                   (substring uri 5))
+                  ((or (string-prefix-p "file://" uri)
+                       (file-exists-p uri))
+                   uri)
+                  (t (format "https://%s/singbox?config=%s&ua=&selectedRules=%%5B%%5D&customRules=%%5B%%5D"
+                             ;; https only: "https://clash2sfa.xmdhs.com/sub?disableUrlTest=true&sub=%s"
+                             sublink-domain
+                             (url-hexify-string uri))))
+                 t))
                (obj (json-parse-string content :object-type 'alist))
                (outbounds (alist-get "outbounds" obj nil nil #'string=))
                (name (car sub))
@@ -67,20 +72,23 @@
                (push tag tags)
                (push (push `(tag . ,tag) obd) obds)))
            outbounds)
-          (let* ((extra (vector
-                         `((type . "selector")
-                           (tag . ,selector)
-                           (outbounds . ,(vconcat (cons urltest tags)))
-                           (default . ,urltest)
-                           (interrupt_exist_connections . :false))
-                         `((type . "urltest")
-                           (tag . ,urltest)
-                           (outbounds . ,(vconcat tags)))))
-                 (merged (zr-merge-json-objects extra (vconcat obds)))
-                 (json `((outbounds . ,merged))))
-            (write-region (json-serialize json) nil
-                          (expand-file-name (format "_600-%s.json" name)
-                                            client-tmp-dir))))
+          (if tags
+              (let* ((extra `(((type . "selector")
+                               (tag . ,selector)
+                               (outbounds . ,(vconcat (cons urltest tags)))
+                               (default . ,urltest)
+                               (interrupt_exist_connections . :false))
+                              ((type . "urltest")
+                               (tag . ,urltest)
+                               (outbounds . ,(vconcat tags)))))
+                     (merged (vconcat extra obds))
+                     (json `((outbounds . ,merged))))
+                (write-region (json-serialize json) nil
+                              (expand-file-name (format "_600-%s.json" name)
+                                                client-tmp-dir)))
+            (let ((name (car sub)))
+              (assoc-delete-all name clash-subscribes)
+              (message "Sub: %s not work." name))))
       (wrong-type-argument (message "Sub: %s not work." (car sub)))
       (json-end-of-file (message "Sub: %s json not valid." (car sub)))))
 
