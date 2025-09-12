@@ -37,6 +37,7 @@
       (call-process "curl" nil 0 nil "-Lo" f (cdr h))))
   
   (mkdir client-tmp-dir t)
+  (mkdir sub-dir t)
 
   (dolist (sub clash-subscribes)
     (let ((name (car sub)))
