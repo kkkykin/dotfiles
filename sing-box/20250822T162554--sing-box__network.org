@@ -244,6 +244,24 @@
       "type": "direct"
     },
     {
+      "default": "u[self]",
+      "interrupt_exist_connections": false,
+      "outbounds": [
+        "s[self0]",
+        "u[self]"
+      ],
+      "tag": "s[self]",
+      "type": "selector"
+    },
+    {
+      "interrupt_exist_connections": false,
+      "outbounds": [
+        "s[self0]"
+      ],
+      "tag": "u[self]",
+      "type": "urltest"
+    },
+    {
       "default": "u[self0]",
       "interrupt_exist_connections": false,
       "outbounds": [
@@ -456,19 +474,26 @@
 
 #+name: gen-this-way
 #+begin_src elisp
-(let* ((self ["s[self0]"])
-       (urltest ["u[this-way]"])
-       (sub (vconcat (mapcar (lambda (sub) (format "s[%s]" (car sub))) clash-subscribes)))
-       (outbounds (vconcat self sub)))
+(let* ((s-this-way '("u[this-way]" "s[self]" "s[sub]"))
+       (u-this-way (car s-this-way))
+       (u-sub "u[sub]")
+       (s-sub (cons u-sub (mapcar (lambda (sub) (format "s[%s]" (car sub))) clash-subscribes))))
   (json-serialize
    `((outbounds
       . [((type . "selector")
           (tag . "s[this-way]")
-          (outbounds . ,(vconcat urltest outbounds))
-          (default . ,(elt self 0)))
+          (outbounds . ,(vconcat s-this-way))
+          (default . ,u-this-way))
          ((type . "urltest")
-          (tag . ,(elt urltest 0))
-          (outbounds . ,outbounds))]))))
+          (tag . ,u-this-way)
+          (outbounds . ,(vconcat (cdr s-this-way))))
+         ((type . "selector")
+          (tag . "s[sub]")
+          (outbounds . ,(vconcat s-sub))
+          (default . ,u-sub))
+         ((type . "urltest")
+          (tag . ,u-sub)
+          (outbounds . ,(vconcat (cdr s-sub))))]))))
 #+end_src
 
 *** hosts
