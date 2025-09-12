@@ -38,10 +38,14 @@
     (condition-case nil
         (let* ((uri (cdr sub))
                (content
-                (org-file-contents (if (string-prefix-p "https://" uri)
-                                       (format "https://clash2sfa.xmdhs.com/sub?disableUrlTest=true&sub=%s"
-                                               (url-hexify-string uri))
-                                     uri)
+                (org-file-contents (if (or (string-prefix-p "file://" uri)
+                                           (file-exists-p uri))
+                                       uri
+                                     ;; only support https protocol
+                                     ;; (format "https://clash2sfa.xmdhs.com/sub?disableUrlTest=true&sub=%s"
+                                     ;;         (url-hexify-string uri))
+                                     (format "https://linuxdo.icmpmiao.cc/singbox?config=%s&ua=&selectedRules=%%5B%%5D&customRules=%%5B%%5D"
+                                             (url-hexify-string uri)))
                                    t))
                (obj (json-parse-string content :object-type 'alist))
                (outbounds (alist-get "outbounds" obj nil nil #'string=))
@@ -56,7 +60,9 @@
                          sub-dir))
           (mapc
            (lambda (obd)
-             (when-let* (((not (string= "direct" (alist-get "type" obd nil nil #'string=))))
+             (when-let* (((not (member (alist-get "type" obd nil nil #'string=)
+                                       '("direct" "selector" "urltest"
+                                         "block" "dns"))))
                          (tag (format "%s[%s]" (alist-get "tag" obd nil nil #'string=) name)))
                (push tag tags)
                (push (push `(tag . ,tag) obd) obds)))
@@ -451,7 +457,7 @@
 #+name: gen-this-way
 #+begin_src elisp
 (let* ((self ["s[self0]"])
-       (urltest ["v[this-way]"])
+       (urltest ["u[this-way]"])
        (sub (vconcat (mapcar (lambda (sub) (format "s[%s]" (car sub))) clash-subscribes)))
        (outbounds (vconcat self sub)))
   (json-serialize
