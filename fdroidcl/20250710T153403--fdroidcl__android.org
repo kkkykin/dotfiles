@@ -63,6 +63,14 @@ repos = ['kkky', 'f-droid', 'f-droid-archive']
 use like this: src_sh{fdroidcl install -u -e "$(< black.txt)"}
 
 #+begin_src org :comments no :tangle (zr-org-by-tangle-dir "black.txt")
-com.termux
-org.gnu.emacs
+<<gen-list(pkg-list=blacklist[])>>
 #+end_src
+
+#+name: gen-list
+#+begin_src elisp :var pkg-list=blacklist[]
+(string-join pkg-list ",")
+#+end_src
+
+#+name: blacklist
+- com.termux
+- org.gnu.emacs
