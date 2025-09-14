@@ -14,3 +14,6 @@
 [submodule "ahk/lib/AHK-Macro-Recorder"]
 	path = ahk/lib/AHK-Macro-Recorder
 	url = https://github.com/raeleus/AHK-Macro-Recorder.git
+[submodule "openresty/lib/lua-resty-http"]
+	path = openresty/lib/lua-resty-http
+	url = https://github.com/ledgetech/lua-resty-http.git
