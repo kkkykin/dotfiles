@@ -594,16 +594,17 @@ local function _M(backends, proxy, uri, timeout)
   local headers = ngx.req.get_headers()
   local body    = ngx.req.get_body_data()
 
-  local httpc = http:new()
-  httpc:set_timeout(timeout or 5000)
-  if proxy then
-    httpc:set_proxy_options({
-      http_proxy  = proxy.http or proxy.all,
-      https_proxy = proxy.https or proxy.all,
-    })
-  end
-
   for _, b in ipairs(backends) do
+    -- 每轮新建一个 client
+    local httpc = http:new()
+    httpc:set_timeout(timeout or 5000)
+    if proxy then
+      httpc:set_proxy_options({
+        http_proxy  = proxy.http or proxy.all,
+        https_proxy = proxy.https or proxy.all,
+      })
+    end
+
     local scheme = b.https and "https" or "http"
     local url = scheme .. "://" .. b.host .. ":" .. b.port .. uri
     headers["Host"] = b.host
@@ -624,7 +625,7 @@ local function _M(backends, proxy, uri, timeout)
       return
     end
 
-    ngx.log(ngx.WARN, "backend ", prefix, " err: ", err)
+    ngx.log(ngx.WARN, "backend ", b.host, " err: ", err)
   end
 
   ngx.status = 502
