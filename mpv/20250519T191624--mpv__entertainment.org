@@ -23,7 +23,10 @@
 :PROPERTIES:
 :CUSTOM_ID: fcfc81f5-0e48-4f31-bf89-951c30c9fc3a
 :END:
-#+begin_src conf-unix
+#+begin_src conf-unix :var extra-conf=(expand-file-name "_mpv.conf")
+include=$extra-conf
+[detault]
+profile-cond=1
 watch-later-options=volume,window-scale
 force-seekable=yes
 loop-playlist=inf
@@ -226,7 +229,6 @@ user-agent='netdisk'
 :END:
 #+begin_src conf-unix
 [ftp]
-profile-desc="alist.kkky.fun cache error"
 profile-cond=path:find('^http://192.168.[0-9.]+:5244/d/ftp/')
 cache-on-disk
 demuxer-cache-dir="~~\\cache\\"
