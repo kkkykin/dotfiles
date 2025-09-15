@@ -48,13 +48,16 @@
                   (org-file-contents
                    (cond
                     ((string-prefix-p "store://" uri)
-                     (replace-regexp-in-string
-                      "\\([?&]target=\\)[^&]+" "\\1singbox"
-                      (with-temp-buffer
-                        (insert (org-file-contents (substring uri 8) t))
-                        (goto-char (point-min))
-                        (re-search-forward "^ \\{4\\}url: \"" nil t)
-                        (buffer-substring (point) (1- (pos-eol))))))
+                     (with-temp-buffer
+                       (insert (org-file-contents (substring uri 8) t))
+                       (goto-char (point-min))
+                       (re-search-forward "^ \\{4\\}url: \"" nil t)
+                       (if-let* ((begin (point))
+                                 ((replace-regexp-in-region
+                                   "\\([?&]target=\\)[^&\"]+" "\\1singbox"
+                                   begin (pos-eol))))
+                           (buffer-substring (point) (1- (pos-eol)))
+                         (signal 'wrong-type-argument (list 'stringp nil)))))
                     ((string-prefix-p "sb://" uri)
                      (substring uri 5))
                     ((or (string-prefix-p "file://" uri)
