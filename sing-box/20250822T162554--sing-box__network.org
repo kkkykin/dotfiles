@@ -23,7 +23,8 @@
                            "linuxdo.icmpmiao.cc"))
        (sub-dir "_tangle/sub/")
        sub-outbounds
-       relay-outbounds
+       us-outbounds
+       ja-outbounds
 
        (tun-dir (expand-file-name "tun/" client-dir))
        (merge-file (expand-file-name "500-merge.json" client-dir))
@@ -73,8 +74,11 @@
                                          '("direct" "selector" "urltest"
                                            "block" "dns"))))
                            (tag (format "%s[%s]" (alist-get "tag" obd nil nil #'string=) name)))
-                 (when (string-match-p "中继" tag)
-                   (push tag relay-outbounds))
+                 ;; (cond
+                 ;;  ((string-match-p "美国" tag)
+                 ;;   (push tag us-outbounds))
+                 ;;  ((string-match-p "日本" tag)
+                 ;;   (push tag ja-outbounds)))
                  (push tag tags)
                  (push (push `(tag . ,tag) obd) obds)))
              outbounds)
@@ -419,6 +423,24 @@
       },
       {
         "format": "binary",
+        "tag": "geosite-category-ai-!cn",
+        "type": "remote",
+        "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-category-ai-!cn.srs"
+      },
+      {
+        "format": "binary",
+        "tag": "geosite-google@!cn",
+        "type": "remote",
+        "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-google@!cn.srs"
+      },
+      {
+        "format": "binary",
+        "tag": "geosite-microsoft",
+        "type": "remote",
+        "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-microsoft.srs"
+      },
+      {
+        "format": "binary",
         "tag": "geosite-adblockplus",
         "type": "remote",
         "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-adblockplus.srs"
@@ -432,6 +454,14 @@
       {
         "outbound": "direct",
         "rule_set": "direct-rules"
+      },
+      {
+        "outbound": "s[self]",
+        "rule_set": [
+          "geosite-category-ai-!cn",
+          "geosite-google@!cn",
+          "geosite-microsoft"
+        ]
       },
       {
         "outbound": "s[this-way]",
@@ -489,36 +519,52 @@
 
 #+name: gen-this-way
 #+begin_src elisp
-(let* ((s-this-way '("u[this-way]" "s[self]" "s[sub]"))
-       (u-this-way (car s-this-way))
-       (u-relay "u[relay]")
-       (s-relay (cons u-relay relay-outbounds))
+(let* ((u-this-way "u[this-way]")
+       (s-this-way '("s[self]"))
        (u-sub "u[sub]")
        (s-sub (cons u-sub sub-outbounds))
-       (pre-obds `(((type . "selector")
-                    (tag . "s[this-way]")
-                    (outbounds . ,(vconcat s-this-way))
-                    (default . ,u-this-way))
-                   ((type . "urltest")
-                    (tag . ,u-this-way)
-                    (outbounds . ,(vconcat (cdr s-this-way))))
-                   ((type . "selector")
-                    (tag . "s[sub]")
-                    (outbounds . ,(vconcat s-sub))
-                    (default . ,u-sub))
-                   ((type . "urltest")
-                    (tag . ,u-sub)
-                    (outbounds . ,(vconcat (cdr s-sub))))))
-       (relay-obds (and relay-outbounds
-                        `(((type . "selector")
-                           (tag . "s[relay]")
-                           (outbounds . ,(vconcat s-relay))
-                           (default . ,u-relay))
-                          ((type . "urltest")
-                           (tag . ,u-relay)
-                           (outbounds . ,(vconcat (cdr s-relay)))))))
-       (coding-system-for-read 'utf-8))
-  (json-serialize `((outbounds . ,(vconcat pre-obds relay-obds)))))
+       (u-us "u{us}")
+       (s-us (cons u-us us-outbounds))
+       pre-obds
+       s-region
+       region-obds)
+  (when sub-outbounds
+    (push "s[sub]" s-this-way)
+    (push `(((type . "selector")
+             (tag . "s[sub]")
+             (outbounds . ,(vconcat s-sub))
+             (default . ,u-sub))
+            ((type . "urltest")
+             (tag . ,u-sub)
+             (outbounds . ,(vconcat (cdr s-sub)))))
+          pre-obds))
+  (when-let* ((region-outbounds (cl-remove nil `(("us" . ,us-outbounds)
+                                                 ("ja" . ,ja-outbounds))
+                                           :key #'cdr))
+              (region-tag "s[region]"))
+    (push region-tag s-this-way)
+    (dolist (region region-outbounds)
+      (let ((tag (format "u{%s}" (car region))))
+        (push tag s-region)
+        (push `((type . "urltest")
+                (tag . ,tag)
+                (outbounds . ,(vconcat (cdr region))))
+              region-obds)))
+    (push `((type . "selector")
+            (tag . ,region-tag)
+            (outbounds . ,(vconcat s-region)))
+          region-obds)
+    (write-region (json-serialize `((outbounds . ,(vconcat region-obds))))
+                  nil (expand-file-name "_900-region.json" client-tmp-dir)))
+  (push `(((type . "selector")
+           (tag . "s[this-way]")
+           (outbounds . ,(vconcat (cons u-this-way s-this-way)))
+           (default . ,u-this-way))
+          ((type . "urltest")
+           (tag . ,u-this-way)
+           (outbounds . ,(vconcat s-this-way))))
+        pre-obds)
+  (json-serialize `((outbounds . ,(apply #'vconcat pre-obds)))))
 #+end_src
 
 *** hosts
