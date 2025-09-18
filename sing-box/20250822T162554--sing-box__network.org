@@ -189,6 +189,11 @@
         "server": "hosts-in"
       },
       {
+        "ip_accept_any": true,
+        "rule_set": "tailscale-rules",
+        "server": "tailscale-dns"
+      },
+      {
         "action": "reject",
         "rule_set": "geosite-adblockplus"
       },
@@ -218,6 +223,12 @@
     ],
     "servers": [
       {
+        "accept_default_resolvers": false,
+        "endpoint": "ts-ep",
+        "tag": "tailscale-dns",
+        "type": "tailscale"
+      },
+      {
         "detour": "s[this-way]",
         "server": "1.1.1.1",
         "tag": "cf-dot",
@@ -242,6 +253,12 @@
     ],
     "strategy": "$dns_strategy"
   },
+  "endpoints": [
+    {
+      "tag": "ts-ep",
+      "type": "tailscale"
+    }
+  ],
   "experimental": {
     "cache_file": {
       "enabled": true,
@@ -398,6 +415,12 @@
       },
       {
         "format": "source",
+        "path": "$rule_sets_dir/tailscale.json",
+        "tag": "tailscale-rules",
+        "type": "local"
+      },
+      {
+        "format": "source",
         "path": "$rule_sets_dir/mitm.json",
         "tag": "mitm-rules",
         "type": "local"
@@ -461,6 +484,10 @@
       {
         "outbound": "mitm",
         "rule_set": "mitm-rules"
+      },
+      {
+        "outbound": "ts-ep",
+        "rule_set": "tailscale-rules"
       },
       {
         "outbound": "direct",
@@ -918,6 +945,28 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
                                 . ["[\\\\/]mitmproxy(\\.exe)?$"])
                                (invert . t))]
                              (or local place-holder))))]))))
+#+end_src
+
+** tailscale
+:PROPERTIES:
+:CUSTOM_ID: 614dce44-209a-4405-9eff-47a6edc61ed8
+:END:
+#+begin_src json :tangle (zr-org-by-tangle-dir "tailscale.json") :mkdirp t
+<<gen-tailscale-rule-set()>>
+#+end_src
+
+#+name: gen-tailscale-rule-set
+#+begin_src elisp
+(let* ((place-holder [((domain_suffix . [".ts.net"])
+                       (ip_cidr . "100.64.0.0/10"))])
+       (local-file "_tailscale.eld")
+       (local (and (file-exists-p local-file)
+                   (with-temp-buffer
+                     (insert-file-contents local-file)
+                     (read (current-buffer))))))
+  (json-serialize
+   `((version . 3)
+     (rules . ,(or local place-holder)))))
 #+end_src
 
 * helper
