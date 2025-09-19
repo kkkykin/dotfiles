@@ -737,6 +737,13 @@
 #+name: server-config
 #+begin_src json :tangle (zr-org-by-tangle-dir "500-main.json") :mkdirp t
 {
+  "endpoints": [
+    {
+      "advertise_exit_node": true,
+      "tag": "ts-ep",
+      "type": "tailscale"
+    }
+  ],
   "inbounds": [
     {
       "listen": "::",
