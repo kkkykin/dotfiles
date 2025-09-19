@@ -48,3 +48,15 @@ $proxy
 ForwardX11 yes
 ForwardX11Trusted yes
 #+end_src
+
+* sshd
+:PROPERTIES:
+:CUSTOM_ID: 24511934-a6f2-41a1-a951-9063eb8218b2
+:END:
+#+header: :var sshd-port=(plist-get (cdr (plstore-get zr-local-pls "sshd")) :port)
+#+begin_src conf-unix :tangle (zr-org-by-tangle-dir "sshd.conf") :mkdirp t
+Port $sshd-port
+PermitRootLogin no
+PasswordAuthentication no
+PubkeyAuthentication yes
+#+end_src
