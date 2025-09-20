@@ -110,6 +110,7 @@
                                                   client-tmp-dir)))
               (message "Sub: %s not work." name)))
         (wrong-type-argument (message "Sub: %s not work." name))
+        (json-parse-error (message "Sub: %s json not valid." name))
         (json-end-of-file (message "Sub: %s json not valid." name)))))
 
   (let ((coding-system-for-write 'utf-8))
