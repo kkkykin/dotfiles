@@ -1,0 +1,90 @@
+#+title:      macrodroid
+#+date:       [2025-09-20 Sat 17:36]
+#+filetags:   :android:
+#+identifier: 20250920T173626
+
+* tangle
+#+begin_src elisp
+(org-babel-tangle)
+#+end_src
+
+* java
+仅支持 1.4 及以下语法。
+
+** termux
+https://github.com/termux/termux-app/wiki/RUN_COMMAND-Intent#RUN_COMMAND-Intent-Command-Extras
+#+begin_src java
+import android.content.Intent;
+import android.text.TextUtils;
+
+<<split-macro-list>>
+
+/* ---------- 取变量 ---------- */
+String cmdRaw   = magicText.evaluateString("{lv=command}");
+String argsBlock= magicText.evaluateString("{lv=args}");
+String workDir  = magicText.evaluateString("{lv=workDir}");
+boolean inBackground = magicText.evaluateBoolean("{lv=inBackground}");
+
+/* ---------- 路径补全 ---------- */
+String cmdPath = cmdRaw.indexOf("/") >= 0 ? cmdRaw
+                                          : "$PREFIX/bin/" + cmdRaw;
+
+/* ---------- 严格按 0,1,2… 顺序切参数 ---------- */
+String[] argv = null;
+if (!TextUtils.isEmpty(argsBlock)) {
+    argv = splitMacroList(argsBlock);
+}
+
+/* ---------- 发 Intent ---------- */
+Intent i = new Intent();
+i.setClassName("com.termux", "com.termux.app.RunCommandService");
+i.setAction("com.termux.RUN_COMMAND");
+
+i.putExtra("com.termux.RUN_COMMAND_PATH", cmdPath);
+if (argv != null) i.putExtra("com.termux.RUN_COMMAND_ARGUMENTS", argv);
+if (!TextUtils.isEmpty(workDir)) {
+    i.putExtra("com.termux.RUN_COMMAND_WORKDIR", workDir);
+}
+i.putExtra("com.termux.RUN_COMMAND_BACKGROUND", inBackground);
+
+if (!inBackground) {
+    i.putExtra("com.termux.RUN_COMMAND_SESSION_ACTION", "0");
+}
+
+appContext.startService(i);
+return 0;
+#+end_src
+
+** utils
+#+name: split-macro-list
+#+begin_src java
+// 把 MacroDroid 列表变量的打印文本（带 [0]: 前缀）拆成 String[]
+// 支持参数本身跨行、内容里出现假前缀
+static String[] splitMacroList(String src) {
+    if (src == null || src.length() == 0) return new String[0];
+
+    java.util.List list  = new java.util.ArrayList();
+    String[]     lines   = src.split("\n", -1);
+    StringBuffer cur     = null;
+    int          expect  = 0;          // 当前只认 [expect]: 
+
+    for (int i = 0; i < lines.length; i++) {
+        String ln = lines[i];
+        String prefix = "[" + expect + "]: ";
+        if (ln.startsWith(prefix)) {           // 真正的下一个参数
+            if (cur != null) list.add(cur.toString());
+            cur = new StringBuffer(ln.substring(prefix.length()));
+            expect++;
+        } else if (cur != null) {              // 续行或假前缀
+            cur.append('\n').append(ln);
+        }
+        // cur==null 时说明文件头有空行，直接丢弃
+    }
+    if (cur != null) list.add(cur.toString()); // 最后一个
+
+    /* 序号必须连续，否则认为格式被破坏 */
+    if (expect != list.size()) return new String[0];
+
+    return (String[])list.toArray(new String[list.size()]);
+}
+#+end_src
