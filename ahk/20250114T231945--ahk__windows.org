@@ -743,9 +743,9 @@ initGitRepo(save_dir) {
 :CUSTOM_ID: 54053c99-2ef8-49fe-b7da-91d8109ae517
 :END:
 #+begin_src ahk
-executeHooks(hooks, config) {
+executeHooks(hooks, args := False) {
   for hook in hooks {
-    result := hook(config)
+    result := hook(args)
     if (!result) {
       return false
     }
@@ -915,12 +915,17 @@ GroupAdd 'games', 'ahk_class Skyrim Special Edition'
 GroupAdd 'NSFW', 'ahk_exe mpv.exe'
 GroupAdd 'NSFW', 'ahk_group games'
 
+pre_boss_hook := []
+post_boss_hook := []
+
 bossIsComing(){
+  executeHooks(pre_boss_hook)
   clearMacroStatus
   DllCall('SystemParametersInfoW', 'UInt', 0x14, 'UInt', 0, 'Ptr', 0, 'UInt', 2)
   SoundSetMute 1
   winMinimizeAll('ahk_group NSFW')
   Run 'emacsclient -e "(zr-moyu-quit-window)"',, 'Hide'
+  executeHooks(post_boss_hook)
 }
 #+end_src
 
