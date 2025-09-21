@@ -94,3 +94,20 @@ if re.search(r'^https://[a-z]*(south|snow)-plus\.(net|org)/read\.php\?tid=', TD[
 drop trigger freshrss_trigger_fix_entry on freshrss_kkky_entry;
 drop function freshrss_fix_entry;
 #+end_src
+
+* Update feed
+#+begin_src sql
+CREATE OR REPLACE PROCEDURE sp_update_moezone_attr( IN attr text )
+LANGUAGE plpgsql
+AS $$
+BEGIN
+
+IF attr LIKE 'wordpress_logged_in_%' THEN
+  UPDATE freshrss_kkky_feed
+  SET attributes = regexp_replace(attributes, '"wordpress_logged_in_[^="]+=[^"]+"', concat('"', attr, '"'))
+  WHERE url = 'https://www.moezone.one/feed';
+END IF;
+
+END;
+$$;
+#+end_src
