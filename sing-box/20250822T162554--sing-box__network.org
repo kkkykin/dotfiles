@@ -738,6 +738,23 @@
 #+name: server-config
 #+begin_src json :tangle (zr-org-by-tangle-dir "500-main.json") :mkdirp t
 {
+  "dns": {
+    "final": "cf-dot",
+    "servers": [
+      {
+        "accept_default_resolvers": false,
+        "endpoint": "ts-ep",
+        "tag": "tailscale-dns",
+        "type": "tailscale"
+      },
+      {
+        "server": "1.1.1.1",
+        "tag": "cf-dot",
+        "type": "tls"
+      }
+    ],
+    "strategy": "prefer_ipv6"
+  },
   "endpoints": [
     {
       "advertise_exit_node": true,
@@ -857,9 +874,24 @@
   },
   "outbounds": [
     {
+      "tag": "direct",
       "type": "direct"
     }
-  ]
+  ],
+  "route": {
+    "auto_detect_interface": true,
+    "default_domain_resolver": {
+      "server": "cf-dot"
+    },
+    "rules": [
+      {
+        "domain": [
+          "e-hentai.org"
+        ],
+        "outbound": "direct"
+      }
+    ]
+  }
 }
 #+end_src
 
