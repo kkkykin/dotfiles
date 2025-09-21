@@ -100,10 +100,16 @@ GM_cookie.list({}, function(cookies, error) {
 
 ** File List
 :PROPERTIES:
-:header-args: :tangle (zr-org-by-tangle-dir "file-list.js") :mkdirp t
+:header-args: :var aria2_remote_token=(auth-info-password zr-local-pls) aria2_remote_url=(plist-get zr-local-pls :user)
 :CUSTOM_ID: 17fa8862-9243-4d50-b8a6-62e04976a848
 :END:
-#+begin_src js :var aria2_remote_token=(auth-info-password zr-local-pls) aria2_remote_url=(plist-get zr-local-pls :user)
+
+*** baidu
+:PROPERTIES:
+:header-args+: :tangle (zr-org-by-tangle-dir "file-list.js") :mkdirp t
+:CUSTOM_ID: 448afd5a-4d4c-4a08-b668-610654d0c781
+:END:
+#+begin_src js 
 // ==UserScript==
 // @name         File List
 // @namespace    http://tampermonkey.net/
@@ -251,6 +257,68 @@ GM_cookie.list({}, function(cookies, error) {
       alert('下载出错: ' + error.message);
     }
   }
+})();
+#+end_src
+
+*** ali
+:PROPERTIES:
+:header-args+: :tangle (zr-org-by-tangle-dir "file-list-ali.js") :mkdirp t
+:CUSTOM_ID: b8b171e3-babe-4442-bdcb-777f4cb31bab
+:END:
+#+begin_src js
+// ==UserScript==
+// @name         阿里云盘网页版 – 推送到 aria2
+// @namespace    http://tampermonkey.net/
+// @version      2025-09-21
+// @author       You
+// @match        https://bw.01233.xyz/alipan/
+// @icon         https://www.google.com/s2/favicons?sz=64&domain=01233.xyz
+// @description  劫持网页内“推送到 Motrix”按钮，把 RPC 发到自定义地址并自定义参数
+// @grant        GM_xmlhttpRequest
+// @run-at       document-start
+// ==/UserScript==
+
+(function () {
+    'use strict';
+
+    // 等待页面脚本定义完 pushToMotrix 后，立即覆盖
+    function override() {
+        if (typeof unsafeWindow.pushToMotrix !== 'function') {
+            setTimeout(override, 0);
+            return;
+        }
+        unsafeWindow.pushToMotrix = function (downloadUrl, outFileNameWithPath) {
+            const params = aria2_remote_token
+                ? [`token:${aria2_remote_token}`, [downloadUrl], { out: outFileNameWithPath }]
+                : [[downloadUrl], { out: outFileNameWithPath }];
+
+            const payload = {
+                jsonrpc: '2.0',
+                method : 'aria2.addUri',
+                id     : Date.now().toString(),
+                params
+            };
+
+            GM_xmlhttpRequest({
+                method : 'POST',
+                url    : aria2_remote_url,
+                headers: { 'Content-Type': 'application/json' },
+                data   : JSON.stringify(payload),
+                onload(r) {
+                    const res = JSON.parse(r.responseText);
+                    if (res.result) {
+                        console.log('推送成功：', outFileNameWithPath);
+                    } else {
+                        console.warn('推送失败：', outFileNameWithPath, res);
+                    }
+                },
+                onerror(err) {
+                    console.error('连接 Motrix 出错：', err);
+                }
+            });
+        };
+    }
+    override();
 })();
 #+end_src
 
