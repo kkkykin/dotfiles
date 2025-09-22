@@ -21,10 +21,7 @@
 (when (eq system-type 'android)
   (let ((termux-path (expand-file-name "usr/bin" zr-termux-root-directory))
         (etags-path (expand-file-name etags-program-name "~/../lib"))
-        (intents-path (expand-file-name "home/bin" zr-termux-root-directory))
-        (conf (expand-file-name "home/.termux/termux.properties"
-                                zr-termux-root-directory)))
-    (rename-file (expand-file-name "_tangle/termux.properties") conf t)
+        (intents-path (expand-file-name "home/bin" zr-termux-root-directory)))
     (make-symbolic-link etags-path (expand-file-name "etags" termux-path) t)
     (mkdir intents-path t)
     (dolist (bin (directory-files "_tangle/intents" t "^[^.]" t))
@@ -62,10 +59,22 @@ pm grant "$pkg" android.permission.PACKAGE_USAGE_STATS
 * properties
 :PROPERTIES:
 :CUSTOM_ID: 3bb71465-c2e2-4dc1-8987-6997f6d6f9a6
+:tangle-dir: (if (eq 'android system-type) (expand-file-name "home/.termux" zr-termux-root-directory) "_tangle/properties")
 :END:
-#+begin_src conf :mkdirp t :tangle (zr-org-by-tangle-dir "termux.properties")
+#+begin_src conf-unix :mkdirp t :tangle (zr-org-by-tangle-dir "base.properties") :mkdirp t
+volume-keys = volume
 allow-external-apps = true
+#+end_src
+
+#+begin_src conf-unix :mkdirp t :tangle (zr-org-by-tangle-dir "normal.properties")
 extra-keys = [[ESC, CTRL, ALT, LEFT, DOWN, UP, RIGHT, KEYBOARD]]
+#+end_src
+
+#+begin_src conf-unix :mkdirp t :tangle (zr-org-by-tangle-dir "mini.properties")
+extra-keys = [[ \
+  {macro: "zr-reload-settings\n", display: "Reload", popup: KEYBOARD}, \
+  {macro: "CTRL d", display: C-d, popup: KEYBOARD} \
+]]
 #+end_src
 
 * cli

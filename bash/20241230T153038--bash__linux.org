@@ -8,11 +8,12 @@
 #+begin_src elisp
 (org-babel-tangle)
 
-(let ((rc (expand-file-name "home/.bashrc" zr-termux-root-directory)))
-  (when (file-exists-p rc)
-    (unless (file-symlink-p rc)
-      (rename-file rc (concat rc ".bak"))))
-  (make-symbolic-link (expand-file-name "_tangle/rc/general") rc t))
+(when (eq 'android system-type)
+  (let ((rc (expand-file-name "home/.bashrc" zr-termux-root-directory)))
+    (when (file-exists-p rc)
+      (unless (file-symlink-p rc)
+        (rename-file rc (concat rc ".bak"))))
+    (make-symbolic-link (expand-file-name "_tangle/rc/general") rc t)))
 #+end_src
 
 * rc
@@ -102,34 +103,34 @@ fi
 
 ** termux
 
-*** ssl_cert
-#+begin_src sh :tangle (zr-org-by-tangle-dir "termux")
+*** non-interactive
+:PROPERTIES:
+:header-args:sh: :tangle (zr-org-by-tangle-dir "termux")
+:END:
+
+**** ssl_cert
+:PROPERTIES:
+:CUSTOM_ID: 6b4885c2-c3f7-4f7a-b888-16466bd7cec9
+:END:
+#+begin_src sh
 export SSL_CERT_DIR=$PREFIX/etc/tls/
 #+end_src
 
-*** splash-screen
-:PROPERTIES:
-:CUSTOM_ID: ba4e3893-d838-4df9-8fe2-5b14189c555f
-:END:
-#+begin_src sh :tangle (zr-org-by-tangle-dir "termux_i")
-zr-cli wlan-ip
-#+end_src
-
-*** network
+**** network
 :PROPERTIES:
 :CUSTOM_ID: c443b8e1-b807-4f43-a652-32b65c10ae0a
 :END:
-#+begin_src sh :tangle (zr-org-by-tangle-dir "termux") 
+#+begin_src sh
 check_home_network() {
   termux-wifi-connectioninfo  | grep -q '\(pppoppt\|ppptppo\)'
 }
 #+end_src
 
-*** retroarch
+**** retroarch
 :PROPERTIES:
 :CUSTOM_ID: 289bd6c9-63c0-467b-819b-ea82aa91863e
 :END:
-#+begin_src sh :tangle (zr-org-by-tangle-dir "termux")
+#+begin_src sh
 retroarch_sync_pc() {
   if check_home_network && check_smb_connection 'smb://192.168.0.110/retroarch-sync/1.txt'; then
     for dir in saves states; do
@@ -140,7 +141,34 @@ retroarch_sync_pc() {
 }
 #+end_src
 
-#+begin_src sh :tangle (zr-org-by-tangle-dir "termux_i")
-retroarch_sync_pc
+*** interactive
+:PROPERTIES:
+:header-args:sh: :tangle (zr-org-by-tangle-dir "termux_i")
+:END:
+
+**** splash-screen
+:PROPERTIES:
+:CUSTOM_ID: ba4e3893-d838-4df9-8fe2-5b14189c555f
+:END:
+#+begin_src sh
+zr-cli wlan-ip
 #+end_src
 
+**** reload-settings
+:PROPERTIES:
+:CUSTOM_ID: fb062777-5c33-4eaa-921a-59f969b3c665
+:END:
+#+begin_src sh
+zr-reload-settings() {
+  local screen=normal
+  if [[ "$(zr-cli screen minip)" == "0" ]]; then
+    screen=mini
+  fi
+  cat ~/.termux/{base,$screen}.properties > ~/.termux/termux.properties
+  termux-reload-settings
+}
+
+if [ -f "~/.termux/base.properties" ]; then
+  zr-reload-settings
+fi
+#+end_src
