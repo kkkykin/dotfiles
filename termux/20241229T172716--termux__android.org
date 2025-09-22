@@ -75,7 +75,7 @@ extra-keys = [[ \
   LEFT, \
   DOWN, \
   UP, \
-  RIGHT
+  RIGHT \
 ]]
 #+end_src
 
