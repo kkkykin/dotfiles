@@ -112,7 +112,7 @@ export SSL_CERT_DIR=$PREFIX/etc/tls/
 :CUSTOM_ID: ba4e3893-d838-4df9-8fe2-5b14189c555f
 :END:
 #+begin_src sh :tangle (zr-org-by-tangle-dir "termux_i")
-ifconfig 2>/dev/null | grep 255.255.255.0
+zr-cli wlan-ip
 #+end_src
 
 *** network
