@@ -67,14 +67,28 @@ allow-external-apps = true
 #+end_src
 
 #+begin_src conf-unix :mkdirp t :tangle (zr-org-by-tangle-dir "normal.properties")
-extra-keys = [[ESC, CTRL, ALT, LEFT, DOWN, UP, RIGHT, KEYBOARD]]
+extra-keys = [[ \
+  <<reload-settings-property>>
+  ESC, \
+  CTRL, \
+  ALT, \
+  LEFT, \
+  DOWN, \
+  UP, \
+  RIGHT
+]]
 #+end_src
 
 #+begin_src conf-unix :mkdirp t :tangle (zr-org-by-tangle-dir "mini.properties")
 extra-keys = [[ \
-  {macro: "zr-reload-settings\n", display: "Reload", popup: KEYBOARD}, \
+  <<reload-settings-property>>
   {macro: "CTRL d", display: C-d, popup: KEYBOARD} \
 ]]
+#+end_src
+
+#+name: reload-settings-property
+#+begin_src conf-unix :tangle no
+{macro: "zr-reload-settings\n", display: "Re", popup: KEYBOARD}, \
 #+end_src
 
 * cli
