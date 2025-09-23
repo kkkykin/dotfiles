@@ -357,7 +357,7 @@ const ORIGINAL_RPC_URLS = [
       pattern: /.*/,
       rpc: aria2_remote_url,
       secret: aria2_remote_token,
-      defaultOpt: { dir: '' }
+      defaultOpt: { dir: 'Downloads/' }
     }
   ];
 
@@ -416,22 +416,20 @@ const ORIGINAL_RPC_URLS = [
     if (shouldReplace(url) && opts.body) {
       try {
         const p = JSON.parse(opts.body);
-        if (p.method === 'aria2.addUri') {
-          p.params = rebuildParams(p.params);
-          return new Promise((resolve, reject) => {
-            GM_xmlhttpRequest({
-              method : 'POST',
-              url    : ARIA2_CFG.rpc,
-              headers: { 'Content-Type': 'application/json' },
-              data   : JSON.stringify(p),
-              onload : r => resolve({
-                ok:true, status:200,
-                json:()=>Promise.resolve(JSON.parse(r.responseText))
-              }),
-              onerror: reject
-            });
+        p.params = rebuildParams(p.params);
+        return new Promise((resolve, reject) => {
+          GM_xmlhttpRequest({
+            method : 'POST',
+            url    : ARIA2_CFG.rpc,
+            headers: { 'Content-Type': 'application/json' },
+            data   : JSON.stringify(p),
+            onload : r => resolve({
+              ok:true, status:200,
+              json:()=>Promise.resolve(JSON.parse(r.responseText))
+            }),
+            onerror: reject
           });
-        }
+        });
       } catch (e) { console.error('[fetch 劫持] 失败:', e); }
     }
     return _fetch.apply(this, arguments);
@@ -454,11 +452,9 @@ const ORIGINAL_RPC_URLS = [
       if (shouldReplace(url) && data) {
         try {
           const p = JSON.parse(data);
-          if (p.method === 'aria2.addUri') {
-            p.params = rebuildParams(p.params);
-            _open.call(this, method, ARIA2_CFG.rpc, true);
-            arguments[0] = JSON.stringify(p);
-          }
+          p.params = rebuildParams(p.params);
+          _open.call(this, method, ARIA2_CFG.rpc, true);
+          arguments[0] = JSON.stringify(p);
         } catch (e) { console.error('[XHR 劫持] 失败:', e); }
       }
       return _send.apply(this, arguments);
