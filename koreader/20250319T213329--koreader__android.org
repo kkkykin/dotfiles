@@ -11,7 +11,7 @@
 
 * settings
 :PROPERTIES:
-:tangle-dir: /storage/emulated/0/koreader/settings
+:tangle-dir: (if (eq 'android system-type) "/storage/emulated/0/koreader/settings" zr-org-tangle-default-dir)
 :END:
 
 ** perception_expander
@@ -26,7 +26,7 @@ return {
 
 * style
 :PROPERTIES:
-:tangle-dir: /storage/emulated/0/koreader/styletweaks
+:tangle-dir: (if (eq 'android system-type) "/storage/emulated/0/koreader/styletweaks" zr-org-tangle-default-dir)
 :END:
 
 ** no-image
@@ -41,15 +41,17 @@ img, svg {
 
 * patches
 :PROPERTIES:
-:tangle-dir: /storage/emulated/0/koreader/patches
+:tangle-dir: (if (eq 'android system-type) "/storage/emulated/0/koreader/patches" zr-org-tangle-default-dir)
 :CUSTOM_ID: 0fc9e81f-6433-4e73-b443-f545f4e4c87e
 :END:
 
-** hide-curout
+** hide-cutout
 :PROPERTIES:
 :CUSTOM_ID: 13adabbe-183c-4fac-9a20-e8dcd762a921
 :END:
-#+begin_src lua :mkdirp t :tangle (zr-org-by-tangle-dir "10-hide-cutout.lua") :prologue "local screen = require('android').screen" :var screen.height=(string-to-number (replace-regexp-in-string "^Physical size: [[:digit:]]+x\\([[:digit:]]+\\)\n" "\\1" (zr-android-rish-command-to-string "wm size")))
+#+header: :prologue "local screen = require('android').screen"
+#+header: :var screen.height=(if (eq 'android system-type) (string-to-number (replace-regexp-in-string "^Physical size: [[:digit:]]+x\\([[:digit:]]+\\)\n" "\\1" (zr-android-rish-command-to-string "wm size"))) "dummy")
+#+begin_src lua :mkdirp t :tangle (zr-org-by-tangle-dir "10-hide-cutout.lua")
 #+end_src
 
 ** settings
@@ -113,7 +115,7 @@ end
 
 * terminal
 :PROPERTIES:
-:tangle-dir: /storage/emulated/0/koreader/scripts
+:tangle-dir: (if (eq 'android system-type) "/storage/emulated/0/koreader/scripts" zr-org-tangle-default-dir)
 :CUSTOM_ID: d813743c-d2d6-49dc-8655-b17dd74b20ac
 :END:
 #+begin_src sh :tangle (zr-org-by-tangle-dir "profile.user")
