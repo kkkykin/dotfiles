@@ -11,10 +11,44 @@
 
 * settings
 :PROPERTIES:
+:tangle-dir: (if (eq 'android system-type) "/storage/emulated/0/koreader" zr-org-tangle-default-dir)
+:END:
+
+** main
+:PROPERTIES:
+:CUSTOM_ID: 31f80453-32fa-4602-8245-9ba3c141aba6
+:END:
+#+begin_src lua :tangle (zr-org-by-tangle-dir "settings.reader.lua") :mkdirp t
+return {
+  ["android_ignore_volume_keys"] = true,
+  ["android_screen_timeout"] = -1,
+  ["autoremove_deleted_items_from_history"] = true,
+  ["collate"] = "access",
+  ["download_dir"] = "/storage/emulated/0/Books",
+  ["home_dir"] = "/storage/emulated/0/Books",
+  ["http_proxy"] = "http://127.0.0.1:10807",
+  ["http_proxy_enabled"] = false,
+  ["last_migration_date"] = 20250601,
+  ["multiswipes_enabled"] = true,
+  ["profiles_autoexec"] =
+   {
+     ["ReaderReady"] =
+      {
+        ["alt status bar"] = true,
+      },
+   },
+  ["quickstart_shown_version"] = 202508000000,
+  ["reverse_collate"] = true,
+  ["wifi_enable_action"] = "ignore",
+}
+#+end_src
+
+** other
+:PROPERTIES:
 :tangle-dir: (if (eq 'android system-type) "/storage/emulated/0/koreader/settings" zr-org-tangle-default-dir)
 :END:
 
-** perception_expander
+*** perception_expander
 :PROPERTIES:
 :CUSTOM_ID: 584878ee-97f7-48f3-a508-691b60a1fa63
 :END:
@@ -23,6 +57,28 @@ return {
   ["is_enabled"] = true,
 }
 #+end_src
+
+*** profiles
+:PROPERTIES:
+:CUSTOM_ID: 8c013e7d-a376-4b5b-b06c-f169b514fb1e
+:END:
+#+begin_src lua :tangle (zr-org-by-tangle-dir "profiles.lua") :mkdirp t
+return {
+  ["alt status bar"] =
+   {
+     ["settings"] =
+      {
+        ["name"] = "alt status bar",
+        ["order"] =
+         {
+           [1] = "status_line",
+         },
+      },
+     ["status_line"] = 0,
+   },
+}
+#+end_src
+
 
 * style
 :PROPERTIES:
@@ -54,21 +110,15 @@ img, svg {
 #+begin_src lua :mkdirp t :tangle (zr-org-by-tangle-dir "10-hide-cutout.lua")
 #+end_src
 
-** settings
+** utils
 :PROPERTIES:
 :CUSTOM_ID: a0ab750b-b797-4535-a6f9-39f856b6a9f6
 :END:
-#+begin_src lua :tangle (zr-org-by-tangle-dir "2-settings.lua")
+#+begin_src lua :tangle (zr-org-by-tangle-dir "2-utils.lua")
 local android = require('android')
 local ffi = require("ffi")
 local C = ffi.C
 local DataStorage = require("datastorage")
-
-android.setVolumeKeysIgnored(true)
--- android.timeout.set(-1)
-G_reader_settings:saveSetting("download_dir", '/storage/emulated/0/Books')
-G_reader_settings:saveSetting("home_dir", G_reader_settings:readSetting("download_dir"))
-G_reader_settings:makeTrue("multiswipes_enabled")
 
 C.setenv("RISH_APPLICATION_ID", 'org.koreader.launcher', 1)
 
