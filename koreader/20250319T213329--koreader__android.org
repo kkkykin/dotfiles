@@ -6,7 +6,8 @@
 
 * tangle
 #+begin_src elisp
-(org-babel-tangle)
+(let ((zr-local-pls (plstore-open "koreader.pls")))
+  (org-babel-tangle))
 #+end_src
 
 * settings
@@ -47,6 +48,52 @@ return {
 :PROPERTIES:
 :tangle-dir: (if (eq 'android system-type) "/storage/emulated/0/koreader/settings" zr-org-tangle-default-dir)
 :END:
+
+*** cloudstorage
+:PROPERTIES:
+:CUSTOM_ID: b9d5d74b-e33b-460f-9e81-ffce4b770ded
+:END:
+#+header: :var zr_cs=(plist-get (cdr (plstore-get zr-local-pls "cs")) :server)
+#+begin_src lua :mkdirp t :tangle (zr-org-by-tangle-dir "cloudstorage.lua")
+local out = { cs_servers = {} }
+
+for i, v in ipairs(zr_cs) do
+  out.cs_servers[i] = {
+    name     = v[1],
+    username = v[2],
+    password = v[3],
+    address  = v[4],
+    type     = "webdav",
+    url      = "",
+  }
+end
+return out
+#+end_src
+
+*** opds
+:PROPERTIES:
+:CUSTOM_ID: 2bf4064a-bb05-46bb-a30d-e2563035b465
+:END:
+#+header: :var zr_opds=(plist-get (cdr (plstore-get zr-local-pls "opds")) :server)
+#+begin_src lua :mkdirp t :tangle (zr-org-by-tangle-dir "opds.lua")
+local out =
+  {
+    ["downloads"] = {},
+    ["pending_syncs"] = {},
+    ["servers"] = {},
+    ["settings"] = {},
+  }
+
+for i, v in ipairs(zr_opds) do
+  out.servers[i] = {
+    title    = v[1],
+    username = v[2],
+    password = v[3],
+    url      = v[4],
+  }
+end
+return out
+#+end_src
 
 *** perception_expander
 :PROPERTIES:
