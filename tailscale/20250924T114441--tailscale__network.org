@@ -1,0 +1,98 @@
+#+title:      tailscale
+#+date:       [2025-09-24 Wed 11:44]
+#+filetags:   :network:
+#+identifier: 20250924T114441
+
+* tangle
+#+begin_src elisp
+(zr-org-babel-json-format "acl-rules")
+(let ((zr-local-pls (plstore-open "tailscale.pls")))
+  (org-babel-tangle))
+#+end_src
+
+* acl
+:PROPERTIES:
+:CUSTOM_ID: 01deabc9-1e59-4dd2-a2a3-9aadcf7e9e30
+:END:
+#+name: acl-rules
+#+header: :var main_owner=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "owner")) :name)) 1 -1)
+#+begin_src json :mkdirp t :tangle (zr-org-by-tangle-dir "acl.json")
+{
+  "grants": [
+    {
+      "dst": [
+        "tag:home",
+        "tag:phone",
+        "tag:vps",
+        "autogroup:internet",
+        "$main_owner"
+      ],
+      "ip": [
+        "*"
+      ],
+      "src": [
+        "tag:home",
+        "tag:phone"
+      ]
+    }
+  ],
+  "tagOwners": {
+    "tag:com": [
+      "$main_owner"
+    ],
+    "tag:home": [
+      "$main_owner"
+    ],
+    "tag:phone": [
+      "$main_owner"
+    ],
+    "tag:vps": [
+      "$main_owner"
+    ]
+  },
+  "tests": [
+    {
+      "deny": [
+        "tag:home:80",
+        "tag:phone:80",
+        "tag:vps:80",
+        "$main_owner:80"
+      ],
+      "src": "tag:com"
+    },
+    {
+      "deny": [
+        "tag:home:80",
+        "tag:phone:80",
+        "tag:com:80",
+        "$main_owner:80"
+      ],
+      "src": "tag:vps"
+    },
+    {
+      "accept": [
+        "tag:home:80",
+        "tag:phone:80",
+        "tag:vps:80",
+        "$main_owner:80"
+      ],
+      "deny": [
+        "tag:com:80"
+      ],
+      "src": "tag:home"
+    },
+    {
+      "accept": [
+        "tag:home:80",
+        "tag:phone:80",
+        "tag:vps:80",
+        "$main_owner:80"
+      ],
+      "deny": [
+        "tag:com:80"
+      ],
+      "src": "tag:phone"
+    }
+  ]
+}
+#+end_src
