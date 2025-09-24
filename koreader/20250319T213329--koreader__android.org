@@ -110,6 +110,66 @@ img, svg {
 #+begin_src lua :mkdirp t :tangle (zr-org-by-tangle-dir "10-hide-cutout.lua")
 #+end_src
 
+** auth-header
+:PROPERTIES:
+:CUSTOM_ID: 40e0faad-2d9d-44c2-a846-2e976044e265
+:END:
+#+begin_src lua :tangle (zr-org-by-tangle-dir "1-auth-header.lua")
+-- 统一patch http.request，将user/password参数转换为Authorization头
+-- 解决与HTTP代理服务器的兼容性问题
+
+local logger = require("logger")
+local mime = require("mime")
+local http = require("socket.http")
+
+logger.info("Applying unified HTTP Authorization header patch")
+
+-- 备份原始的http.request函数
+local orig_http_request = http.request
+
+-- 检查是否启用了HTTP代理
+local function isHTTPProxyEnabled()
+  return G_reader_settings:readSetting("http_proxy_enabled") and
+    G_reader_settings:readSetting("http_proxy")
+end
+
+-- 重写http.request函数
+http.request = function(request_or_url, body)
+  if not isHTTPProxyEnabled() then
+    return orig_http_request(request_or_url)
+  end
+
+  local request
+
+  -- 处理两种调用方式：http.request(url) 和 http.request(request_table)
+  if type(request_or_url) == "string" then
+    request = { url = request_or_url }
+    if body then
+      request.source = ltn12.source.string(body)
+    end
+  else
+    request = request_or_url
+  end
+
+  -- 如果存在user和password参数，转换为Authorization头
+  if request.user and request.password then
+    request.headers = request.headers or {}
+    request.headers["Authorization"] = "Basic " .. mime.b64(request.user .. ":" .. request.password)
+
+    -- 移除user和password参数，避免重复认证
+    request.user = nil
+    request.password = nil
+
+    logger.dbg("HTTP request: converted user/password to Authorization header")
+  end
+
+  -- 调用原始的http.request函数
+  return orig_http_request(request)
+end
+
+logger.info("Unified HTTP Authorization header patch applied successfully")
+#+end_src
+
 ** utils
 :PROPERTIES:
 :CUSTOM_ID: a0ab750b-b797-4535-a6f9-39f856b6a9f6
