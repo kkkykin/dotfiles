@@ -120,7 +120,7 @@ edgeToggle(){
   }
   local edgeWins := WinGetList(edgeWinName)
   switch edgeWins.length {
-    case 0: Run(EnvGet('ProgramFiles(x86)') '\Microsoft\Edge\Application\msedge.exe --profile-directory=Default')
+    case 0: Run(EnvGet('ProgramFiles(x86)') '\Microsoft\Edge\Application\msedge.exe --profile-directory=Default --remote-debugging-port=9222')
     case 1: WinActivate(edgeWins[1])
     default:
     {
@@ -924,6 +924,7 @@ bossIsComing(){
   DllCall('SystemParametersInfoW', 'UInt', 0x14, 'UInt', 0, 'Ptr', 0, 'UInt', 2)
   SoundSetMute 1
   winMinimizeAll('ahk_group NSFW')
+  Run 'uv run "' A_ScriptDir '/../../uv/_tangle/scripts/chrome_ctrl.py" close "^https://asmr.one/"',, 'Hide'
   Run 'emacsclient -e "(zr-moyu-quit-window)"',, 'Hide'
   executeHooks(post_boss_hook)
 }

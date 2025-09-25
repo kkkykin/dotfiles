@@ -22,3 +22,73 @@
 url = "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple/"
 default = true
 #+end_src
+
+* scripts
+:PROPERTIES:
+:tangle-dir: _tangle/scripts
+:header-args:py: :shebang "#!/usr/bin/env -S uv run"
+:END:
+
+** browser
+:PROPERTIES:
+:CUSTOM_ID: 0dc9436b-511b-441a-b051-ead342d8d286
+:END:
+#+begin_src py :mkdirp t :tangle (zr-org-by-tangle-dir "chrome_ctrl.py")
+"""
+chrome_ctrl.py
+关闭与正则匹配的 Chrome 标签页
+用法:
+  python chrome_ctrl.py close '<regex>'
+"""
+import sys
+import re
+import json
+import urllib.request as req
+import urllib.error
+
+DEBUG_PORT = 9222
+DEBUG_URL = f"http://127.0.0.1:{DEBUG_PORT}"
+
+def get_tabs():
+  """返回 List[dict]，每个 dict 含 id / url / title 等字段"""
+  try:
+    with req.urlopen(f"{DEBUG_URL}/json/list", timeout=3) as resp:
+      return json.loads(resp.read())
+  except Exception as e:
+    print("获取标签页失败:", e, file=sys.stderr)
+    sys.exit(2)
+
+
+def close_tab(tab_id):
+  """调用 Chrome DevTools HTTP 接口关闭标签页"""
+  url = f"{DEBUG_URL}/json/close/{tab_id}"
+  try:
+    req.urlopen(url, timeout=3).read()
+  except urllib.error.HTTPError as e:
+    # 404 表示标签页已不存在，可忽略
+    if e.code != 404:
+      print(f"关闭 {tab_id} 失败:", e, file=sys.stderr)
+
+
+def main():
+  if len(sys.argv) != 3 or sys.argv[1] != "close":
+    print("用法: python chrome_ctrl.py close '<regex>'", file=sys.stderr)
+    sys.exit(1)
+
+  pattern = re.compile(sys.argv[2])
+  tabs = get_tabs()
+  closed = 0
+
+  for tab in tabs:
+    url = tab.get("url", "")
+    if pattern.search(url) and tab.get("type", "") == "page":
+      close_tab(tab["id"])
+      closed += 1
+      print(f"关闭: {url}")
+
+  print(f"共关闭 {closed} 个标签页")
+
+
+if __name__ == "__main__":
+  main()
+#+end_src
