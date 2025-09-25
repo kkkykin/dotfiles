@@ -967,6 +967,7 @@ Capslock & PrintScreen::capturePrintWindow
 
 <^.::^NumpadDot
 
+Capslock & q::Media_Play_Pause
 Capslock & t::WinSetAlwaysOnTop(-1, 'A')
 Capslock & d::Run 'hh.exe "ms-its:' RegExReplace(A_AhkPath, 'UX\\AutoHotkeyUX\.exe$', 'v2\AutoHotkey.chm')  '"', , 'Max'
 Capslock & s::Run A_Programs '\AutoHotkey Window Spy.lnk'
