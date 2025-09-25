@@ -94,6 +94,7 @@ extra-keys = [[ \
 * cli
 :PROPERTIES:
 :tangle-dir: _tangle/bin
+:header-args:sh+: :var EXTERNAL_DIR="/storage/emulated/0/Android/media/com.termux"
 :END:
 
 ** emacsclient
@@ -132,7 +133,7 @@ export EMACS_SOCKET_NAME
 #+begin_src sh :tangle (zr-org-by-tangle-dir "zr-cli") :var SCRIPT_DIR=(expand-file-name "_tangle/bin")
 SCRIPT_DIRS=()
 SCRIPT_DIRS+=("$SCRIPT_DIR")
-SCRIPT_DIRS+=("$RISH_SCRIPT_DIR")
+SCRIPT_DIRS+=("$EXTERNAL_DIR/bin")
 
 # 显示帮助信息（列出所有可用脚本）
 show_help() {
@@ -189,7 +190,7 @@ if [[ -z "$script_path" ]]; then
   exit 2
 fi
 
-if [[ "$(dirname $script_path)" == "$RISH_SCRIPT_DIR" ]]; then
+if [[ "$(dirname $script_path)" == "$EXTERNAL_DIR/bin" ]]; then
   rish "$script_path" "$@"
 else
   exec "$script_path" "$@"
@@ -448,6 +449,188 @@ case "$1" in
         echo "Error: Argument must be 'true' or 'false'" >&2
         exit 1
         ;;
+esac
+#+end_src
+
+** fdroid
+:PROPERTIES:
+:header-args:sh+: :var CACHE_DIR=(expand-file-name "adb-wrapper-cache" temporary-file-directory)
+:header-args:sh+: :var ADB_DIR=(zr-org-by-tangle-dir "")
+:CUSTOM_ID: 74e5e824-18ac-4bc7-b930-554bc658fdcf
+:END:
+
+#+begin_src sh :tangle (zr-org-by-tangle-dir "fdroid")
+args=()
+clean_cache=false
+
+# Loop through all provided arguments.
+for arg in "$@"; do
+  if [[ "$arg" == "--clean-cache" ]]; then
+    # If --clean-cache is found, set a flag but don't add it to the args for fdroidcl.
+    clean_cache=true
+  else
+    # Add all other arguments to the list for fdroidcl.
+    args+=("$arg")
+  fi
+done
+
+# --- Cache Cleaning ---
+if [ "$clean_cache" = true ]; then
+  echo "Cleaning cache directory: $CACHE_DIR"
+  rm -rf "$CACHE_DIR"
+fi
+
+# --- ENV Modification ---
+export PATH="$ADB_DIR:$PATH"
+export https_proxy="socks5h://127.0.0.1:10807"
+
+# --- Execute fdroidcl ---
+# Execute the real fdroidcl command, passing along the filtered arguments.
+exec fdroidcl "${args[@]}"
+#+end_src
+
+#+begin_src sh :tangle (zr-org-by-tangle-dir "adb")
+CACHE_DIR="/data/data/com.termux/files/usr/tmp/adb-wrapper-cache"
+CACHE_TTL=$((60 * 5)) # Cache time-to-live in seconds
+APK_TARGET_DIR="$EXTERNAL_DIR/apks"
+
+# Function to handle logging
+log() {
+  # echo "adb-wrapper: $@" >> /data/data/com.termux/files/usr/tmp/adb-wrapper.log
+}
+
+# Ensure cache directory exists
+mkdir -p "$CACHE_DIR"
+
+# --- Main Script ---
+
+# Clean up log file on start
+# echo "" > /data/data/com.termux/files/usr/tmp/adb-wrapper.log
+log "Wrapper started"
+log "Arguments: $@"
+
+# Listen on port 5037 in the background to simulate adb server
+if ! nc -z 127.0.0.1 5037; then
+  log "Starting listener on port 5037"
+  nc -l -p 5037 > /dev/null 2>&1 &
+fi
+
+# --- Command Handling ---
+
+case "$1" in
+  "start-server")
+    log "Handling start-server"
+    exit 0
+    ;;
+  "devices")
+    log "Handling devices -l"
+    CACHE_FILE="$CACHE_DIR/devices"
+    if [ -f "$CACHE_FILE" ] && [ $(($(date +%s) - $(date +%s -r "$CACHE_FILE"))) -lt $CACHE_TTL ]; then
+      log "Returning cached devices output"
+      cat "$CACHE_FILE"
+      exit 0
+    fi
+    log "Fetching new devices output"
+    serial=$(rish -c 'getprop ro.serialno' | tr -d '[:space:]')
+    {
+      echo "List of devices attached"
+      printf "% -22s device product:generic model:generic device:generic\n" "$serial"
+    } > "$CACHE_FILE"
+    cat "$CACHE_FILE"
+    exit 0
+    ;;
+  "-s")
+    log "Ignoring -s $2"
+    shift 2
+    ;;
+esac
+
+# Handle remaining commands
+case "$1" in
+  "install")
+    shift
+    log "Handling install (no cache) with args: $@"
+    
+    args=("$@")
+    apk_path="${args[-1]}"
+    
+    apk_filename=$(basename "$apk_path")
+    new_apk_path="$APK_TARGET_DIR/$apk_filename"
+    tmp_apk_path="/data/local/tmp/$apk_filename"
+    
+    if [[ -L "$apk_path" ]]; then
+      if [[ ! -e "$apk_path" ]]; then
+        rm -f "$apk_path"{,-etag}
+      fi
+    else
+      log "Creating symlink from '$new_apk_path' to '$apk_path'"
+      mkdir -p "$APK_TARGET_DIR"
+      mv "$apk_path" "$new_apk_path"
+      ln -s "$new_apk_path" "$apk_path"
+    fi
+    # Replace original path with the tmp path for the install command
+    args[-1]="$tmp_apk_path"
+    
+    log "install (no cache) with args: ${args[@]}"
+    # All arguments except the last one
+    install_options=("${args[@]:0:${#args[@]}-1}")
+    # The last argument is the path, which we need to quote for the remote shell
+    install_path_arg="'${args[-1]}'"
+    
+    # Construct the full command for rish
+    remote_cmd="cp -f '$new_apk_path' '$tmp_apk_path' && pm install ${install_options[@]} $install_path_arg && rm -f '$tmp_apk_path'"
+    log "Executing remote command: $remote_cmd"
+    rish -c "$remote_cmd"
+    if [ $? -eq 0 ]; then
+      echo "Success"
+    fi
+    exit $?
+    ;;
+  "uninstall")
+    # This command is whitelisted and will not be cached
+    cmd_name="$1"
+    shift
+    log "Handling $cmd_name (no cache) with args: $@"
+    rish -c "pm $cmd_name $@"
+    if [ $? -eq 0 ]; then
+      echo "Success"
+    fi
+    exit $?
+    ;;
+  "shell")
+    shift
+    cmd="$*"
+    log "Handling shell with command: $cmd"
+    
+    # Whitelist certain commands from caching
+    if [[ "$cmd" == "dumpsys package packages" ]]; then
+      log "Executing whitelisted command (no cache): $cmd"
+      rish -c "$cmd"
+      exit ${PIPESTATUS[0]}
+    fi
+    
+    # Generate a cache key for the command
+    CACHE_KEY=$(echo -n "$cmd" | md5sum | awk '{print $1}')
+    CACHE_FILE="$CACHE_DIR/$CACHE_KEY"
+    
+    # Check for a recent cached file
+    if [ -f "$CACHE_FILE" ] && [ $(($(date +%s) - $(date +%s -r "$CACHE_FILE"))) -lt $CACHE_TTL ]; then
+      log "Returning cached output for: $cmd"
+      cat "$CACHE_FILE"
+      exit 0
+    fi
+    
+    # Execute the command and cache the output
+    log "Executing and caching: $cmd"
+    rish -c "$cmd" > "$CACHE_FILE"
+    cat "$CACHE_FILE"
+    exit ${PIPESTATUS[0]}
+    ;;
+  ,*)
+    log "Unknown command: $@"
+    echo "Unknown command: $@" >&2
+    exit 1
+    ;;
 esac
 #+end_src
 
