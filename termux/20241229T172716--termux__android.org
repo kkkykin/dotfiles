@@ -455,7 +455,7 @@ esac
 ** fdroid
 :PROPERTIES:
 :header-args:sh+: :var CACHE_DIR=(expand-file-name "adb-wrapper-cache" temporary-file-directory)
-:header-args:sh+: :var ADB_DIR=(zr-org-by-tangle-dir "")
+:header-args:sh+: :var ADB_DIR=(zr-org-by-tangle-dir "bin")
 :CUSTOM_ID: 74e5e824-18ac-4bc7-b930-554bc658fdcf
 :END:
 
@@ -500,6 +500,7 @@ WHITELIST['dumpsys activity']=1
 
 # Function to handle logging
 log() {
+  :
   # echo "adb-wrapper: $@" >> /data/data/com.termux/files/usr/tmp/adb-wrapper.log
 }
 
