@@ -494,6 +494,10 @@ CACHE_DIR="/data/data/com.termux/files/usr/tmp/adb-wrapper-cache"
 CACHE_TTL=$((60 * 5)) # Cache time-to-live in seconds
 APK_TARGET_DIR="$EXTERNAL_DIR/apks"
 
+declare -A WHITELIST
+WHITELIST['dumpsys package packages']=1
+WHITELIST['dumpsys activity']=1
+
 # Function to handle logging
 log() {
   # echo "adb-wrapper: $@" >> /data/data/com.termux/files/usr/tmp/adb-wrapper.log
@@ -603,9 +607,9 @@ case "$1" in
     log "Handling shell with command: $cmd"
     
     # Whitelist certain commands from caching
-    if [[ "$cmd" == "dumpsys package packages" ]]; then
+    if [[ -v WHITELIST["$cmd"] ]]; then
       log "Executing whitelisted command (no cache): $cmd"
-      rish -c "$cmd"
+      eval "/system/bin/$cmd"
       exit ${PIPESTATUS[0]}
     fi
     
