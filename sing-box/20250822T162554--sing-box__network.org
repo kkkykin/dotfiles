@@ -393,7 +393,6 @@
     }
   ],
   "route": {
-    "auto_detect_interface": true,
     "default_domain_resolver": {
       "server": "ali-quic"
     },
@@ -699,7 +698,10 @@
       "strict_route": true,
       "type": "tun"
     }
-  ]
+  ],
+  "route": {
+    "auto_detect_interface": true
+  }
 }
 #+end_src
 
