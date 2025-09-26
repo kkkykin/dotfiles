@@ -20,15 +20,12 @@
 
 (when (eq system-type 'android)
   (let ((termux-path (expand-file-name "usr/bin" zr-termux-root-directory))
-        (etags-path (expand-file-name etags-program-name "~/../lib"))
         (intents-path (expand-file-name "home/bin" zr-termux-root-directory)))
-    (make-symbolic-link etags-path (expand-file-name "etags" termux-path) t)
     (mkdir intents-path t)
     (dolist (bin (directory-files "_tangle/intents" t "^[^.]" t))
       (let ((name (file-name-nondirectory bin)))
         (make-symbolic-link bin (expand-file-name name intents-path) t)))
-    (dolist (bin '("emacsclient"
-                   "zr-cli"))
+    (dolist (bin '("zr-cli"))
       (make-symbolic-link
        (expand-file-name bin "_tangle/bin")
        (expand-file-name bin termux-path)
@@ -101,7 +98,7 @@ extra-keys = [[ \
 :PROPERTIES:
 :CUSTOM_ID: 4bf09652-8c4c-44ad-96bf-7335f0efe5b5
 :END:
-#+begin_src sh :tangle (zr-org-by-tangle-dir "emacsclient") :var EMACS_SOCKET_NAME=(expand-file-name server-name server-socket-dir) emacsclient=(symbol-value 'emacsclient-program-name)
+#+begin_src sh :tangle (zr-org-by-tangle-dir "emacs") :var EMACS_SOCKET_NAME=(expand-file-name server-name server-socket-dir) emacsclient=(symbol-value 'emacsclient-program-name)
 set -euo pipefail
 
 cleanup() {
