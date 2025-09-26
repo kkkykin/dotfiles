@@ -10,7 +10,7 @@
 (let (org-babel-pre-tangle-hook
       org-confirm-babel-evaluate
       (dir "_tangle"))
-  (make-directory dir t)  
+  (make-directory dir t)
   (dolist (b '())
     (zr-org-babel-execute-named-src-block
      b '((:results . "raw replace value"))))
@@ -69,7 +69,7 @@ function extractDomainFromHost(hostname) {
       // IPv4
       return hostname;
     }
-    
+
     // Domain
     const parts = hostname.split('.');
     if (parts.length <= 2) {
@@ -443,11 +443,11 @@ function matchHost(host, rule_list) {
 
 function FindProxyForHost(host) {
   var lastPos;
-  
+
   if (pacGlobal.proxyMode === 'always') {
     return pacGlobal.proxy[0];
-  } 
-  
+  }
+
   else if (pacGlobal.proxyMode === 'bypass') {
     do {
       if (matchHost(host, pacGlobal.autoproxy_hosts[0])) {
@@ -457,8 +457,8 @@ function FindProxyForHost(host) {
       host = host.slice(lastPos);
     } while (lastPos >= 1);
     return pacGlobal.proxy[0];
-  } 
-  
+  }
+
   else {  // byhost mode
     for (var i = 0; i < pacGlobal.proxy.length; i++) {
       var ahost = host;
@@ -496,15 +496,61 @@ function FindProxyForURL(url, host) {
 :CUSTOM_ID: 60ddd28f-3a84-4104-9ff7-2a352320fe9b
 :END:
 #+begin_src js
+function doActions(actions) {
+  if (actions.length === 1) {
+    actions[0].action();
+    return;
+  }
+  if (actions.length === 0) {
+    Front.showBanner('无任何操作');
+    return;
+  }
+
+  actions.unshift({
+    title: '执行所有操作',
+    action: () => {
+      for (let i = 1; i < actions.length; i++) actions[i].action();
+      document.body.removeChild(container);
+    }
+  });
+
+  const container = document.createElement('div');
+  container.style.cssText =
+    'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:white;border:1px solid #ccc;padding:10px;z-index:9999;';
+
+  const elements = [];
+  for (let i = 0; i < actions.length; i++) {
+    const realIndex = i;
+    const action  = actions[i];
+
+    const option = document.createElement('div');
+    option.textContent = `${i + 1}. ${action.title}`;
+    option.style.cssText =
+      'padding:5px;cursor:pointer;border:1px solid transparent;display:block;min-height:20px;min-width:20px;';
+
+    option.onclick = () => {
+      actions[realIndex].action();
+      document.body.removeChild(container);
+    };
+
+    container.appendChild(option);
+    elements.push(option);
+  }
+
+  document.body.appendChild(container);
+  Hints.click(elements, false);
+}
+#+end_src
+
+#+begin_src js
 mapkey(',,', '根据当前URL执行特定操作', function() {
   const url = window.location.href;
-  let match
+  const actions = [];
+  let match;
 
-  <<github-to-deepwiki>>
+  <<github>>
 
-  else {
-    Front.showBanner('当前页面没有配置特定操作');
-  }
+  doActions(actions);
 });
 #+end_src
 
@@ -512,14 +558,23 @@ mapkey(',,', '根据当前URL执行特定操作', function() {
 :PROPERTIES:
 :header-args:js: :tangle no
 :END:
-#+name: github-to-deepwiki
+#+name: github
 #+begin_src js
-match = url.match(/^https:\/\/github\.com\/([^\/]+)\/([^\/]+)\/?/)
-if (match) {  
-  const user = match[1];  
-  const repo = match[2];  
-  const deepwikiUrl = `https://deepwiki.com/${user}/${repo}`;  
-  tabOpenLink(deepwikiUrl);
+match = url.match(/^https:\/\/github\.com\/([^\/]+)\/([^\/]+)\/?.*/)
+if (match) {
+  const user = match[1];
+  const repo = match[2];
+  const name = `${user}/${repo}`;
+  const wiki_home = 'https://deepwiki.com'
+  const zread_home = 'https://zread.ai'
+  actions.push({
+    title: `打开 DeepWiki: ${name}`,
+    action: () => tabOpenLink(`${wiki_home}/${name}`)
+  });
+  actions.push({
+    title: `打开 Zread: ${name}`,
+    action: () => tabOpenLink(`${zread_home}/${name}`)
+  });
 }
 #+end_src
 
