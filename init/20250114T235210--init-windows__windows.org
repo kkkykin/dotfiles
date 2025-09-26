@@ -11,9 +11,9 @@
 (make-directory "_tangle" t)
 (let (org-confirm-babel-evaluate
       (zr-local-pls (plstore-open "init.pls")))
-  (org-babel-tangle nil "^bat$")
+  (org-babel-tangle nil nil "^bat$")
   (let ((coding-system-for-write 'utf-8-with-signature))
-    (org-babel-tangle nil "^powershell$")))
+    (org-babel-tangle nil nil "^powershell$")))
 #+end_src
 
 * profile
@@ -103,8 +103,9 @@ start /b gpgconf.exe --launch gpg-agent
 #+end_src
 
 #+name: run_aria2c
-#+begin_src bat :var dir=(expand-file-name "../aria2/_tangle") all_proxy=(plist-get (cdr (plstore-get zr-local-pls "proxy")) :proxy)
+#+begin_src bat :var dir=(expand-file-name "../aria2/_tangle")
 <<check-prog(program="aria2c")>>
+all_proxy=http://127.0.0.1:10807
 start /b /d "%dir%" /abovenormal aria2c.exe --conf-path aria2.conf
 #+end_src
 
