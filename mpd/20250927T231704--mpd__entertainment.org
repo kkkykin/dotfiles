@@ -1,0 +1,35 @@
+#+title:      mpd
+#+date:       [2025-09-27 Sat 23:17]
+#+filetags:   :entertainment:
+#+identifier: 20250927T231704
+
+* tangle
+#+begin_src elisp
+(org-babel-tangle)
+#+end_src
+
+* config
+** main
+:PROPERTIES:
+:CUSTOM_ID: 986521ea-1583-46ee-9ffb-5286dc7830ef
+:END:
+
+#+header: :var audio_output=(zr-org-by-tangle-dir (concat (symbol-name system-type) ".audio"))
+#+header: :var db_file=(zr-org-by-tangle-dir "db")
+#+begin_src conf-unix :mkdirp t :tangle (zr-org-by-tangle-dir "mpd.conf")
+music_directory "..."
+db_file "$db_file"
+
+include "$audio_output"
+#+end_src
+
+** windows
+:PROPERTIES:
+:CUSTOM_ID: 0965a6d0-8411-48f6-b637-388e5945e983
+:END:
+#+begin_src conf-unix :tangle (zr-org-by-tangle-dir "windows-nt.audio")
+audio_output {
+  type "winmm"
+  name "Windows Audio"
+}
+#+end_src
