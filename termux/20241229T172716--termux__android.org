@@ -986,39 +986,67 @@ esac
 :CUSTOM_ID: 5651bc77-f77f-4a09-a0e0-9ce1afcbd5a5
 :END:
 #+begin_src sh :tangle (zr-org-by-tangle-dir "runbin")
-# 获取脚本参数
-name="$1"
-shift # 移除第一个参数，剩余参数保留
-
-# 定义路径
-src="/storage/emulated/0/Android/media/com.termux/bin/${name}"
-dst="/data/local/tmp/bin/${name}"
+# 源目录与目标目录
+SRC_DIR="/storage/emulated/0/Android/media/com.termux/bin"
+DST_DIR="/data/local/tmp/bin"
 
 # 确保目标目录存在
-mkdir -p "$(dirname "$dst")"
-
-# 判断源文件是否存在
-if [ ! -f "$src" ]; then
-  echo "Error: Source file not found: $src" >&2
+mkdir -p "$DST_DIR" 2>/dev/null || {
+  echo "Error: cannot create $DST_DIR" >&2
   exit 1
-fi
+}
 
-# 比较文件是否相同（内容一致且可执行）
-if [ -f "$dst" ] && cmp -s "$src" "$dst" && [ -x "$dst" ]; then
-  # 相同且可执行，直接运行
-  exec "$dst" "$@"
+# 工具函数：复制并赋权（仅当文件不同或目标不可执行时）
+sync_file() {
+  local s="$1" d="$2"
+  if [ ! -f "$s" ]; then
+    echo "Warning: $s disappeared, skip" >&2
+    return
+  fi
+  if [ -f "$d" ] && cmp -s "$s" "$d" && [ -x "$d" ]; then
+    return  # 完全相同且可执行，跳过
+  fi
+  cp "$s" "$d" && chmod 755 "$d" || {
+    echo "Error: failed to sync $s -> $d" >&2
+    return 1
+  }
+}
+
+# 批量同步整个目录
+sync_all() {
+  local f name
+  # 先处理源目录存在的文件
+  for f in "$SRC_DIR"/*; do
+    [ -e "$f" ] || continue    # 通配符无匹配时会原样返回
+    [ -f "$f" ] || continue    # 只处理普通文件
+    name="${f##*/}"
+    sync_file "$f" "$DST_DIR/$name"
+  done
+  # 可选：删除目标目录多余文件（默认注释掉，需要可打开）
+  # for f in "$DST_DIR"/*; do
+  #   [ -e "$f" ] || continue
+  #   [ -f "$f" ] || continue
+  #   name="${f##*/}"
+  #   [ -e "$SRC_DIR/$name" ] || rm -f "$f"
+  # done
+}
+
+# 两种调用方式判断
+if [ "$#" -eq 2 ] && [ "$1" = "-c" ]; then
+  # ---------------- 批量模式 ----------------
+  SHELL_CMD="$2"
+  sync_all
+  # 把 DST_DIR 插到 PATH 最前面
+  export PATH="$DST_DIR:$PATH"
+  # 执行 shell 命令
+  exec /system/bin/sh -c "$SHELL_CMD"
 else
-  # 不同或不可执行，复制并赋予权限
-  cp "$src" "$dst" || {
-    echo "Error: Failed to copy $src to $dst" >&2
-    exit 2
-  }
-  chmod 755 "$dst" || {
-    echo "Error: Failed to chmod $dst" >&2
-    exit 3
-  }
-  # 运行目标程序
-  exec "$dst" "$@"
+  # ---------------- 单文件模式 ----------------
+  NAME="$1"
+  [ -n "$NAME" ] || { echo "Usage: runbin <name> [args…]   or   runbin -c '<shell命令>'" >&2; exit 1; }
+  shift
+  sync_file "$SRC_DIR/$NAME" "$DST_DIR/$NAME" || exit $?
+  exec "$DST_DIR/$NAME" "$@"
 fi
 #+end_src
 
