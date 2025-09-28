@@ -150,9 +150,9 @@ demuxer-readahead-secs=20
 :PROPERTIES:
 :CUSTOM_ID: 570a656b-1bdf-4e69-b734-3abe3e2ed8fa
 :END:
-#+begin_src conf-unix :var server=(replace-regexp-in-string "^SOCKS5 " "http://" (zr-net-match-proxy-rule nil "google.com") t)
+#+begin_src conf-unix
 [proxy]
-http-proxy=$server
+http-proxy=http://127.0.0.1:10807
 #+end_src
 
 *** auto
