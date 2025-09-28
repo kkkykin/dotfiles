@@ -142,12 +142,11 @@
                     "-C" (cdr c)))
     (zr-android-call-rish
      (string-join
-      (list (format "rm -rf %s" (shell-quote-argument android-target-dir))
-            (format "sed -i 's,%s,%s,g' %s/*.json"
+      (list (format "sed -i 's,%s,%s,g' %s/*.json"
                     (expand-file-name "_tangle/")
                     android-target-dir
                     android-dir)
-            (format "mv %s %s"
+            (format "mv -f %s/* %s"
                     (shell-quote-argument android-dir)
                     (shell-quote-argument android-target-dir)))
       " && ")))
@@ -179,6 +178,8 @@
 :END:
 #+header: :var s0_pub_key=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vps0")) :pub-key)) 1 -1)
 #+header: :var rule_sets_dir=(expand-file-name rule-sets-dir)
+#+header: :var cache_path=(expand-file-name "cache.db" "_tangle")
+#+header: :var tailscale_state_dir=(expand-file-name "tailscale_state" "_tangle")
 #+header: :var jsdelivr="https://fastly.jsdelivr.net"
 #+header: :var dns_strategy=(if (zr-net-has-public-ipv6-addr-p) "prefer_ipv6" "ipv4_only")
 #+header: :var clash_secret=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "clash")) :secret)) 1 -1)
@@ -259,6 +260,7 @@
   },
   "endpoints": [
     {
+      "state_directory": "$tailscale_state_dir",
       "tag": "ts-ep",
       "type": "tailscale"
     }
@@ -266,6 +268,7 @@
   "experimental": {
     "cache_file": {
       "enabled": true,
+      "path": "$cache_path",
       "store_rdrc": true
     },
     "clash_api": {
