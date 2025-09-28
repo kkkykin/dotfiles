@@ -980,6 +980,48 @@ case "$1" in
     ;;
 esac
 #+end_src
+
+** runbin
+:PROPERTIES:
+:CUSTOM_ID: 5651bc77-f77f-4a09-a0e0-9ce1afcbd5a5
+:END:
+#+begin_src sh :tangle (zr-org-by-tangle-dir "runbin")
+# 获取脚本参数
+name="$1"
+shift # 移除第一个参数，剩余参数保留
+
+# 定义路径
+src="/storage/emulated/0/Android/media/com.termux/bin/${name}"
+dst="/data/local/tmp/bin/${name}"
+
+# 确保目标目录存在
+mkdir -p "$(dirname "$dst")"
+
+# 判断源文件是否存在
+if [ ! -f "$src" ]; then
+  echo "Error: Source file not found: $src" >&2
+  exit 1
+fi
+
+# 比较文件是否相同（内容一致且可执行）
+if [ -f "$dst" ] && cmp -s "$src" "$dst" && [ -x "$dst" ]; then
+  # 相同且可执行，直接运行
+  exec "$dst" "$@"
+else
+  # 不同或不可执行，复制并赋予权限
+  cp "$src" "$dst" || {
+    echo "Error: Failed to copy $src to $dst" >&2
+    exit 2
+  }
+  chmod 755 "$dst" || {
+    echo "Error: Failed to chmod $dst" >&2
+    exit 3
+  }
+  # 运行目标程序
+  exec "$dst" "$@"
+fi
+#+end_src
+
 * daemons
 :PROPERTIES:
 :tangle-dir: _tangle/daemons
