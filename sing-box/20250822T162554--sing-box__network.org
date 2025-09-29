@@ -81,10 +81,11 @@
                            sub-dir))
             (mapc
              (lambda (obd)
-               (when-let* (((not (member (alist-get "type" obd nil nil #'string=)
-                                         '("direct" "selector" "urltest"
-                                           "block" "dns"))))
-                           (tag (format "%s[%s]" (alist-get "tag" obd nil nil #'string=) name)))
+               (when-let* (((not (or (member (alist-get 'type obd)
+                                             '("direct" "selector" "urltest"
+                                               "block" "dns"))
+                                     (assoc 'plugin obd))))
+                           (tag (format "%s[%s]" (alist-get 'tag obd) name)))
                  ;; (cond
                  ;;  ((string-match-p "美国" tag)
                  ;;   (push tag us-outbounds))
