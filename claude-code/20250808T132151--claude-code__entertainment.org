@@ -19,7 +19,7 @@
 :CUSTOM_ID: adfd55f4-ab10-4045-bfc0-d3d794ebf571
 :END:
 #+name: settings
-#+header: :var modelscope_api_key=(auth-source-pick-first-password :host "modelscope.api")
+#+header: :var modelscope_api_key=(auth-source-pick-first-password :user "apikey" :host "api-inference.modelscope.cn")
 #+begin_src json :comments no :mkdirp t :tangle (zr-org-by-tangle-dir "settings.json")
 {
   "env": {

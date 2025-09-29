@@ -32,9 +32,9 @@
 :CUSTOM_ID: 3ed1f275-c138-49b9-8c58-32cf8e5dd4d7
 :END:
 #+name: config
-#+header: :var modelscope_api_key=(auth-source-pick-first-password :host "modelscope.api")
-#+header: :var gemini_api_key=(auth-source-pick-first-password :host "gemini.api")
-#+header: :var iflow_api_key=(auth-source-pick-first-password :host "iflow.api")
+#+header: :var modelscope_api_key=(auth-source-pick-first-password :user "apikey" :host "api-inference.modelscope.cn")
+#+header: :var gemini_api_key=(auth-source-pick-first-password :user "apikey" :host "generativelanguage.googleapis.com")
+#+header: :var iflow_api_key=(auth-source-pick-first-password :user "apikey" :host "apis.iflow.cn")
 #+header: :var revo_email=(plist-get (car (auth-source-search :host "atlassion.api")) :user)
 #+header: :var revo_token=(auth-source-pick-first-password :host "atlassion.api")
 #+header: :var plugin_dir=(expand-file-name "_plugins")
