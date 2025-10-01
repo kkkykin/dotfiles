@@ -1,0 +1,30 @@
+#+title:      caddy
+#+date:       [2025-10-01 Wed 00:49]
+#+filetags:   :server:
+#+identifier: 20251001T004952
+
+* tangle
+#+header: :var curl-args='("-xsocks5h://127.0.0.1:10807")
+#+begin_src elisp tangle
+(let* ((name (pcase system-type
+               ('windows-nt "windows-amd64")
+               ('android "linux-arm64")
+               ('gnu/linux "linux-amd64")))
+       (tangle-dir (expand-file-name "_tangle/"))
+       (bin-dir (pcase system-type
+                  ('windows-nt (substitute-in-file-name "$userprofile/.local/bin/"))
+                  ('android (expand-file-name "usr/bin/" zr-termux-root-directory))
+                  ('gnu/linux tangle-dir)))
+       (url (format "https://github.com/kkkykin/custom-caddy/releases/latest/download/caddy-%s.tar.gz" name)))
+  (mkdir bin-dir t)
+  (call-process-shell-command
+   (format "curl -sSL --etag-compare _etag.txt --etag-save _etag.txt %s %s | tar -xzf - -C %s"
+           (mapconcat #'shell-quote-argument curl-args " ")
+           (shell-quote-argument url)
+           (shell-quote-argument tangle-dir))
+   nil 0)
+  (when-let* (((not (string= tangle-dir bin-dir)))
+              (exec-path (list tangle-dir))
+              (caddy-path (executable-find "caddy")))
+    (make-symbolic-link caddy-path bin-dir t)))
+#+end_src
