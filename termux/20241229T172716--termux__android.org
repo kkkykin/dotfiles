@@ -1156,16 +1156,19 @@ stop(){
 #+end_src
 
 ** sing-box
+:PROPERTIES:
+:CUSTOM_ID: 2d80634e-8ba8-4ca0-b98b-22fa6c7b7413
+:END:
 #+begin_src sh :tangle (zr-org-by-tangle-dir "sing-box")
 stat(){
   curl -m1 -xsocks5h://127.0.0.1:10807 http://127.0.0.1:1
-  [ $? -eq 56 ]
+  [ $? -eq 97 ]
 }
 
 start(){
   local base_dir
   base_dir="/storage/emulated/0/Android/media/io.nekohasekai.sfa"
-  zr-cli runbin -c "sing-box run -c '$base_dir'/main.json > '$base_dir'/log 2>&1 &"
+  nohup zr-cli runbin -c "sing-box run -c '$base_dir'/main.json > '$base_dir'/log 2>&1 &" >/dev/null 2>&1 &
   termux-notification \
     --ongoing -c "ADB Running" -t "sing-box" \
     --group "$NOTIFICATION_GROUP" \
