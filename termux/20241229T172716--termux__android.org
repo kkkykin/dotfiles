@@ -1050,6 +1050,41 @@ else
 fi
 #+end_src
 
+** bluetooth
+:PROPERTIES:
+:CUSTOM_ID: d6b27adc-2488-44c9-a634-dfb6c86ac25a
+:END:
+#+begin_src sh :tangle (zr-org-by-tangle-dir "bluetooth")
+case "$1" in
+  enable|disable|toggle|stat) ;;
+  ,*) echo "Usage: $0 {enable|disable|toggle|stat}" >&2; exit 1;;
+esac
+
+# 当前状态：1=开，0=关
+get_state() {
+  settings get global bluetooth_on
+}
+
+set_state() {
+  cmd bluetooth_manager "$1" >/dev/null 2>&1
+}
+
+case "$1" in
+  enable)
+    set_state enable
+    ;;
+  disable)
+    set_state disable
+    ;;
+  toggle)
+    [ "$(get_state)" -eq 1 ] && set_state disable || set_state enable
+    ;;
+  stat)
+    get_state
+    ;;
+esac
+#+end_src
+
 * daemons
 :PROPERTIES:
 :tangle-dir: _tangle/daemons
