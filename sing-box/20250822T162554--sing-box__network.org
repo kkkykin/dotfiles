@@ -13,8 +13,8 @@
        (client-tmp-dir "_tangle/tmp/")
        (client-dir "_tangle/client/")
        (hosts-dir "_tangle/hosts/")
-       (hosts-uris '(;; ("github" . "https://gitlab.com/ineo6/hosts/-/raw/master/hosts")
-                     ))
+       (hosts-uris `(;; ("github" . "https://gitlab.com/ineo6/hosts/-/raw/master/hosts")
+                     ("local" . ,(expand-file-name "_hosts"))))
        hosts-files
 
        (clash-pls (cdr (plstore-get zr-local-pls "clash")))
@@ -32,10 +32,19 @@
        (delete-by-moving-to-trash))
   (delete-directory client-tmp-dir t)
   (mkdir hosts-dir t)
+  (when-let* ((sys-hosts (pcase system-type
+                           ('windows-nt "C:/Windows/System32/Drivers/etc/hosts")
+                           (_ "/etc/hosts")))
+              ((file-readable-p sys-hosts)))
+    (push sys-hosts hosts-files))
   (dolist (h hosts-uris)
-    (let ((f (expand-file-name (car h) hosts-dir)))
-      (push f hosts-files)
-      (call-process "curl" nil 0 nil "-Lo" f (cdr h))))
+    (let ((f (expand-file-name (car h) hosts-dir))
+          (uri (cdr h)))
+      (if (file-remote-p uri)
+          (call-process "curl" nil 0 nil "-Lo" f (cdr h))
+        (when (file-readable-p uri)
+          (make-symbolic-link uri f t)))
+      (push f hosts-files)))
   
   (mkdir client-tmp-dir t)
   (mkdir sub-dir t)
@@ -84,6 +93,8 @@
                (when-let* (((not (or (member (alist-get 'type obd)
                                              '("direct" "selector" "urltest"
                                                "block" "dns"))
+                                     (member (alist-get 'method obd)
+                                             '("chacha20-poly1305"))
                                      (assoc 'plugin obd))))
                            (tag (format "%s[%s]" (alist-get 'tag obd) name)))
                  ;; (cond
@@ -199,10 +210,6 @@
   "dns": {
     "final": "cf-dot",
     "rules": [
-      {
-        "ip_accept_any": true,
-        "server": "hosts-in"
-      },
       {
         "ip_accept_any": true,
         "rule_set": "tailscale-rules",
@@ -698,13 +705,14 @@
 :PROPERTIES:
 :CUSTOM_ID: b8b405ea-5649-4bb3-9abd-ab60a0332b85
 :END:
-#+begin_src json :tangle (zr-org-by-tangle-dir "_500-hosts.json")
+#+begin_src json :tangle (zr-org-by-tangle-dir "_400-hosts.json")
 <<gen-hosts()>>
 #+end_src
 
 #+name: gen-hosts
 #+begin_src elisp
 (let* ((default '((localhost . ["127.0.0.1" "::1"])))
+       (tag "local-hosts")
        (hosts (vconcat hosts-files))
        (local-file "_hosts.eld")
        (local (and (file-exists-p local-file)
@@ -712,10 +720,12 @@
                      (insert-file-contents local-file)
                      (read (current-buffer))))))
   (json-serialize
-   `((dns . (servers [((tag . "hosts-in")
-                       (type . "hosts")
-                       (path . ,hosts)
-                       (predefined . ,(append local default)))])))))
+   `((dns . ((servers . [((tag . ,tag)
+                          (type . "hosts")
+                          (path . ,hosts)
+                          (predefined . ,(append local default)))])
+             (rules . [((ip_accept_any . t)
+                        (server . ,tag))]))))))
 #+end_src
 
 *** platform
