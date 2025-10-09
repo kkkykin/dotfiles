@@ -203,12 +203,13 @@
 #+header: :var tailscale_state_dir=(expand-file-name "tailscale_state" "_tangle")
 #+header: :var jsdelivr="https://fastly.jsdelivr.net"
 #+header: :var dns_strategy=(if (zr-net-has-public-ipv6-addr-p) "prefer_ipv6" "ipv4_only")
+#+header: :var dns_default="ld-tuso-us1"
 #+header: :var clash_secret=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "clash")) :secret)) 1 -1)
 #+name: client-config
 #+begin_src json :tangle (zr-org-by-tangle-dir "_500-main.json") :mkdirp t
 {
   "dns": {
-    "final": "cf-dot",
+    "final": "$dns_default",
     "rules": [
       {
         "ip_accept_any": true,
@@ -235,15 +236,37 @@
             "rule_set": "geoip-cn"
           }
         ],
-        "server": "cf-dot",
+        "server": "$dns_default",
         "type": "logical"
       },
       {
         "rule_set": "geosite-geolocation-!cn",
-        "server": "cf-dot"
+        "server": "$dns_default"
       }
     ],
     "servers": [
+      {
+        "domain_resolver": "ali-quic",
+        "path": "/dohgo",
+        "server": "hk.alpha.abrdns.com",
+        "tag": "ld-tuso-hk",
+        "type": "https"
+      },
+      {
+        "domain_resolver": "ali-quic",
+        "path": "/dnsgo",
+        "server": "runtime.webn.cc",
+        "server_port": 2083,
+        "tag": "ld-tuso-us1",
+        "type": "https"
+      },
+      {
+        "domain_resolver": "ali-quic",
+        "path": "/dohgo",
+        "server": "us.alpha.abrdns.com",
+        "tag": "ld-tuso-us2",
+        "type": "https"
+      },
       {
         "accept_default_resolvers": false,
         "endpoint": "ts-ep",
@@ -251,13 +274,13 @@
         "type": "tailscale"
       },
       {
-        "detour": "s[this-way]",
+        "detour": "s[dns]",
         "server": "1.1.1.1",
         "tag": "cf-dot",
         "type": "tls"
       },
       {
-        "detour": "s[this-way]",
+        "detour": "s[dns]",
         "server": "8.8.8.8",
         "tag": "google-doh",
         "type": "https"
@@ -659,11 +682,14 @@
        (s-sub (cons u-sub sub-outbounds))
        (u-us "u{us}")
        (s-us (cons u-us us-outbounds))
+       (u-dns "u[dns]")
+       (s-dns (cons u-dns '("s[this-way]" "s[self]" "direct")))
        pre-obds
        s-region
        region-obds)
   (when sub-outbounds
     (push "s[sub]" s-this-way)
+    (push "s[sub]" s-dns)
     (push `(((type . "selector")
              (tag . "s[sub]")
              (outbounds . ,(vconcat s-sub))
@@ -697,6 +723,14 @@
           ((type . "urltest")
            (tag . ,u-this-way)
            (outbounds . ,(vconcat s-this-way))))
+        pre-obds)
+  (push `(((type . "selector")
+           (tag . "s[dns]")
+           (outbounds . ,(vconcat s-dns))
+           (default . ,u-dns))
+          ((type . "urltest")
+           (tag . ,u-dns)
+           (outbounds . ,(vconcat (seq-difference s-dns `(,u-dns "direct"))))))
         pre-obds)
   (json-serialize `((outbounds . ,(apply #'vconcat pre-obds)))))
 #+end_src
