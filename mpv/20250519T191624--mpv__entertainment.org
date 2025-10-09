@@ -29,7 +29,6 @@ include=$extra-conf
 profile-cond=1
 watch-later-options=volume,window-scale
 force-seekable=yes
-loop-playlist=inf
 #+end_src
 *** video
 :PROPERTIES:
@@ -279,8 +278,18 @@ profile=prefetch
 #+header: :var osc_lua=(expand-file-name "libs/thumbfast-osc/player/lua/osc.lua")
 #+header: :var thumbfast_lua=(expand-file-name "libs/thumbfast/thumbfast.lua")
 #+begin_src lua :tangle (zr-org-by-tangle-dir "main.lua")
-mp.commandv("load-script", thumbfast_lua)
-mp.commandv("load-script", osc_lua)
+local is_jellyfin_shim = false
+
+local config_dir = mp.get_property("config-dir")  
+if config_dir and config_dir:match("jellyfin%-mpv%-shim$") then  
+  is_jellyfin_shim = true
+end
+
+if not is_jellyfin_shim then
+  mp.commandv("load-script", thumbfast_lua)
+  mp.commandv("load-script", osc_lua)
+  mp.set_property("loop-playlist", "inf")
+end
 #+end_src
 *** sub
 **** autovsr
