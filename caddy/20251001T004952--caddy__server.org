@@ -16,6 +16,7 @@
                   ('android (expand-file-name "usr/bin/" zr-termux-root-directory))
                   ('gnu/linux tangle-dir)))
        (url (format "https://github.com/kkkykin/custom-caddy/releases/latest/download/caddy-%s.tar.gz" name)))
+  (mkdir tangle-dir t)
   (mkdir bin-dir t)
   (call-process-shell-command
    (format "curl -sSL --etag-compare _etag.txt --etag-save _etag.txt %s %s | tar -xzf - -C %s"
