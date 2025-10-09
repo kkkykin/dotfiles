@@ -27,5 +27,83 @@
   (when-let* (((not (string= tangle-dir bin-dir)))
               (exec-path (list tangle-dir))
               (caddy-path (executable-find "caddy")))
-    (make-symbolic-link caddy-path bin-dir t)))
+    (make-symbolic-link caddy-path bin-dir t))
+  (org-babel-tangle))
+#+end_src
+
+* env
+:PROPERTIES:
+:CUSTOM_ID: 799e1881-69a9-45e3-ab2d-05b6a0ea8d80
+:END:
+#+begin_src org :tangle (zr-org-by-tangle-dir "env") :var subpath=(expand-file-name "_tangle/subpath")
+SUBPATH=$subpath
+#+end_src
+* config
+** main
+:PROPERTIES:
+:tangle-dir: _tangle/main
+:CUSTOM_ID: 5297ab0f-3f8b-4b59-b5af-c29366d57a64
+:END:
+
+#+begin_src caddy :mkdirp t :tangle (zr-org-by-tangle-dir "main.Caddyfile")
+:6680 {
+    import {$SUBPATH}/*
+}
+#+end_src
+
+** subpath
+:PROPERTIES:
+:tangle-dir: _tangle/subpath
+:END:
+
+*** mpv
+:PROPERTIES:
+:CUSTOM_ID: 54913f3d-72e8-45ba-b9fe-8b9bb6599582
+:END:
+#+begin_src caddy :mkdirp t :tangle (zr-org-by-tangle-dir "mpv.Caddyfile")
+route /mpv/ {
+    @mpv_allowed {
+        client_ip 127.0.0.1/32
+        method POST
+        header Content-Type application/json
+    }
+    exec @mpv_allowed {
+        command mpv
+        args --playlist=- --terminal=no --input-ipc-server=\\.\pipe\mpv-caddy
+    }
+}
+#+end_src
+
+*** browse-url
+:PROPERTIES:
+:CUSTOM_ID: 96e9671c-2992-4c32-94e9-435f82f60950
+:END:
+#+begin_src caddy :mkdirp t :tangle (zr-org-by-tangle-dir "browse-url.Caddyfile")
+route /browse-url/ {
+    @browse_url_allowed {
+        client_ip 127.0.0.1/32
+        header url http*
+    }
+    exec @browse_url_allowed {
+        command explorer
+        args {header.url}
+    }
+}
+#+end_src
+
+*** rsshub
+:PROPERTIES:
+:CUSTOM_ID: cc962bac-3d8f-428e-b0ce-b31541933960
+:END:
+#+begin_src caddy :mkdirp t :tangle (zr-org-by-tangle-dir "rsshub.Caddyfile")
+handle_path /rsshub/* {
+    reverse_proxy https://rsshub.app https://rsshub.woodland.cafe https://hub.slarker.me https://rsshub.asailor.org https://rsshub.umzzz.com {
+        header_up Host {upstream_hostport}
+
+        header_up -X-Forwarded-*
+        transport http {
+            proxy http://127.0.0.1:10807
+        }
+    }
+}
 #+end_src
