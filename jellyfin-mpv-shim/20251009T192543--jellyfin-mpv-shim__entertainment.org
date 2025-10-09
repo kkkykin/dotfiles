@@ -1,0 +1,21 @@
+#+title:      jellyfin-mpv-shim
+#+date:       [2025-10-09 Thu 19:25]
+#+filetags:   :entertainment:
+#+identifier: 20251009T192543
+
+* tangle
+#+begin_src elisp
+(let* ((conf-dir (pcase system-type
+                   ('windows-nt (substitute-in-file-name "$appdata/jellyfin-mpv-shim/"))
+                   (_ (expand-file-name "~/.config/jellyfin-mpv-shim/"))))
+       (mpv-dir (expand-file-name "../mpv/_tangle/"))
+       (mpv-conf-name "mpv.conf")
+       (shim-mpv-conf (expand-file-name mpv-conf-name conf-dir))
+       (mpv-conf (expand-file-name mpv-conf-name mpv-dir)))
+  (unless (file-symlink-p shim-mpv-conf)
+    (when (file-readable-p mpv-conf)
+      (dolist (f (directory-files conf-dir t (rx ?/ (| "mpv" "input") ".conf" eos) t))
+        (delete-file f t))
+      (make-symbolic-link mpv-conf conf-dir t)
+      (make-symbolic-link (expand-file-name "input.conf" mpv-dir) conf-dir t))))
+#+end_src
