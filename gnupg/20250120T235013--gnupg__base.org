@@ -3,6 +3,13 @@
 #+filetags:   :base:
 #+identifier: 20250120T235013
 
+* tangle
+#+begin_src elisp
+(let ((conf-dir (expand-file-name "~/.gnupg/")))
+  (dolist (f (org-babel-tangle))
+    (make-symbolic-link f conf-dir t)))
+#+end_src
+
 * agent
 :PROPERTIES:
 :header-args:conf: :tangle (zr-org-by-tangle-dir "gpg-agent.conf") :mkdirp t :comments no
