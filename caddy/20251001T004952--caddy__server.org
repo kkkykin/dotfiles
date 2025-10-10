@@ -46,6 +46,49 @@ SUBPATH=$subpath
 :END:
 
 #+begin_src caddy :mkdirp t :tangle (zr-org-by-tangle-dir "main.Caddyfile")
+(common_lb) {
+    {block}
+    # 1) 负载均衡：首选 least_conn（资源最闲节点），
+    #    如果所有节点都满了就退回 random，保证一定能选出节点。
+    lb_policy least_conn {
+        fallback random
+    }
+
+    # 2) Passive Health-Check —— 关键三行
+    fail_duration          30s     # 30 秒内出现失败记录都视为“污点”
+    max_fails              3       # 连续 3 次失败才踢掉（避免偶发抖动）
+    unhealthy_latency      2s      # 响应超过 2s 也算一次失败
+
+    # 3) 重试（配合健康检测才有意义）
+    lb_retries             2       # 最多重试 2 次
+    lb_try_duration        5s      # 整体等待上限 5s
+    lb_try_interval        200ms   # 每次重试间隔
+}
+
+(slow_lb) {
+    # 1. 负载均衡：轮询，简单公平
+    lb_policy round_robin
+
+    # 2. 被动健康检查 —— 放大版
+    fail_duration          120s
+    max_fails              2
+    unhealthy_latency      18s
+    unhealthy_status       3xx 4xx 5xx
+
+    # 3. 重试
+    lb_try_duration        {args[0]}
+    lb_retry_match         method GET HEAD
+
+    # 4. 传输超时放大
+    transport http {
+        {blocks.transport}
+        dial_timeout                3s
+        response_header_timeout     15s
+        read_timeout                20s
+        write_timeout               20s
+    }
+}
+
 :6680 {
     import {$SUBPATH}/*
 }
@@ -97,13 +140,64 @@ route /browse-url/ {
 :END:
 #+begin_src caddy :mkdirp t :tangle (zr-org-by-tangle-dir "rsshub.Caddyfile")
 handle_path /rsshub/* {
-    reverse_proxy https://rsshub.app https://rsshub.woodland.cafe https://hub.slarker.me https://rsshub.asailor.org https://rsshub.umzzz.com {
+    reverse_proxy <<rsshub-upstreams()>> {
         header_up Host {upstream_hostport}
-
         header_up -X-Forwarded-*
-        transport http {
-            proxy http://127.0.0.1:10807
+        header_up -via
+
+        import slow_lb 120s {
+            transport {
+                network_proxy url http://127.0.0.1:10807
+            }
         }
     }
 }
+#+end_src
+
+* helper
+** rsshub
+#+name: rsshub-public-instance
+#+begin_src elisp
+(require 'dom)
+(let* ((url-proxy-locator (lambda (&rest _) "PROXY 127.0.0.1:10807"))
+       (page (org-file-contents "https://docs.rsshub.app/guide/instances")))
+  (with-temp-buffer
+    (insert page)
+    (let* ((html  (libxml-parse-html-region (point-min) (point-max)))
+           ;; 拿到页面里全部 tbody
+           (tbodies (dom-by-tag html 'tbody))
+           urls)
+      (dolist (tbody tbodies)
+        (dolist (tr (dom-by-tag tbody 'tr))
+          ;; 每行第一个 <td>
+          (when-let* ((first-td (car (dom-by-tag tr 'td)))
+                      (a        (car (dom-by-tag first-td 'a)))
+                      (href     (dom-attr a 'href)))
+            (when (string-match-p "^https?://[^/]+/?$" href)
+              (push href urls)))))
+      urls)))
+#+end_src
+
+#+name: rsshub-upstreams
+#+begin_src elisp :var urls=rsshub-public-instance()
+(mapconcat (lambda (s) (replace-regexp-in-string "^\\(https?://[^/]+\\).*" "\\1" s)) urls " ")
+#+end_src
+
+#+name: rsshub-map
+#+begin_src elisp :var urls=rsshub-public-instance()
+(mapconcat
+ (lambda (s)
+   (let* ((url (url-generic-parse-url s))
+          (filename (url-filename url))
+          (host (url-host url))
+          (port (url-port url)))
+     (unless (member filename '("/" ""))
+       (format "%s %s \"\""
+               (if (member (cons (url-type url) port)
+                           '(("https" . 443)
+                             ("http" . 80)))
+                   host
+                 (format "%s:%s" host port))
+               filename))))
+ urls "\n")
 #+end_src
