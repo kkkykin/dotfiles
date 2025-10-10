@@ -141,7 +141,7 @@ route /browse-url/ {
 :END:
 #+begin_src caddy :mkdirp t :tangle (zr-org-by-tangle-dir "rsshub.Caddyfile")
 handle_path /rsshub/* {
-    reverse_proxy <<rsshub-upstreams()>> {
+    reverse_proxy <<rsshub-upstreams()>> https://rsshub-vercel-rss3.vercel.app https://rsshub-vercel-wine.vercel.app {
         header_up Host {upstream_hostport}
         header_up -X-Forwarded-*
         header_up -via
