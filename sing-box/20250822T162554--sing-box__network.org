@@ -95,6 +95,8 @@
                                                "block" "dns"))
                                      (member (alist-get 'method obd)
                                              '("chacha20-poly1305"))
+                                     (member (alist-get 'type (alist-get 'transport obd))
+                                             '("xhttp"))
                                      (assoc 'plugin obd))))
                            (tag (format "%s[%s]" (alist-get 'tag obd) name)))
                  ;; (cond
