@@ -66,6 +66,7 @@ SUBPATH=$subpath
 }
 
 (slow_lb) {
+    {blocks.main}
     # 1. 负载均衡：轮询，简单公平
     lb_policy round_robin
 
@@ -146,6 +147,11 @@ handle_path /rsshub/* {
         header_up -via
 
         import slow_lb 120s {
+            main {
+                health_uri      /healthz
+                health_interval 5m
+                health_body     ok
+            }
             transport {
                 network_proxy url http://127.0.0.1:10807
             }
