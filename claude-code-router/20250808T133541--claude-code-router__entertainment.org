@@ -103,7 +103,9 @@
       "api_base_url": "https://apis.iflow.cn/v1/chat/completions",
       "api_key": "$iflow_api_key",
       "models": [
-        "qwen3-coder"
+        "qwen3-coder-plus",
+        "kimi-k2-0905",
+        "glm-4.6"
       ],
       "name": "iflow"
     },
@@ -111,7 +113,7 @@
       "api_base_url": "https://api-inference.modelscope.cn/v1/chat/completions",
       "api_key": "$modelscope_api_key",
       "models": [
-        "ZhipuAI/GLM-4.5",
+        "ZhipuAI/GLM-4.6",
         "deepseek-ai/DeepSeek-R1-0528",
         "Qwen/Qwen3-Coder-480B-A35B-Instruct",
         "Qwen/Qwen3-235B-A22B-Thinking-2507"
@@ -151,9 +153,8 @@
   ],
   "Router": {
     "background": "gemini,gemini-2.5-flash",
-    "default": "iflow,qwen3-coder",
+    "default": "iflow,qwen3-coder-plus",
     "image": "gemini,gemini-2.5-pro",
-    "longContext": "gemini,gemini-2.5-pro",
     "longContextThreshold": 20000,
     "think": "modelscope,Qwen/Qwen3-235B-A22B-Thinking-2507",
     "webSearch": "gemini,gemini-2.5-flash"
