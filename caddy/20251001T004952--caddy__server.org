@@ -10,6 +10,7 @@
                ('windows-nt "windows-amd64")
                ('android "linux-arm64")
                ('gnu/linux "linux-amd64")))
+       (zr-local-pls (plstore-open "caddy.pls"))
        (tangle-dir (expand-file-name "_tangle/"))
        (bin-dir (pcase system-type
                   ('windows-nt (substitute-in-file-name "$userprofile/.local/bin/"))
@@ -35,17 +36,38 @@
 :PROPERTIES:
 :CUSTOM_ID: 799e1881-69a9-45e3-ab2d-05b6a0ea8d80
 :END:
+#+header: :var localpath=(expand-file-name "_local")
 #+begin_src org :tangle (zr-org-by-tangle-dir "env") :var subpath=(expand-file-name "_tangle/subpath")
 SUBPATH=$subpath
+LOCALPATH=$localpath
 #+end_src
 * config
 ** main
 :PROPERTIES:
 :tangle-dir: _tangle/main
 :CUSTOM_ID: 5297ab0f-3f8b-4b59-b5af-c29366d57a64
+:header-args:caddy: :mkdirp t :tangle (zr-org-by-tangle-dir "main.Caddyfile")
+:END:
+*** global
+:PROPERTIES:
+:CUSTOM_ID: 87e8d3b9-696c-4dc0-b041-6ab479876b29
+:END:
+#+begin_src caddy
+{
+    order aria2_middleware before reverse_proxy
+}
+#+end_src
+
+*** snippets
+:PROPERTIES:
+:CUSTOM_ID: 89c61caa-d2aa-465e-a168-f29ecd9ecfaa
 :END:
 
-#+begin_src caddy :mkdirp t :tangle (zr-org-by-tangle-dir "main.Caddyfile")
+**** load balance
+:PROPERTIES:
+:CUSTOM_ID: 072fe3c4-fc1a-44e0-8ccc-64a9630ca915
+:END:
+#+begin_src caddy
 (common_lb) {
     {block}
     # 1) 负载均衡：首选 least_conn（资源最闲节点），
@@ -89,9 +111,56 @@ SUBPATH=$subpath
         write_timeout               20s
     }
 }
+#+end_src
 
-:6680 {
+**** cors
+:PROPERTIES:
+:CUSTOM_ID: b90c38da-1fce-4fef-8f9f-6414994fd6ea
+:END:
+#+begin_src caddy
+(cors) {
+    map {header.Origin} {cors_ok} {
+        {blocks.map}
+        default                     0
+    }
+    @corsPreflight {
+        method OPTIONS
+        expression `{cors_ok} == "1"`
+    }
+    @allowed {
+        expression `{cors_ok} == "1"`
+        {blocks.allow}
+    }
+
+    handle @corsPreflight {
+        header {
+            Access-Control-Allow-Origin "{header.Origin}"
+            Access-Control-Allow-Methods "{args[0]}"
+            Access-Control-Allow-Headers "{args[1]}"
+            Access-Control-Allow-Credentials "true"
+            Vary "Origin"
+        }
+        respond "" 204
+    }
+
+    handle @allowed {
+        header {
+            Access-Control-Allow-Origin "{header.Origin}"
+            Access-Control-Allow-Credentials "true"
+            Vary "Origin"
+        }
+    }
+}
+#+end_src
+
+*** site
+:PROPERTIES:
+:CUSTOM_ID: d66b4144-3335-4a18-a36f-b75a4b3c9bcd
+:END:
+#+begin_src caddy :var listen=(if (eq 'android system-type) ":6680" ":80")
+$listen {
     import {$SUBPATH}/*
+    import {$LOCALPATH}/*
 }
 #+end_src
 
@@ -105,13 +174,21 @@ SUBPATH=$subpath
 :CUSTOM_ID: 54913f3d-72e8-45ba-b9fe-8b9bb6599582
 :END:
 #+begin_src caddy :mkdirp t :tangle (zr-org-by-tangle-dir "mpv.Caddyfile")
+basic_auth /mpv/ {
+    mpv $2a$14$ZCw3mfpECp3awIyQNk33.eTTs/DTr3Hkle8dXzGQ7IT.sE48UA/3S
+}
 route /mpv/ {
-    @mpv_allowed {
-        client_ip 127.0.0.1/32
-        method POST
-        header Content-Type application/json
+    import cors "POST, OPTIONS" "Content-Type, Authorization, Origin" {
+        map {
+            <<cors-map()>>
+        }
+        allow {
+            client_ip 127.0.0.1/32
+            method POST
+            header Content-Type application/json
+        }
     }
-    exec @mpv_allowed {
+    exec @allowed {
         command mpv
         args --playlist=- --terminal=no --input-ipc-server=\\.\pipe\mpv-caddy
     }
@@ -123,14 +200,23 @@ route /mpv/ {
 :CUSTOM_ID: 96e9671c-2992-4c32-94e9-435f82f60950
 :END:
 #+begin_src caddy :mkdirp t :tangle (zr-org-by-tangle-dir "browse-url.Caddyfile")
+basic_auth /browse-url/ {
+    browse $2a$14$fDztUDUJKeJtmvWWYlD2Vuvtsdn.9/HsF/V.YkdYMItdnepA31JZC
+}
 route /browse-url/ {
-    @browse_url_allowed {
-        client_ip 127.0.0.1/32
-        header url http*
+    import cors "GET, OPTIONS" "Authorization, Origin, url" {
+        map {
+            <<cors-map(cors="browse-url-cors")>>
+        }
+        allow {
+            client_ip 127.0.0.1/32
+            header url http*
+            method GET
+        }
     }
-    exec @browse_url_allowed {
+    exec @allowed {
         command explorer
-        args {header.url}
+        args "{header.url}"
     }
 }
 #+end_src
@@ -156,6 +242,22 @@ handle_path /rsshub/* {
                 network_proxy url http://127.0.0.1:10807
             }
         }
+    }
+}
+#+end_src
+
+*** aria2
+:PROPERTIES:
+:CUSTOM_ID: c88e06a5-88ea-4ebf-934a-9a9b5be4e002
+:END:
+#+begin_src caddy :mkdirp t :tangle (zr-org-by-tangle-dir "aria2.Caddyfile")
+handle_path /aria2-jsonrpc {
+    aria2_middleware {
+        upstream http://127.0.0.1:6800/jsonrpc
+        transform_uri ^https://pixeldrain\.com/(.*) "$0" "https://habitica-assets.kkky.eu.org/$0"
+        add_server_option ^https?://[^/]+\.baidu(?:pcs)?\.com/file/ max-connection-per-server 2
+        add_server_option ^https://[^/]+\.mypikpak\.com/ max-connection-per-server 2
+        add_server_option ^https://pixeldrain\.com/ max-connection-per-server 1
     }
 }
 #+end_src
@@ -206,4 +308,9 @@ handle_path /rsshub/* {
                  (format "%s:%s" host port))
                filename))))
  urls "\n")
+#+end_src
+** cors
+#+name: cors-map
+#+begin_src elisp :var cors="mpv-cors"
+(mapconcat (lambda (s) (format "%s 1" s)) (plist-get (cdr (plstore-get zr-local-pls cors)) :cors) "\n")
 #+end_src

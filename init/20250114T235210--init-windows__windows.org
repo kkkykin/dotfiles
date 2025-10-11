@@ -120,6 +120,14 @@ start /d "%USERPROFILE%\AppData\Local\Microsoft\OneDrive" OneDrive.exe /backgrou
 start /b openresty -p %USERPROFILE%\scoop\apps\openresty\current
 #+end_src
 
+#+name: run_caddy
+#+header: :var config=(expand-file-name "../caddy/_tangle/main/main.Caddyfile")
+#+header: :var env=(expand-file-name "../caddy/_tangle/env")
+#+begin_src bat
+<<check-prog(program="caddy")>>
+caddy start --config "%config%" --envfile "%env%"
+#+end_src
+
 #+name: run_alist
 #+begin_src bat :var no_proxy=(concat (getenv "no_proxy") ",.alipan.com,.aliyundrive.net")
 <<check-prog(program="alist")>>
@@ -221,7 +229,8 @@ if /i "%arg%"=="emacs" (
     call :wait_seconds 3
     call :run_onedrive
     call :wait_seconds 3
-    call :run_openresty
+    rem call :run_openresty
+    call :run_caddy
     call :wait_seconds 3
     call :run_alist
     call :wait_seconds 3
