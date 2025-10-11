@@ -8,12 +8,13 @@
 #+begin_src elisp
 (org-babel-tangle)
 
-(when (eq 'android system-type)
-  (let ((rc (expand-file-name "home/.bashrc" zr-termux-root-directory)))
-    (when (file-exists-p rc)
-      (unless (file-symlink-p rc)
-        (rename-file rc (concat rc ".bak"))))
-    (make-symbolic-link (expand-file-name "_tangle/rc/general") rc t)))
+(when-let* ((rc (pcase system-type
+                  ('gnu/linux (expand-file-name "~/.bashrc"))
+                  ('android (expand-file-name "home/.bashrc" zr-termux-root-directory)))))
+  (when (file-exists-p rc)
+    (unless (file-symlink-p rc)
+      (rename-file rc (concat rc ".bak"))))
+  (make-symbolic-link (expand-file-name "_tangle/rc/general") rc t))
 #+end_src
 
 * rc
@@ -98,7 +99,9 @@ fi
 :CUSTOM_ID: ae9f0440-f852-40dd-aace-a7a4d1825263
 :END:
 #+begin_src sh
-. "${device_rc_file}_i"
+if [[ -x "${device_rc_file}_i" ]]; then
+  . "${device_rc_file}_i"
+fi
 #+end_src
 
 ** termux
