@@ -6,8 +6,11 @@
 * tangle
 #+begin_src elisp
 (let ((conf-dir (expand-file-name "~/.gnupg/")))
+  (mkdir conf-dir t)
   (dolist (f (org-babel-tangle))
-    (make-symbolic-link f conf-dir t)))
+    (chmod f #o600)
+    (make-symbolic-link f conf-dir t))
+  (chmod conf-dir #o700))
 #+end_src
 
 * agent
