@@ -94,6 +94,20 @@ if [ -z "$INSIDE_EMACS" ] && [ "$TERM" != "DUMB" ]; then
 fi    
 #+end_src
 
+**** pnpm
+:PROPERTIES:
+:CUSTOM_ID: 252bffe8-6ac6-40b9-9b2d-94ca3786d412
+:END:
+#+begin_src sh
+if command -v pnpm >/dev/null 2>&1; then
+  export PNPM_HOME="${HOME}/.local/share/pnpm"
+  case ":$PATH:" in
+    ,*":$PNPM_HOME:"*) ;;
+    ,*) export PATH="$PNPM_HOME:$PATH" ;;
+  esac
+fi
+#+end_src
+
 **** by-device
 :PROPERTIES:
 :CUSTOM_ID: ae9f0440-f852-40dd-aace-a7a4d1825263
