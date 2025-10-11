@@ -65,12 +65,22 @@ rclone_sync_dir() {
 }
 #+end_src
 
-**** by-device
+**** by-system
 :PROPERTIES:
 :CUSTOM_ID: e5567631-0383-469b-b0a3-11ab1d77ed31
 :END:
-#+begin_src sh :var device_rc_file=(expand-file-name (pcase system-type ('android "termux") (_ "/dev/null")) "_tangle/rc")
-. "$device_rc_file"
+#+begin_src sh :var system_rc_file=(expand-file-name (pcase system-type ('android "termux") (_ "/dev/null")) "_tangle/rc")
+. "$system_rc_file"
+#+end_src
+
+**** local
+:PROPERTIES:
+:CUSTOM_ID: 9621e339-c4b8-4144-9ed7-e9372f90c701
+:END:
+#+begin_src sh :var local_rc_file=(expand-file-name "_local")
+if [[ -x "$local_rc_file" ]]; then
+  . "$local_rc_file"
+fi
 #+end_src
 
 *** interactive
@@ -108,13 +118,13 @@ if command -v pnpm >/dev/null 2>&1; then
 fi
 #+end_src
 
-**** by-device
+**** by-system
 :PROPERTIES:
 :CUSTOM_ID: ae9f0440-f852-40dd-aace-a7a4d1825263
 :END:
 #+begin_src sh
-if [[ -x "${device_rc_file}_i" ]]; then
-  . "${device_rc_file}_i"
+if [[ -x "${system_rc_file}_i" ]]; then
+  . "${system_rc_file}_i"
 fi
 #+end_src
 
