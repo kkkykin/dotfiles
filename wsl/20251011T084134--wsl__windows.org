@@ -1,0 +1,21 @@
+#+title:      wsl
+#+date:       [2025-10-11 Sat 08:41]
+#+filetags:   :windows:
+#+identifier: 20251011T084134
+
+* tangle
+#+begin_src elisp
+(dolist (f (org-babel-tangle))
+  (when (string-suffix-p "wslconfig" f)
+    (make-symbolic-link f (substitute-in-file-name "$userprofile/.wslconfig") t)))
+#+end_src
+
+* config
+:PROPERTIES:
+:CUSTOM_ID: 78b9e757-0ff1-43b4-9ae2-17760f0f5f64
+:END:
+#+begin_src conf-space :mkdirp t :tangle (zr-org-by-tangle-dir "wslconfig")
+[wsl2]
+networkingMode=mirrored
+autoProxy=false
+#+end_src
