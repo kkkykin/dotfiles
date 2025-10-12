@@ -879,6 +879,243 @@ case "$1" in
     ;;
 esac
 #+end_src
+
+** audio-record
+#+begin_src sh :tangle (zr-org-by-tangle-dir "audio-record")
+# 录音脚本 - 支持start、stop和toggle动作
+# 文件保存到指定目录，文件名为当前时间戳
+
+# 默认设置
+DEFAULT_DIR="/storage/emulated/0/Android/media/com.termux/audio/"
+DEFAULT_ENCODER="aac"       # 默认编码器
+DEFAULT_BITRATE="128"       # 默认比特率(kbps)
+DEFAULT_SAMPLE_RATE="44100" # 默认采样率(Hz)
+DEFAULT_CHANNELS="1"        # 默认声道数
+
+# 显示帮助信息
+show_help() {
+  cat << EOF
+使用方法: $0 [动作] [选项]
+动作:
+  start   开始录音（如果已在录音，则停止后重新开始）
+  stop  停止录音
+  toggle  切换录音状态（开始/停止）
+  status  显示录音状态
+
+选项:
+  -d, --directory DIR   设置录音文件保存目录 (默认: $DEFAULT_DIR)
+  -e, --encoder ENC   设置编码器 (默认: $DEFAULT_ENCODER)
+  -b, --bitrate RATE  设置比特率 kbps (默认: $DEFAULT_BITRATE)
+  -r, --rate RATE     设置采样率 Hz (默认: $DEFAULT_SAMPLE_RATE)
+  -c, --channels NUM  设置声道数 (默认: $DEFAULT_CHANNELS)
+  -h, --help      显示此帮助信息
+
+示例:
+  $0 start
+  $0 stop
+  $0 toggle
+  $0 start -d /sdcard/my_recordings -e opus
+  $0 status
+EOF
+}
+
+# 检查termux-microphone-record是否可用
+check_dependency() {
+  if ! command -v termux-microphone-record &> /dev/null; then
+    echo "错误: 未找到 termux-microphone-record 命令"
+    echo "请确保您正在Termux环境中运行此脚本"
+    exit 1
+  fi
+}
+
+# 创建目录（如果不存在）
+create_directory() {
+  local dir="$1"
+  if [ ! -d "$dir" ]; then
+    echo "创建目录: $dir"
+    mkdir -p "$dir"
+    if [ $? -ne 0 ]; then
+      echo "错误: 无法创建目录 $dir"
+      exit 1
+    fi
+  fi
+}
+
+# 生成带时间戳的文件名
+generate_filename() {
+  local dir="$1"
+  local encoder="$2"
+  
+  # 根据编码器设置文件扩展名
+  case "$encoder" in
+    aac)  extension="m4a" ;;
+    opus)   extension="opus" ;;
+    amr_wb) extension="awb" ;;
+    amr_nb) extension="amr" ;;
+    ,*)    extension="aac" ;;
+  esac
+  
+  local timestamp=$(date +"%Y%m%d_%H%M%S")
+  echo "${dir}/recording_${timestamp}.${extension}"
+}
+
+# 检查是否正在录音
+is_recording() {
+  termux-microphone-record -i | grep -q "^  \"isRecording\": true,$"
+  return $?
+}
+
+# 停止录音
+stop_recording() {
+  if is_recording; then
+    echo "停止当前录音..."
+    termux-microphone-record -q
+    if [ $? -eq 0 ]; then
+      echo "✓ 录音已停止"
+      # 给一点时间让录音完全停止
+      sleep 0.5
+      termux-vibrate -d 10
+    else
+      echo "✗ 停止录音失败"
+      return 1
+    fi
+  else
+    echo "当前没有正在进行的录音"
+  fi
+}
+
+# 开始录音
+start_recording() {
+  local dir="$1"
+  local encoder="$2"
+  local bitrate="$3"
+  local sample_rate="$4"
+  local channels="$5"
+  
+  # 如果已经在录音，先停止
+  if is_recording; then
+    echo "检测到已有录音正在进行，停止当前录音..."
+    stop_recording
+  fi
+  
+  create_directory "$dir"
+  local filename=$(generate_filename "$dir" "$encoder")
+  
+  echo "开始新的录音..."
+  echo "文件: $filename"
+  echo "编码器: $encoder"
+  echo "比特率: ${bitrate}kbps"
+  echo "采样率: ${sample_rate}Hz"
+  echo "声道: $channels"
+  
+  # 开始录音
+  termux-microphone-record \
+    -f "$filename" \
+    -e "$encoder" \
+    -b "$bitrate" \
+    -r "$sample_rate" \
+    -c "$channels"
+  
+  if [ $? -eq 0 ]; then
+    echo "✓ 录音已开始: $filename"
+  else
+    echo "✗ 录音启动失败"
+    return 1
+  fi
+}
+
+# 显示录音状态
+show_status() {
+  echo "录音状态:"
+  termux-microphone-record -i
+}
+
+# 切换录音状态
+toggle_recording() {
+  if is_recording; then
+    stop_recording
+  else
+    start_recording "$directory" "$encoder" "$bitrate" "$sample_rate" "$channels"
+  fi
+}
+
+# 初始化变量
+action=""
+directory="$DEFAULT_DIR"
+encoder="$DEFAULT_ENCODER"
+bitrate="$DEFAULT_BITRATE"
+sample_rate="$DEFAULT_SAMPLE_RATE"
+channels="$DEFAULT_CHANNELS"
+
+# 解析命令行参数
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    start|stop|toggle|status)
+      action="$1"
+      shift
+      ;;
+    -d|--directory)
+      directory="$2"
+      shift 2
+      ;;
+    -e|--encoder)
+      encoder="$2"
+      shift 2
+      ;;
+    -b|--bitrate)
+      bitrate="$2"
+      shift 2
+      ;;
+    -r|--rate)
+      sample_rate="$2"
+      shift 2
+      ;;
+    -c|--channels)
+      channels="$2"
+      shift 2
+      ;;
+    -h|--help)
+      show_help
+      exit 0
+      ;;
+    ,*)
+      echo "未知选项: $1"
+      show_help
+      exit 1
+      ;;
+  esac
+done
+
+# 检查依赖
+check_dependency
+
+# 执行动作
+case "$action" in
+  start)
+    start_recording "$directory" "$encoder" "$bitrate" "$sample_rate" "$channels"
+    ;;
+  stop)
+    stop_recording
+    ;;
+  toggle)
+    toggle_recording
+    ;;
+  status)
+    show_status
+    ;;
+  "")
+    echo "错误: 未指定动作"
+    show_help
+    exit 1
+    ;;
+  ,*)
+    echo "错误: 未知动作 '$action'"
+    show_help
+    exit 1
+    ;;
+esac
+#+end_src
+
 ** daemon-manager
 :PROPERTIES:
 :CUSTOM_ID: 5ff6ccd4-c9f5-4779-96ce-90f1cc0cfff7
