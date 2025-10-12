@@ -125,7 +125,7 @@ start /b openresty -p %USERPROFILE%\scoop\apps\openresty\current
 #+header: :var env=(expand-file-name "../caddy/_tangle/env")
 #+begin_src bat
 <<check-prog(program="caddy")>>
-caddy start --config "%config%" --envfile "%env%"
+caddy start --watch --config "%config%" --envfile "%env%"
 #+end_src
 
 #+name: run_alist
