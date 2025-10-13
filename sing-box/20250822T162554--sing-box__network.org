@@ -182,27 +182,8 @@
 :PROPERTIES:
 :CUSTOM_ID: fed30130-cdf9-42cb-805c-50dbb7b4c5bf
 :END:
-#+header: :var s0_obfs_pass=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vps0")) :obfs-pass)) 1 -1)
-#+header: :var s0_ip=(plist-get (cdr (plstore-get zr-local-pls "vps0")) (if (zr-net-has-public-ipv6-addr-p) :ipv6 :ip))
-#+header: :var s0_user_pass=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vps0")) :user-pass)) 1 -1)
-#+header: :var s0_hy_host=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vps0")) :hy-host)) 1 -1)
-#+header: :var s0_vl_host=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vps0")) :vl-host)) 1 -1)
-#+header: :var s0_short_id=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vps0")) :short-id)) 1 -1)
-#+header: :var s0_user_uuid=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vps0")) :user-uuid)) 1 -1)
-#+header: :var s0_any_host=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vps0")) :any-host)) 1 -1)
-#+header: :var s0_pub_key=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vps0")) :pub-key)) 1 -1)
-#+header: :var s1_obfs_pass=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vps1")) :obfs-pass)) 1 -1)
-#+header: :var s1_ip=(plist-get (cdr (plstore-get zr-local-pls "vps1")) (if (zr-net-has-public-ipv6-addr-p) :ipv6 :ip))
-#+header: :var s1_user_pass=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vps1")) :user-pass)) 1 -1)
-#+header: :var s1_hy_host=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vps1")) :hy-host)) 1 -1)
-#+header: :var s1_vl_host=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vps1")) :vl-host)) 1 -1)
-#+header: :var s1_short_id=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vps1")) :short-id)) 1 -1)
-#+header: :var s1_user_uuid=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vps1")) :user-uuid)) 1 -1)
-#+header: :var s1_any_host=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vps1")) :any-host)) 1 -1)
-#+header: :var s1_pub_key=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vps1")) :pub-key)) 1 -1)
 #+header: :var rule_sets_dir=(expand-file-name rule-sets-dir)
 #+header: :var cache_path=(expand-file-name "cache.db" "_tangle")
-#+header: :var tailscale_state_dir=(expand-file-name "tailscale_state" "_tangle")
 #+header: :var jsdelivr="https://fastly.jsdelivr.net"
 #+header: :var dns_strategy=(if (zr-net-has-public-ipv6-addr-p) "prefer_ipv6" "ipv4_only")
 #+header: :var dns_default="ld-tuso-us1"
@@ -300,13 +281,6 @@
     ],
     "strategy": "$dns_strategy"
   },
-  "endpoints": [
-    {
-      "state_directory": "$tailscale_state_dir",
-      "tag": "ts-ep",
-      "type": "tailscale"
-    }
-  ],
   "experimental": {
     "cache_file": {
       "enabled": true,
@@ -334,188 +308,6 @@
   "log": {
     "level": "info"
   },
-  "outbounds": [
-    {
-      "tag": "direct",
-      "type": "direct"
-    },
-    {
-      "server": "127.0.0.1",
-      "server_port": 8080,
-      "tag": "mitm",
-      "type": "http"
-    },
-    {
-      "default": "u[self]",
-      "interrupt_exist_connections": false,
-      "outbounds": [
-        "s[self0]",
-        "s[self1]",
-        "u[self]"
-      ],
-      "tag": "s[self]",
-      "type": "selector"
-    },
-    {
-      "interrupt_exist_connections": false,
-      "outbounds": [
-        "s[self0]",
-        "s[self1]"
-      ],
-      "tag": "u[self]",
-      "type": "urltest"
-    },
-    {
-      "default": "u[self0]",
-      "interrupt_exist_connections": false,
-      "outbounds": [
-        "u[self0]",
-        "any0",
-        "vl0",
-        "hy0",
-        "nv0"
-      ],
-      "tag": "s[self0]",
-      "type": "selector"
-    },
-    {
-      "interrupt_exist_connections": false,
-      "outbounds": [
-        "any0",
-        "vl0",
-        "hy0",
-        "nv0"
-      ],
-      "tag": "u[self0]",
-      "type": "urltest"
-    },
-    {
-      "flow": "xtls-rprx-vision",
-      "server": "$s0_ip",
-      "server_port": 38199,
-      "tag": "vl0",
-      "tls": {
-        "enabled": true,
-        "reality": {
-          "enabled": true,
-          "public_key": "$s0_pub_key",
-          "short_id": "$s0_short_id"
-        },
-        "server_name": "$s0_vl_host",
-        "utls": {
-          "enabled": true
-        }
-      },
-      "type": "vless",
-      "uuid": "$s0_user_uuid"
-    },
-    {
-      "password": "$s0_user_pass",
-      "server": "$s0_ip",
-      "server_port": 39833,
-      "tag": "any0",
-      "tls": {
-        "enabled": true,
-        "server_name": "$s0_any_host"
-      },
-      "type": "anytls"
-    },
-    {
-      "obfs": {
-        "password": "$s0_obfs_pass",
-        "type": "salamander"
-      },
-      "password": "$s0_user_pass",
-      "server": "$s0_ip",
-      "server_port": 30104,
-      "tag": "hy0",
-      "tls": {
-        "alpn": [
-          "h3"
-        ],
-        "enabled": true,
-        "server_name": "$s0_hy_host"
-      },
-      "type": "hysteria2"
-    },
-    {
-      "server": "127.0.0.1",
-      "server_port": 10808,
-      "tag": "nv0",
-      "type": "http"
-    },
-    {
-      "default": "u[self1]",
-      "interrupt_exist_connections": false,
-      "outbounds": [
-        "u[self1]",
-        "any1",
-        "vl1",
-        "hy1"
-      ],
-      "tag": "s[self1]",
-      "type": "selector"
-    },
-    {
-      "interrupt_exist_connections": false,
-      "outbounds": [
-        "any1",
-        "vl1",
-        "hy1"
-      ],
-      "tag": "u[self1]",
-      "type": "urltest"
-    },
-    {
-      "flow": "xtls-rprx-vision",
-      "server": "$s1_ip",
-      "server_port": 38199,
-      "tag": "vl1",
-      "tls": {
-        "enabled": true,
-        "reality": {
-          "enabled": true,
-          "public_key": "$s1_pub_key",
-          "short_id": "$s1_short_id"
-        },
-        "server_name": "$s1_vl_host",
-        "utls": {
-          "enabled": true
-        }
-      },
-      "type": "vless",
-      "uuid": "$s1_user_uuid"
-    },
-    {
-      "password": "$s1_user_pass",
-      "server": "$s1_ip",
-      "server_port": 39833,
-      "tag": "any1",
-      "tls": {
-        "enabled": true,
-        "server_name": "$s1_any_host"
-      },
-      "type": "anytls"
-    },
-    {
-      "obfs": {
-        "password": "$s1_obfs_pass",
-        "type": "salamander"
-      },
-      "password": "$s1_user_pass",
-      "server": "$s1_ip",
-      "server_port": 30104,
-      "tag": "hy1",
-      "tls": {
-        "alpn": [
-          "h3"
-        ],
-        "enabled": true,
-        "server_name": "$s1_hy_host"
-      },
-      "type": "hysteria2"
-    }
-  ],
   "route": {
     "default_domain_resolver": {
       "server": "ali-quic"
@@ -668,73 +460,12 @@
 }
 #+end_src
 
-*** select
+*** bounds
 :PROPERTIES:
-:CUSTOM_ID: aaba4108-33b4-4d2f-aba4-1bbd1dca6aad
+:CUSTOM_ID: c772b10e-46cb-40e1-96e2-70361ae1c337
 :END:
-#+begin_src json :tangle (zr-org-by-tangle-dir "_400-selector.json")
-<<gen-this-way()>>
-#+end_src
-
-#+name: gen-this-way
-#+begin_src elisp
-(let* ((u-this-way "u[this-way]")
-       (s-this-way '("s[self]"))
-       (u-sub "u[sub]")
-       (s-sub (cons u-sub sub-outbounds))
-       (u-us "u{us}")
-       (s-us (cons u-us us-outbounds))
-       (u-dns "u[dns]")
-       (s-dns (cons u-dns '("s[this-way]" "s[self]" "direct")))
-       pre-obds
-       s-region
-       region-obds)
-  (when sub-outbounds
-    (push "s[sub]" s-this-way)
-    (push "s[sub]" s-dns)
-    (push `(((type . "selector")
-             (tag . "s[sub]")
-             (outbounds . ,(vconcat s-sub))
-             (default . ,u-sub))
-            ((type . "urltest")
-             (tag . ,u-sub)
-             (outbounds . ,(vconcat (cdr s-sub)))))
-          pre-obds))
-  (when-let* ((region-outbounds (cl-remove nil `(("us" . ,us-outbounds)
-                                                 ("ja" . ,ja-outbounds))
-                                           :key #'cdr))
-              (region-tag "s[region]"))
-    (push region-tag s-this-way)
-    (dolist (region region-outbounds)
-      (let ((tag (format "u{%s}" (car region))))
-        (push tag s-region)
-        (push `((type . "urltest")
-                (tag . ,tag)
-                (outbounds . ,(vconcat (cdr region))))
-              region-obds)))
-    (push `((type . "selector")
-            (tag . ,region-tag)
-            (outbounds . ,(vconcat s-region)))
-          region-obds)
-    (write-region (json-serialize `((outbounds . ,(vconcat region-obds))))
-                  nil (expand-file-name "_900-region.json" client-tmp-dir)))
-  (push `(((type . "selector")
-           (tag . "s[this-way]")
-           (outbounds . ,(vconcat (cons u-this-way s-this-way)))
-           (default . ,u-this-way))
-          ((type . "urltest")
-           (tag . ,u-this-way)
-           (outbounds . ,(vconcat s-this-way))))
-        pre-obds)
-  (push `(((type . "selector")
-           (tag . "s[dns]")
-           (outbounds . ,(vconcat s-dns))
-           (default . ,u-dns))
-          ((type . "urltest")
-           (tag . ,u-dns)
-           (outbounds . ,(vconcat (seq-difference s-dns `(,u-dns "direct"))))))
-        pre-obds)
-  (json-serialize `((outbounds . ,(apply #'vconcat pre-obds)))))
+#+begin_src json :tangle (zr-org-by-tangle-dir "_500-bounds.json")
+<<gen-client-bounds()>>
 #+end_src
 
 *** hosts
@@ -1089,6 +820,225 @@
 }
 #+end_src
 
+* bounds
+:PROPERTIES:
+:header-args:elisp: :var ts-ep='((tag . "ts-ep") (type . "tailscale")) obds='(((tag . "direct") (type . "direct"))) ibds='() ep='() conf='()
+:END:
+** client
+#+name: gen-client-bounds
+#+begin_src elisp
+(let ((tailscale-state-dir (expand-file-name "tailscale_state" "_tangle"))
+      (vps (plstore-find zr-local-pls '(:user-name ("kkky"))))
+      s-tags)
+  (push `(state_directory . ,tailscale-state-dir) ts-ep)
+  
+  ;; misc outbounds
+  (push '((server . "127.0.0.1")
+          (server_port . 8080)
+          (tag . "mitm")
+          (type . "http"))
+        obds)
+
+  ;; vps outbounds
+  (dolist (info vps)
+    (let* ((name (car info))
+           (attr (cdr info))
+           (user-name (plist-get attr :user-name))
+           (user-pass (plist-get attr :user-pass))
+           (ip-type (if (and (zr-net-has-public-ipv6-addr-p)
+                             (plist-get attr :ipv6))
+                        :ipv6
+                      :ip))
+           (ip (plist-get attr ip-type))
+           (u-tag (format "u[%s]" name))
+           (s-tag (format "s[%s]" name))
+           vps-tags)
+      
+      (when-let* ((port (plist-get attr :vl-port))
+                  (tag (format "vl[%s]" name)))
+        (push tag vps-tags)
+        (push `((flow . "xtls-rprx-vision")
+                (server . ,ip)
+                (server_port . ,port)
+                (tag . ,tag)
+                (tls . ((enabled . t)
+                        (reality . ((enabled . t)
+                                    (public_key . ,(plist-get attr :pub-key))
+                                    (short_id . ,(plist-get attr :short-id))))
+                        (server_name . ,(plist-get attr :vl-host))
+                        (utls . ((enabled . t)))))
+                (uuid . ,(plist-get attr :user-uuid))
+                (type . "vless"))
+              obds))
+
+      (when-let* ((port (plist-get attr :any-port))
+                  (tag (format "any[%s]" name)))
+        (push tag vps-tags)
+        (push `((password . ,user-pass)
+                (server . ,ip)
+                (server_port . ,port)
+                (tag . ,tag)
+                (tls . ((enabled . t)
+                        (server_name . ,(plist-get attr :any-host))))
+                (type . "anytls"))
+              obds))
+
+      (when-let* ((port (plist-get attr :hy-port))
+                  (tag (format "hy[%s]" name)))
+        (push tag vps-tags)
+        (push `((obfs . ((password . ,(plist-get attr :obfs-pass))
+                         (type . "salamander")))
+                (password . ,user-pass)
+                (server . ,ip)
+                (server_port . ,port)
+                (tag . ,tag)
+                (tls . ((alpn . ["h3"])
+                        (enabled . t)
+                        (server_name . ,(plist-get attr :hy-host))))
+                (type . "hysteria2"))
+              obds))
+
+      (when-let* ((port (plist-get attr :nv-port))
+                  (host (plist-get attr :nv-host))
+                  (local-port (plist-get attr :nv-local-port))
+                  (tag (format "nv[%s]" name))
+                  (listen (format "http://127.0.0.1:%d" local-port))
+                  (proxy (format "quic://%s:%s@%s" user-name user-pass host))
+                  (host-resolver-rules (format "MAP %s %s" host
+                                               (if (eq ip-type :ipv6)
+                                                   (format "[%s]" ip)
+                                                 ip))))
+        (push tag vps-tags)
+        (write-region (json-serialize `((listen . ,listen)
+                                        (proxy . ,proxy)
+                                        (host-resolver-rules . ,host-resolver-rules)))
+                      nil (expand-file-name name "_tangle/naive/"))
+        (push `((server . "127.0.0.1")
+                (server_port . ,local-port)
+                (tag . ,tag)
+                (type . "http"))
+              obds))
+      
+      (when vps-tags
+        (push `((interrupt_exist_connections . :false)
+                (outbounds . ,(vconcat vps-tags))
+                (tag . ,u-tag)
+                (type . "urltest"))
+              obds)
+        (push `((default . ,u-tag)
+                (interrupt_exist_connections . :false)
+                (outbounds . ,(vconcat (cons u-tag vps-tags)))
+                (tag . ,s-tag)
+                (type . "selector"))
+              obds)
+        (push s-tag s-tags))))
+
+  ;; selector
+  (let* ((u-self-tag "u[self]")
+         (s-self-tag "s[self]")
+         (u-this-way "u[this-way]")
+         (s-this-way (list s-self-tag))
+         (u-sub "u[sub]")
+         (s-sub (cons u-sub sub-outbounds))
+         (u-us "u{us}")
+         (s-us (cons u-us us-outbounds))
+         (u-dns "u[dns]")
+         (s-dns (cons u-dns '("s[this-way]" "s[self]" "direct")))
+         pre-obds
+         s-region
+         region-obds)
+
+    (when s-tags
+      (push `((interrupt_exist_connections . :false)
+              (outbounds . ,(vconcat s-tags))
+              (tag . ,u-self-tag)
+              (type . "urltest"))
+            obds)
+      (push `((default . ,u-self-tag)
+              (interrupt_exist_connections . :false)
+              (outbounds . ,(vconcat (cons u-self-tag s-tags)))
+              (tag . ,s-self-tag)
+              (type . "selector"))
+            obds))
+
+    (when sub-outbounds
+      (push "s[sub]" s-this-way)
+      (push "s[sub]" s-dns)
+      (push `(((type . "selector")
+               (tag . "s[sub]")
+               (outbounds . ,(vconcat s-sub))
+               (default . ,u-sub))
+              ((type . "urltest")
+               (tag . ,u-sub)
+               (outbounds . ,(vconcat (cdr s-sub)))))
+            pre-obds))
+    (when-let* ((region-outbounds (cl-remove nil `(("us" . ,us-outbounds)
+                                                   ("ja" . ,ja-outbounds))
+                                             :key #'cdr))
+                (region-tag "s[region]"))
+      (push region-tag s-this-way)
+      (dolist (region region-outbounds)
+        (let ((tag (format "u{%s}" (car region))))
+          (push tag s-region)
+          (push `((type . "urltest")
+                  (tag . ,tag)
+                  (outbounds . ,(vconcat (cdr region))))
+                region-obds)))
+      (push `((type . "selector")
+              (tag . ,region-tag)
+              (outbounds . ,(vconcat s-region)))
+            region-obds)
+      (write-region (json-serialize `((outbounds . ,(vconcat region-obds))))
+                    nil (expand-file-name "_900-region.json" client-tmp-dir)))
+    (push `(((type . "selector")
+             (tag . "s[this-way]")
+             (outbounds . ,(vconcat (cons u-this-way s-this-way)))
+             (default . ,u-this-way))
+            ((type . "urltest")
+             (tag . ,u-this-way)
+             (outbounds . ,(vconcat s-this-way))))
+          pre-obds)
+    (push `(((type . "selector")
+             (tag . "s[dns]")
+             (outbounds . ,(vconcat s-dns))
+             (default . ,u-dns))
+            ((type . "urltest")
+             (tag . ,u-dns)
+             (outbounds . ,(vconcat (seq-difference s-dns `(,u-dns "direct"))))))
+          pre-obds)
+    (setq obds (append (apply #'append pre-obds) obds)))
+
+  ;; bind-interface
+  (when-let* ((default-interface-file (expand-file-name "_default-interface"))
+              (default-interface (and (file-readable-p default-interface-file)
+                                      (string-trim (org-file-contents default-interface-file t t)))))
+    (push (cons 'bind_interface default-interface) ts-ep)
+    (setq obds
+          (mapcar (lambda (obd)
+                    (if (or (assoc 'bind_interface obd)
+                            (string= (alist-get 'server obd) "127.0.0.1")
+                            (member (alist-get 'type obd) '("urltest" "selector")))
+                        obd
+                      (cons (cons 'bind_interface default-interface) obd)))
+                  obds))))
+<<return-bounds>>
+#+end_src
+
+** server
+#+name: gen-server-bounds
+#+begin_src elisp
+(push '(advertise_exit_node . t) ts-ep)
+<<return-bounds>>
+#+end_src
+
+** return
+#+name: return-bounds
+#+begin_src elisp
+(push ts-ep ep)
+(when ep (push `(endpoints . ,(vconcat ep)) conf))
+(when obds (push `(outbounds . ,(vconcat obds)) conf))
+(json-serialize conf)
+#+end_src
 * rule-sets
 :PROPERTIES:
 :tangle-dir: (expand-file-name rule-sets-dir)
