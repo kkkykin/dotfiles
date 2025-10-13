@@ -141,12 +141,12 @@ start /b mpd "%USERPROFILE%\scoop\persist\mpd\mpd.conf"
 #+end_src
 
 #+name: run_sing_box
-#+begin_src bat :var config-dir=(expand-file-name "../sing-box/_tangle/client/")
-start /b sing-box run -C "%config-dir%"
+#+begin_src bat :var config=(expand-file-name "../sing-box/_tangle/client/500-main.json")
+start /b sing-box run -c "%config%"
 #+end_src
 
 #+name: run_naive
-#+begin_src bat :var config=(expand-file-name "../sing-box/_tangle/naive/config.json")
+#+begin_src bat :var config=(expand-file-name "../sing-box/_tangle/naive/vps0")
 start /b naive "%config%"
 #+end_src
 

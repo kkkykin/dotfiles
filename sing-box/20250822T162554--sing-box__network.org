@@ -11,6 +11,7 @@
   (zr-org-babel-json-format c))
 (let* ((zr-local-pls (plstore-open "sing-box.pls"))
        (client-tmp-dir "_tangle/tmp/")
+       (tun-dir (expand-file-name "tun/" client-tmp-dir))
        (client-dir "_tangle/client/")
        (hosts-dir "_tangle/hosts/")
        (hosts-uris `(;; ("github" . "https://gitlab.com/ineo6/hosts/-/raw/master/hosts")
@@ -26,8 +27,7 @@
        us-outbounds
        ja-outbounds
 
-       (tun-dir (expand-file-name "tun/" client-dir))
-       (merge-file (expand-file-name "500-merge.json" client-dir))
+       (main-file (expand-file-name "500-main.json" client-dir))
        (rule-sets-dir (expand-file-name "rule-sets/" "_tangle/"))
        (delete-by-moving-to-trash))
   (delete-directory client-tmp-dir t)
@@ -132,10 +132,13 @@
 
   (dolist (f (directory-files "." t "^_.+\\.json$" t))
     (make-symbolic-link f client-tmp-dir t))
-  (mkdir tun-dir t)
+
   (call-process "sing-box" nil nil nil "merge"
-                merge-file "-C" client-tmp-dir)
-  (make-symbolic-link merge-file tun-dir t)
+                main-file "-C" client-tmp-dir)
+  (when (file-directory-p tun-dir)
+    (make-symbolic-link main-file tun-dir t)
+    (call-process "sing-box" nil nil nil "merge"
+                  (expand-file-name "500-tun.json" client-dir) "-C" tun-dir))
 
   (when-let* (((eq 'android system-type))
               (android-dir "/storage/emulated/0/io.nekohasekai.sfa/")
@@ -147,13 +150,10 @@
       (mkdir termux-bin-dir t)
       (call-process-shell-command (format "curl -Lxsocks5h://127.0.0.1:10807 -o- 'https://github.com/SagerNet/sing-box/releases/download/v%s/sing-box-%s-android-arm64.tar.gz' | tar -xzvf - -C '%s' --wildcards --no-anchored --transform='s|^.*/||' '*/sing-box'" version version termux-bin-dir)))
     (mkdir android-dir t)
-    (copy-file merge-file (expand-file-name "main.json" android-dir) t)
+    (dolist (f (file-directory client-dir))
+      (copy-file f android-dir t))
     (copy-directory rule-sets-dir android-dir)
     (copy-directory hosts-dir android-dir)
-    (dolist (c `(("tun.json" . ,tun-dir)))
-      (call-process "sing-box" nil nil nil "merge"
-                    (expand-file-name (car c) android-dir)
-                    "-C" (cdr c)))
     (zr-android-call-rish
      (string-join
       (list (format "sed -i 's,%s,%s,g' %s/*.json"
@@ -532,7 +532,7 @@
 
 *** tun
 :PROPERTIES:
-:tangle-dir: _tangle/client/tun
+:tangle-dir: (concat tun-dir)
 :END:
 
 **** android
@@ -574,6 +574,9 @@
 #+end_src
 
 **** linux
+:PROPERTIES:
+:CUSTOM_ID: 17b75a2d-d55b-4d9d-b248-50ddbb61fdd9
+:END:
 #+name: linux-tun
 #+begin_src json :tangle (if (eq system-type 'gnu/linux) (zr-org-by-tangle-dir "500-linux.json") "no") :mkdirp t
 {
