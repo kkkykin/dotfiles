@@ -591,25 +591,11 @@
 :tangle-dir: _tangle/server
 :END:
 
-*** server0
+*** main
 :PROPERTIES:
 :CUSTOM_ID: b85ab91b-1175-4b51-9f3c-f37a0b589979
-:header-args: :var s_obfs_pass=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vps0")) :obfs-pass)) 1 -1)
-:header-args+: :var s_ip=(plist-get (cdr (plstore-get zr-local-pls "vps0")) (if (zr-net-has-public-ipv6-addr-p) :ipv6 :ip))
-:header-args+: :var s_user_pass=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vps0")) :user-pass)) 1 -1)
-:header-args+: :var s_hy_host=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vps0")) :hy-host)) 1 -1)
-:header-args+: :var s_vl_host=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vps0")) :vl-host)) 1 -1)
-:header-args+: :var s_short_id=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vps0")) :short-id)) 1 -1)
-:header-args+: :var s_user_uuid=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vps0")) :user-uuid)) 1 -1)
-:header-args+: :var s_any_host=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vps0")) :any-host)) 1 -1)
-:header-args+: :var s_user_name=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vps0")) :user-name)) 1 -1)
-:header-args+: :var s_nv_host=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vps0")) :nv-host)) 1 -1)
 :END:
 
-#+header: :var cf_token=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "cf0")) :api-token)) 1 -1)
-#+header: :var s_email=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vps0")) :email)) 1 -1)
-#+header: :var s_masq=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vps0")) :masq)) 1 -1)
-#+header: :var s_priv_key=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vps0")) :priv-key)) 1 -1)
 #+name: server-config
 #+begin_src json :tangle (zr-org-by-tangle-dir "500-main.json") :mkdirp t
 {
@@ -630,129 +616,9 @@
     ],
     "strategy": "prefer_ipv6"
   },
-  "endpoints": [
-    {
-      "advertise_exit_node": true,
-      "tag": "ts-ep",
-      "type": "tailscale"
-    }
-  ],
-  "inbounds": [
-    {
-      "listen": "::",
-      "listen_port": 443,
-      "tls": {
-        "acme": {
-          "dns01_challenge": {
-            "api_token": "$cf_token",
-            "provider": "cloudflare"
-          },
-          "domain": "$s_nv_host",
-          "email": "$s_email"
-        },
-        "enabled": true
-      },
-      "type": "naive",
-      "users": [
-        {
-          "password": "$s_user_pass",
-          "username": "$s_user_name"
-        }
-      ]
-    },
-    {
-      "down_mbps": 500,
-      "listen": "::",
-      "listen_port": 30104,
-      "masquerade": "$s_masq",
-      "obfs": {
-        "password": "$s_obfs_pass",
-        "type": "salamander"
-      },
-      "tls": {
-        "acme": {
-          "dns01_challenge": {
-            "api_token": "$cf_token",
-            "provider": "cloudflare"
-          },
-          "domain": "$s_hy_host",
-          "email": "$s_email"
-        },
-        "alpn": [
-          "h3"
-        ],
-        "enabled": true,
-        "server_name": "$s_hy_host"
-      },
-      "type": "hysteria2",
-      "up_mbps": 500,
-      "users": [
-        {
-          "name": "$s_user_name",
-          "password": "$s_user_pass"
-        }
-      ]
-    },
-    {
-      "listen": "::",
-      "listen_port": 38199,
-      "tag": "vless-vision-reality",
-      "tls": {
-        "enabled": true,
-        "reality": {
-          "enabled": true,
-          "handshake": {
-            "server": "$s_vl_host",
-            "server_port": 443
-          },
-          "private_key": "$s_priv_key",
-          "short_id": [
-            "$s_short_id"
-          ]
-        },
-        "server_name": "$s_vl_host"
-      },
-      "type": "vless",
-      "users": [
-        {
-          "flow": "xtls-rprx-vision",
-          "name": "$s_user_name",
-          "uuid": "$s_user_uuid"
-        }
-      ]
-    },
-    {
-      "listen": "::",
-      "listen_port": 39833,
-      "tls": {
-        "acme": {
-          "dns01_challenge": {
-            "api_token": "$cf_token",
-            "provider": "cloudflare"
-          },
-          "domain": "$s_any_host",
-          "email": "$s_email"
-        },
-        "enabled": true,
-        "server_name": "$s_any_host"
-      },
-      "type": "anytls",
-      "users": [
-        {
-          "password": "$s_user_pass"
-        }
-      ]
-    }
-  ],
   "log": {
     "level": "info"
   },
-  "outbounds": [
-    {
-      "tag": "direct",
-      "type": "direct"
-    }
-  ],
   "route": {
     "auto_detect_interface": true,
     "default_domain_resolver": {
@@ -770,36 +636,21 @@
 }
 #+end_src
 
-#+header: :var nv_ip=(plist-get (cdr (plstore-get zr-local-pls "nv")) (if (zr-net-has-public-ipv6-addr-p) :ipv6 :ip))
-#+begin_src json :tangle (expand-file-name "config.json" "_tangle/naive") :mkdirp t
-{
-  "listen": "http://127.0.0.1:10808",
-  "proxy": "quic://$s_user_name:$s_user_pass@$s_nv_host",
-  "host-resolver-rules": "MAP $s_nv_host $s_ip"
-}
+*** server0
+:PROPERTIES:
+:CUSTOM_ID: bc0f24ed-8894-45b6-9008-4a5f1879b0f1
+:END:
+#+begin_src json :tangle (zr-org-by-tangle-dir "500-s0.json")
+<<gen-server-bounds(name="vps0")>>
 #+end_src
 
 *** server1
 :PROPERTIES:
-:header-args: :var s_obfs_pass=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vps1")) :obfs-pass)) 1 -1)
-:header-args+: :var s_ip=(plist-get (cdr (plstore-get zr-local-pls "vps1")) (if (zr-net-has-public-ipv6-addr-p) :ipv6 :ip))
-:header-args+: :var s_user_pass=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vps1")) :user-pass)) 1 -1)
-:header-args+: :var s_hy_host=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vps1")) :hy-host)) 1 -1)
-:header-args+: :var s_vl_host=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vps1")) :vl-host)) 1 -1)
-:header-args+: :var s_short_id=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vps1")) :short-id)) 1 -1)
-:header-args+: :var s_user_uuid=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vps1")) :user-uuid)) 1 -1)
-:header-args+: :var s_any_host=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vps1")) :any-host)) 1 -1)
-:header-args+: :var s_user_name=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vps1")) :user-name)) 1 -1)
-:header-args+: :var s_nv_host=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vps1")) :nv-host)) 1 -1)
 :CUSTOM_ID: 24c5c785-b594-4987-b947-a22e63c24f3e
 :END:
 
-#+header: :var cf_token=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "cf1")) :api-token)) 1 -1)
-#+header: :var s_email=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vps1")) :email)) 1 -1)
-#+header: :var s_masq=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vps1")) :masq)) 1 -1)
-#+header: :var s_priv_key=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "vps1")) :priv-key)) 1 -1)
 #+begin_src json :tangle (zr-org-by-tangle-dir "500-s1.json")
-<<server-config>>
+<<gen-server-bounds(name="vps1")>>
 #+end_src
 
 *** warp
@@ -1028,6 +879,85 @@
 #+name: gen-server-bounds
 #+begin_src elisp
 (push '(advertise_exit_node . t) ts-ep)
+(let* ((info (plstore-get zr-local-pls name))
+       (attr (cdr info))
+       (user-name (plist-get attr :user-name))
+       (user-pass (plist-get attr :user-pass))
+       (cf0-token (plist-get (cdr (plstore-get zr-local-pls "cf0")) :api-token)))
+
+  (when-let* ((port (plist-get attr :vl-port))
+              (host (plist-get attr :vl-host))
+              (tag (format "vl[%s]" name)))
+    (push `((listen . "::")
+            (listen_port . ,port)
+            (tag . ,tag)
+            (tls . ((enabled . t)
+                    (reality . ((enabled . t)
+                                (handshake . ((server . ,host)
+                                              (server_port . 443)))
+                                (private_key . ,(plist-get attr :priv-key))
+                                (short_id . [,(plist-get attr :short-id)])))
+                    (server_name . ,host)))
+            (type . "vless")
+            (users . [((flow . "xtls-rprx-vision")
+                       (name . ,user-name)
+                       (uuid . ,(plist-get attr :user-uuid)))]))
+          ibds))
+
+  (when-let* ((port (plist-get attr :any-port))
+              (host (plist-get attr :any-host))
+              (tag (format "any[%s]" name)))
+    (push `((listen . "::")
+            (listen_port . ,port)
+            (tls . ((acme . ((dns01_challenge . ((api_token . ,cf0-token)
+                                                 (provider . "cloudflare")))
+                             (domain . ,host)
+                             (email . ,(plist-get attr :email))))
+                    (alpn . ["h3"])
+                    (enabled . t)
+                    (server_name . ,host)))
+            (tag . ,tag)
+            (type . "anytls")
+            (users . [((password . ,user-pass))]))
+          ibds))
+
+  (when-let* ((port (plist-get attr :hy-port))
+              (host (plist-get attr :hy-host))
+              (tag (format "hy[%s]" name)))
+    (push `((down_mbps . 500)
+            (listen . "::")
+            (listen_port . ,port)
+            (masquerade . ,(plist-get attr :masq))
+            (obfs . ((password . ,(plist-get attr :obfs-pass))
+                     (type . "salamander")))
+            (tls . ((acme . ((dns01_challenge . ((api_token . ,cf0-token)
+                                                 (provider . "cloudflare")))
+                             (domain . ,host)
+                             (email . ,(plist-get attr :email))))
+                    (alpn . ["h3"])
+                    (enabled . t)
+                    (server_name . ,host)))
+            (tag . ,tag)
+            (type . "hysteria2")
+            (up_mbps . 500)
+            (users . [((password . ,user-pass)
+                       (name . ,user-name))]))
+          ibds))
+
+  (when-let* ((port (plist-get attr :nv-port))
+              (tag (format "nv[%s]" name)))
+    (push `((listen . "::")
+            (listen_port . ,port)
+            (tls . ((acme . ((dns01_challenge . ((api_token . ,cf0-token)
+                                                 (provider . "cloudflare")))
+                             (domain . ,(plist-get attr :nv-host))
+                             (email . ,(plist-get attr :email))))
+                    (enabled . t)))
+            (tag . ,tag)
+            (type . "naive")
+            (users . [((password . ,user-pass)
+                       (username . ,user-name))]))
+          ibds)))
 <<return-bounds>>
 #+end_src
 
@@ -1037,6 +967,7 @@
 (push ts-ep ep)
 (when ep (push `(endpoints . ,(vconcat ep)) conf))
 (when obds (push `(outbounds . ,(vconcat obds)) conf))
+(when ibds (push `(inbounds . ,(vconcat ibds)) conf))
 (json-serialize conf)
 #+end_src
 * rule-sets
