@@ -11,7 +11,7 @@
                ('android "linux-arm64")
                ('gnu/linux "linux-amd64")))
        (zr-local-pls (plstore-open "caddy.pls"))
-       (local-sub-path-dir (expand-file-name "_local"))
+       (local-conf-dir (expand-file-name "_local"))
        (tangle-dir (expand-file-name "_tangle/"))
        (bin-dir (pcase system-type
                   ('windows-nt (substitute-in-file-name "$userprofile/.local/bin/"))
@@ -30,9 +30,11 @@
               (exec-path (list tangle-dir))
               (caddy-path (executable-find "caddy")))
     (make-symbolic-link caddy-path bin-dir t))
-  (mkdir local-sub-path-dir t)
-  (write-region "# placeholder" nil
-                (expand-file-name "_placeholder.Caddyfile" local-sub-path-dir))
+  (dolist (sub '("subpath" "global" "l4" "snippets"))
+    (let ((sub-dir (expand-file-name sub local-conf-dir)))
+      (mkdir sub-dir t)
+      (write-region "# placeholder" nil
+                    (expand-file-name "_placeholder.Caddyfile" sub-dir))))
   (org-babel-tangle))
 #+end_src
 
@@ -40,8 +42,10 @@
 :PROPERTIES:
 :CUSTOM_ID: 799e1881-69a9-45e3-ab2d-05b6a0ea8d80
 :END:
-#+header: :var localpath=(concat local-sub-path-dir)
+#+header: :var localpath=(concat local-conf-dir)
+#+header: :var listen=(if (eq 'android system-type) "6680" "80")
 #+begin_src org :tangle (zr-org-by-tangle-dir "env") :var subpath=(expand-file-name "_tangle/subpath")
+LISTEN=$listen
 SUBPATH=$subpath
 LOCALPATH=$localpath
 #+end_src
@@ -58,7 +62,17 @@ LOCALPATH=$localpath
 :END:
 #+begin_src caddy
 {
+    import {$LOCALPATH}/global/*
     order aria2_middleware before reverse_proxy
+    layer4 {
+        :{$LISTEN} {
+            import {$LOCALPATH}/l4/*
+            @insecure http
+            route @insecure {
+                proxy 127.0.0.1:9080
+            }
+        }
+    }
 }
 #+end_src
 
@@ -157,14 +171,22 @@ LOCALPATH=$localpath
 }
 #+end_src
 
+**** local
+:PROPERTIES:
+:CUSTOM_ID: 31d98afb-7857-43a2-b526-1bb86de59d8d
+:END:
+#+begin_src caddy
+import {$LOCALPATH}/snippets/*
+#+end_src
+
 *** site
 :PROPERTIES:
 :CUSTOM_ID: d66b4144-3335-4a18-a36f-b75a4b3c9bcd
 :END:
-#+begin_src caddy :var listen=(if (eq 'android system-type) ":6680" ":80")
-$listen {
+#+begin_src caddy
+127.0.0.1:9080 {
     import {$SUBPATH}/*
-    import {$LOCALPATH}/*
+    import {$LOCALPATH}/subpath/*
 }
 #+end_src
 
@@ -262,6 +284,25 @@ handle_path /aria2-jsonrpc {
         add_server_option ^https?://[^/]+\.baidu(?:pcs)?\.com/file/ max-connection-per-server 2
         add_server_option ^https://[^/]+\.mypikpak\.com/ max-connection-per-server 2
         add_server_option ^https://pixeldrain\.com/ max-connection-per-server 1
+    }
+}
+#+end_src
+
+*** proxy
+:PROPERTIES:
+:CUSTOM_ID: b2b70d0a-83fa-485d-9726-57115c4ebb8d
+:END:
+#+begin_src caddy :mkdirp t :tangle (zr-org-by-tangle-dir "proxy.Caddyfile")
+route /proxy {
+    forward_proxy {
+        # basic_auth user1 0NtCL2JPJBgPPMmlPcJ
+        hide_ip
+        hide_via
+        dial_timeout            30s
+        max_idle_conns          50
+        max_idle_conns_per_host 2
+        probe_resistance caddyserver.com
+        upstream socks5://127.0.0.1:10807
     }
 }
 #+end_src
