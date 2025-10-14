@@ -195,6 +195,10 @@ if /i "%arg%"=="emacs" (
     call :kill_process sing-box.exe
     call :wait_seconds 1
     call :run_sing_box
+) else if /i "%arg%"=="caddy" (
+    caddy stop
+    call :wait_seconds 1
+    call :run_caddy
 ) else if /i "%arg%"=="naive" (
     call :kill_process naive.exe
     call :wait_seconds 1
