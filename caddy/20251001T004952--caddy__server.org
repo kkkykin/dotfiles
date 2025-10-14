@@ -11,6 +11,7 @@
                ('android "linux-arm64")
                ('gnu/linux "linux-amd64")))
        (zr-local-pls (plstore-open "caddy.pls"))
+       (local-sub-path-dir (expand-file-name "_local"))
        (tangle-dir (expand-file-name "_tangle/"))
        (bin-dir (pcase system-type
                   ('windows-nt (substitute-in-file-name "$userprofile/.local/bin/"))
@@ -29,6 +30,9 @@
               (exec-path (list tangle-dir))
               (caddy-path (executable-find "caddy")))
     (make-symbolic-link caddy-path bin-dir t))
+  (mkdir local-sub-path-dir t)
+  (write-region "# placeholder" nil
+                (expand-file-name "_placeholder.Caddyfile" local-sub-path-dir))
   (org-babel-tangle))
 #+end_src
 
@@ -36,7 +40,7 @@
 :PROPERTIES:
 :CUSTOM_ID: 799e1881-69a9-45e3-ab2d-05b6a0ea8d80
 :END:
-#+header: :var localpath=(expand-file-name "_local")
+#+header: :var localpath=(concat local-sub-path-dir)
 #+begin_src org :tangle (zr-org-by-tangle-dir "env") :var subpath=(expand-file-name "_tangle/subpath")
 SUBPATH=$subpath
 LOCALPATH=$localpath
