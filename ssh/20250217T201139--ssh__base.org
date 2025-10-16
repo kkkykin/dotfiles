@@ -34,7 +34,7 @@ RemoteCommand /usr/bin/env nvim +te +star
 #+end_src
 
 #+name: github
-#+begin_src conf-space :var proxy=(cond* ((bind* (proxy (plist-get (cdr (plstore-get zr-local-pls "proxy")) :proxy))) :non-exit) ((executable-find "nc") (format "ProxyCommand nc -v -x %s %%h %%p" proxy)) ((executable-find "ncat") (format "ProxyCommand ncat --proxy %s --proxy-type socks5 %%h %%p" proxy)) (t ""))
+#+begin_src conf-space :var proxy=(if-let* ((proxy (plist-get (cdr (plstore-get zr-local-pls "proxy")) :proxy))) (cond ((executable-find "nc") (format "ProxyCommand nc -v -x %s %%h %%p" proxy)) ((executable-find "ncat") (format "ProxyCommand ncat --proxy %s --proxy-type socks5 %%h %%p" proxy)) (t "")) "")
 Host github.com
 Hostname ssh.github.com
 User git
