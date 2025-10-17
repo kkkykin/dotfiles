@@ -5,7 +5,14 @@
 
 * tangle
 #+begin_src elisp
-(let ((zr-local-pls (plstore-open "ssh.pls")))
+(let* ((zr-local-pls (plstore-open "ssh.pls"))
+       (proxy (plist-get (cdr (plstore-get zr-local-pls "proxy")) :proxy))
+       (proxy-fmt (cond
+                   ((executable-find "ncat")
+                    "ProxyCommand ncat --proxy %s --proxy-type socks5 --proxy-dns remote %%h %%p")
+                   ((executable-find "nc")
+                    "ProxyCommand nc -x %s %%h %%p")))
+       (proxy-cmd (if (and proxy proxy-fmt) (format proxy-fmt proxy) "")))
   (plstore-close zr-local-pls)
   (org-babel-tangle))
 #+end_src
@@ -13,7 +20,7 @@
 * example
 :PROPERTIES:
 :CUSTOM_ID: f5e58b4d-428d-4730-aa4e-8cfe7a6730b0
-:header-args:conf-space: :tangle (zr-org-by-tangle-dir)
+:header-args:conf-space: :tangle (zr-org-by-tangle-dir) :var proxy-cmd=(concat proxy-cmd)
 :END:
 #+name: tty
 #+begin_src conf :tangle no
@@ -34,13 +41,23 @@ RemoteCommand /usr/bin/env nvim +te +star
 #+end_src
 
 #+name: github
-#+begin_src conf-space :var proxy=(if-let* ((proxy (plist-get (cdr (plstore-get zr-local-pls "proxy")) :proxy))) (cond ((executable-find "nc") (format "ProxyCommand nc -v -x %s %%h %%p" proxy)) ((executable-find "ncat") (format "ProxyCommand ncat --proxy %s --proxy-type socks5 %%h %%p" proxy)) (t "")) "")
+#+begin_src conf-space
 Host github.com
 Hostname ssh.github.com
 User git
 Port 443
 PreferredAuthentications publickey
-$proxy
+$proxy-cmd
+#+end_src
+
+#+name: codeberg
+#+begin_src conf-space
+Host codeberg.org
+Hostname codeberg.org
+ServerAliveInterval 55
+ForwardAgent yes
+PreferredAuthentications publickey
+$proxy-cmd
 #+end_src
 
 #+name: x11
