@@ -6,7 +6,9 @@
 
 * tangle
 #+begin_src elisp
-(org-babel-tangle)
+(dolist (f (org-babel-tangle))
+  (when (string-suffix-p "/rc/" (file-name-directory f))
+    (chmod f #o700)))
 
 (when-let* ((rc (pcase system-type
                   ('gnu/linux (expand-file-name "~/.bashrc"))
