@@ -11,10 +11,11 @@
 (when-let* ((rc (pcase system-type
                   ('gnu/linux (expand-file-name "~/.bashrc"))
                   ('android (expand-file-name "home/.bashrc" zr-termux-root-directory)))))
-  (when (file-exists-p rc)
-    (unless (file-symlink-p rc)
-      (rename-file rc (concat rc ".bak"))))
-  (make-symbolic-link (expand-file-name "_tangle/rc/general") rc t))
+  (unless (file-directory-p "/nix")
+    (when (file-exists-p rc)
+      (unless (file-symlink-p rc)
+        (rename-file rc (concat rc ".bak"))))
+    (make-symbolic-link (expand-file-name "_tangle/rc/general") rc t)))
 #+end_src
 
 * rc
