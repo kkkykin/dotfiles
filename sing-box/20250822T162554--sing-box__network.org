@@ -28,6 +28,7 @@
        ja-outbounds
 
        (main-file (expand-file-name "500-main.json" client-dir))
+       (tun-file (expand-file-name "500-tun.json" client-dir))
        (rule-sets-dir (expand-file-name "rule-sets/" "_tangle/"))
        (delete-by-moving-to-trash))
   (delete-directory client-tmp-dir t)
@@ -45,7 +46,7 @@
         (when (file-readable-p uri)
           (make-symbolic-link uri f t)))
       (push f hosts-files)))
-  
+
   (mkdir client-tmp-dir t)
   (mkdir sub-dir t)
 
@@ -137,8 +138,7 @@
                 main-file "-C" client-tmp-dir)
   (when (file-directory-p tun-dir)
     (make-symbolic-link main-file tun-dir t)
-    (call-process "sing-box" nil nil nil "merge"
-                  (expand-file-name "500-tun.json" client-dir) "-C" tun-dir))
+    (call-process "sing-box" nil nil nil "merge" tun-file "-C" tun-dir))
 
   (when-let* (((eq 'gnu/linux system-type))
               (sops (executable-find "sops"))
@@ -146,7 +146,7 @@
               (file-directory-p secrets-dir)
               (sops-enc-file (expand-file-name "sing-box.json" secrets-dir)))
     (call-process sops nil (list :file sops-enc-file) nil
-                  "--encrypt" main-file))
+                  "--encrypt" tun-file))
 
   (when-let* (((eq 'android system-type))
               (android-dir "/storage/emulated/0/io.nekohasekai.sfa/")
@@ -513,7 +513,7 @@
 {
   "inbounds": [
     {
-      "listen": "::",
+      "listen": "127.0.0.1",
       "listen_port": 53,
       "network": "udp",
       "sniff_override_destination": true,
@@ -525,13 +525,20 @@
     "rules": [
       {
         "action": "sniff",
-        "inbound": "dns-in",
         "sniffer": "dns"
       },
       {
-        "action": "hijack-dns",
-        "port": 53,
-        "protocol": "dns"
+        "type": "logical",
+        "mode": "or",
+        "rules": [
+          {
+            "protocol": "dns"
+          },
+          {
+            "port": 53
+          }
+        ],
+        "action": "hijack-dns"
       }
     ]
   }
@@ -586,7 +593,7 @@
 :CUSTOM_ID: 17b75a2d-d55b-4d9d-b248-50ddbb61fdd9
 :END:
 #+name: linux-tun
-#+begin_src json :tangle (if (eq system-type 'gnu/linux) (zr-org-by-tangle-dir "500-linux.json") "no") :mkdirp t
+#+begin_src json :tangle (if (eq system-type 'gnu/linux) (zr-org-by-tangle-dir "400-linux.json") "no") :mkdirp t
 {
   "inbounds": [
     {
@@ -605,6 +612,7 @@
     }
   ],
   "route": {
+    "final": "s[this-way]",
     "auto_detect_interface": true
   }
 }
@@ -718,7 +726,7 @@
       (vps (plstore-find zr-local-pls '(:user-name ("kkky"))))
       s-tags)
   (push `(state_directory . ,tailscale-state-dir) ts-ep)
-  
+
   ;; misc outbounds
   (push '((server . "127.0.0.1")
           (server_port . 8080)
@@ -763,7 +771,7 @@
                 (tag . ,tag)
                 (type . "http"))
               obds))
-      
+
       (when-let* ((port (plist-get attr :vl-port))
                   (tag (format "vl[%s]" name)))
         (push tag vps-tags)
@@ -807,7 +815,7 @@
                         (server_name . ,(plist-get attr :hy-host))))
                 (type . "hysteria2"))
               obds))
-      
+
       (when vps-tags
         (push `((interrupt_exist_connections . :false)
                 (outbounds . ,(vconcat vps-tags))
