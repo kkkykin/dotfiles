@@ -43,45 +43,64 @@
 :CUSTOM_ID: 799e1881-69a9-45e3-ab2d-05b6a0ea8d80
 :END:
 #+header: :var localpath=(concat local-conf-dir)
+#+header: :var mainpath=(expand-file-name "main" tangle-dir)
 #+header: :var listen=(if (eq 'android system-type) "6680" "80")
-#+begin_src org :tangle (zr-org-by-tangle-dir "env") :var subpath=(expand-file-name "_tangle/subpath")
+#+begin_src org :tangle (zr-org-by-tangle-dir "env")
 LISTEN=$listen
-SUBPATH=$subpath
 LOCALPATH=$localpath
+MAINPATH=$mainpath
 #+end_src
 * config
+:PROPERTIES:
+:header-args:caddy: :mkdirp t
+:CUSTOM_ID: 54b08ed4-dcf7-4fe4-86e4-742d9bdc42d4
+:END:
+
+#+begin_src caddy :tangle (zr-org-by-tangle-dir "Caddyfile")
+{
+    import {$LOCALPATH}/global/*
+    import {$MAINPATH}/global/*
+}
+
+import {$LOCALPATH}/snippets/*
+import {$MAINPATH}/snippets/*
+
+:{$LISTEN} {
+    import {$MAINPATH}/subpath/*
+    import {$LOCALPATH}/subpath/*
+}
+#+end_src
 ** main
 :PROPERTIES:
-:tangle-dir: _tangle/main
 :CUSTOM_ID: 5297ab0f-3f8b-4b59-b5af-c29366d57a64
-:header-args:caddy: :mkdirp t :tangle (zr-org-by-tangle-dir "main.Caddyfile")
 :END:
 *** global
 :PROPERTIES:
+:tangle-dir: _tangle/main/global
 :CUSTOM_ID: 87e8d3b9-696c-4dc0-b041-6ab479876b29
 :END:
-#+begin_src caddy
-{
-    import {$LOCALPATH}/global/*
-    order aria2_middleware before reverse_proxy
-    layer4 {
-        :1{$LISTEN} {
-            import {$LOCALPATH}/l4/*
-        }
+#+begin_src caddy :tangle (zr-org-by-tangle-dir "misc.Caddyfile")
+order aria2_middleware before reverse_proxy
+auto_https disable_redirects
+#+end_src
+
+#+begin_src caddy :tangle (zr-org-by-tangle-dir "l4.Caddyfile")
+layer4 {
+    :1{$LISTEN} {
+        import {$LOCALPATH}/l4/*
     }
 }
 #+end_src
 
 *** snippets
 :PROPERTIES:
-:CUSTOM_ID: 89c61caa-d2aa-465e-a168-f29ecd9ecfaa
+:tangle-dir: _tangle/main/snippets
 :END:
-
 **** load balance
 :PROPERTIES:
 :CUSTOM_ID: 072fe3c4-fc1a-44e0-8ccc-64a9630ca915
 :END:
-#+begin_src caddy
+#+begin_src caddy :tangle (zr-org-by-tangle-dir "lb.Caddyfile")
 (common_lb) {
     {block}
     # 1) 负载均衡：首选 least_conn（资源最闲节点），
@@ -131,7 +150,7 @@ LOCALPATH=$localpath
 :PROPERTIES:
 :CUSTOM_ID: b90c38da-1fce-4fef-8f9f-6414994fd6ea
 :END:
-#+begin_src caddy
+#+begin_src caddy :tangle (zr-org-by-tangle-dir "cors.Caddyfile")
 (cors) {
     map {header.Origin} {cors_ok} {
         {blocks.map}
@@ -167,28 +186,9 @@ LOCALPATH=$localpath
 }
 #+end_src
 
-**** local
-:PROPERTIES:
-:CUSTOM_ID: 31d98afb-7857-43a2-b526-1bb86de59d8d
-:END:
-#+begin_src caddy
-import {$LOCALPATH}/snippets/*
-#+end_src
-
-*** site
-:PROPERTIES:
-:CUSTOM_ID: d66b4144-3335-4a18-a36f-b75a4b3c9bcd
-:END:
-#+begin_src caddy
-:{$LISTEN} {
-    import {$SUBPATH}/*
-    import {$LOCALPATH}/subpath/*
-}
-#+end_src
-
 ** subpath
 :PROPERTIES:
-:tangle-dir: _tangle/subpath
+:tangle-dir: _tangle/main/subpath
 :END:
 
 *** mpv
