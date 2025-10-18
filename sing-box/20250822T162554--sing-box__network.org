@@ -613,6 +613,13 @@
   ],
   "route": {
     "final": "s[this-way]",
+    "rules": [
+      {
+        "inbound": "tun-in",
+        "outbound": "direct",
+        "process_name": [ "sing-box" ]
+      }
+    ],
     "auto_detect_interface": true
   }
 }
