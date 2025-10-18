@@ -17,7 +17,7 @@
       (link-dir (zr-org-by-tangle-dir "downloads")))
   (unless (file-exists-p session)
     (make-empty-file session t))
-  (org-babel-tangle)
+  (org-babel-tangle nil nil "^conf-unix$")
   (unless (file-symlink-p link-dir)
     (let ((dir (read-directory-name "downloads dir? ")))
       (make-symbolic-link dir link-dir))))
@@ -35,6 +35,12 @@
         (let ((bat (concat prefix "bat"))
               (code (format "uv run -s \"%s\" %%*" py)))
           (write-region code nil bat))))))
+
+(let ((nix-dir (expand-file-name "~/nix-config")))
+  (when (and (eq 'gnu/linux system-type)
+             (file-directory-p nix-dir)
+             (executable-find "sops"))
+    (org-babel-tangle nil nil "^nix$")))
 #+end_src
 
 * conf
@@ -199,11 +205,11 @@ content-disposition-default-utf8=true
 # BT 监听端口(TCP), 默认:6881-6999
 # 直通外网的设备，比如 VPS ，务必配置防火墙和安全组策略允许此端口入站
 # 内网环境的设备，比如 NAS ，除了防火墙设置，还需在路由器设置外网端口转发到此端口
-listen-port=51413
+# listen-port=51413
 
 # DHT 网络与 UDP tracker 监听端口(UDP), 默认:6881-6999
 # 因协议不同，可以与 BT 监听端口使用相同的端口，方便配置防火墙和端口转发策略。
-dht-listen-port=51413
+# dht-listen-port=51413
 
 # 启用 IPv4 DHT 功能, PT 下载(私有种子)会自动禁用, 默认:true
 enable-dht=true
@@ -452,6 +458,74 @@ summary-interval=0
 show-console-readout=false
 #+end_src
 
+* nix
+** module
+:PROPERTIES:
+:CUSTOM_ID: 109e43d4-f990-4e01-a20c-916a3c6171d2
+:END:
+#+begin_src nix :tangle (expand-file-name "modules/aria2.nix" nix-dir)
+{
+  config,
+  ...
+}: {
+  sops = {
+    secrets.aria2_rpc_secret= {
+      owner = "aria2";
+      sopsFile = ../secrets/aria2.json;
+      restartUnits = [ "aria2.service" ];
+    };
+  };
+  services = {
+    aria2 = {
+      enable = true;
+      rpcSecretFile = config.sops.secrets.aria2_rpc_secret.path;
+      serviceUMask = "0002";
+      settings = {
+        <<gen-nix-settings()>>
+      };
+    };
+  };
+}
+#+end_src
+** settings
+#+name: gen-nix-settings
+#+begin_src elisp
+(let* ((secret-file (expand-file-name "~/nix-config/secrets/aria2.json"))
+       (sops (executable-find "sops"))
+       (key "[\"aria2_rpc_secret\"]")
+       (secret (and (file-exists-p secret-file)
+                    (with-temp-buffer
+                      (call-process sops nil t nil
+                                    "decrypt" "--extract" key secret-file)
+                      (buffer-string)))))
+  (with-temp-buffer
+    (insert-file-contents "_tangle/aria2.conf")
+    (goto-char (point-min))
+    (while (zerop (forward-line))
+      (let* ((bol (pos-bol))
+             (eol (pos-eol))
+             (line (buffer-substring bol eol))
+             (secret-flag "rpc-secret=")
+             (regexp (rx bol (+ (not ?=)) ?= (| "true" "false" (+ (| ?. digit))) (* ? ) eol)))
+        (cond
+         ((looking-at-p "#") (delete-region bol eol))
+         ((string-match-p regexp line) (end-of-line) (insert ";"))
+         (t
+          (delete-region bol eol)
+          (if (string-prefix-p secret-flag line)
+              (when-let* ((new-secret (substring line (length secret-flag)))
+                          ((not (equal new-secret secret))))
+                (print secret)
+                (print new-secret)
+                (call-process sops nil 0 nil "set" secret-file
+                              key (json-serialize new-secret)))
+            (insert (replace-regexp-in-string
+                     (rx bol (group (* (not ?=))) ?= (group (* any)) eol)
+                     "\\1=\"\\2\";" line)))))))
+    (goto-char (point-min))
+    (flush-lines "^ *$")
+    (buffer-string)))
+#+end_src
 * scripts
 :PROPERTIES:
 :CUSTOM_ID: a4ff4630-0327-47ab-8d24-a8ca1071ac9c
