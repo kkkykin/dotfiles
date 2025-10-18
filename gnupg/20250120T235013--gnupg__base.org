@@ -41,3 +41,25 @@ enable-ssh-support
 #+end_src
 * ssh
 https://incenp.org/notes/2015/gnupg-for-ssh-authentication.html
+* key
+:PROPERTIES:
+:CUSTOM_ID: 015fcee4-6cc6-48f2-a08e-3784588c06e1
+:END:
+
+** conf
+#+begin_src conf-space :tangle (zr-org-by-tangle-dir "gpg-ed25519.conf")
+%no-protection
+Key-Type: eddsa
+Key-Curve: ed25519
+Subkey-Type: ecdh
+Subkey-Curve: cv25519
+Name-Real: no-pass
+Name-Email: no-pass@example.com
+Expire-Date: 0
+%commit
+#+end_src
+
+** gen
+#+begin_src sh
+gpg --batch --generate-key gpg-ed25519.conf
+#+end_src
