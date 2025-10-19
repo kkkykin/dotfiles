@@ -1,0 +1,40 @@
+#+title:      openlist
+#+date:       [2025-10-19 Sun 11:16]
+#+filetags:   :server:
+#+identifier: 20251019T111632
+
+* tangle
+#+begin_src elisp
+(let* ((zr-local-pls (plstore-open "openlist.pls"))
+       (files (org-babel-tangle)))
+  (when (and (bound-and-true-p zr-linux-nix-flake-dir)
+             (file-directory-p zr-linux-nix-flake-dir)
+             (executable-find "sops"))
+    (let ((openlist-secret (expand-file-name "secrets/openlist.env" zr-linux-nix-flake-dir)))
+      (dolist (f files)
+        (when (string-suffix-p ".env" f)
+          (call-process "sops" nil 0 nil "encrypt" "--output" openlist-secret f))))))
+#+end_src
+
+* env
+:PROPERTIES:
+:CUSTOM_ID: 68656168-71c6-4ea1-9b1b-51cffdc15ccf
+:END:
+https://pkg.go.dev/github.com/OpenListTeam/OpenList/v4/internal/conf#Config
+https://doc.oplist.org/configuration/configuration#database
+#+header: :var db_file=(expand-file-name "_tangle/openlist.db")
+#+header: :var db_type=(if (yes-or-no-p "POSTGRES? ") "postgres" "sqlite3")
+#+header: :var db_pass=(plist-get (cdr (plstore-get zr-local-pls "db")) :pass)
+#+header: :var jwt_secret=(plist-get (cdr (plstore-get zr-local-pls "db")) :jwt)
+#+begin_src conf-unix :mkdirp t :tangle (zr-org-by-tangle-dir "openlist.env")
+OPENLIST_JWT_SECRET=$jwt_secret
+OPENLIST_DB_TYPE=$db_type
+OPENLIST_DB_HOST=127.0.0.1
+OPENLIST_DB_PORT=5432
+OPENLIST_DB_USER=openlist
+OPENLIST_DB_PASS=$db_pass
+OPENLIST_DB_NAME=openlist
+OPENLIST_DB_DB_FILE=$db_file
+OPENLIST_DB_TABLE_PREFIX=x_
+OPENLIST_DB_SSL_MODE=prefer
+#+end_src
