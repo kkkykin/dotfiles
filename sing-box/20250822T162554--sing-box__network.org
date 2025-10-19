@@ -605,6 +605,14 @@
       "auto_redirect": true,
       "mtu": 9000,
       "route_exclude_address_set": ["geoip-cn"],
+      "route_exclude_address": [
+        "192.168.0.0/16",
+        "172.16.0.0/12",
+        "10.0.0.0/8",
+        "127.0.0.1/8",
+        "fd00::/8",
+        "::1/128"
+      ],
       "stack": "system",
       "strict_route": true,
       "tag": "tun-in",
