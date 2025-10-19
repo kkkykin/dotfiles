@@ -140,14 +140,6 @@
     (make-symbolic-link main-file tun-dir t)
     (call-process "sing-box" nil nil nil "merge" tun-file "-C" tun-dir))
 
-  (when-let* (((eq 'gnu/linux system-type))
-              (sops (executable-find "sops"))
-              (secrets-dir (expand-file-name "~/nix-config/secrets"))
-              (file-directory-p secrets-dir)
-              (sops-enc-file (expand-file-name "sing-box.json" secrets-dir)))
-    (call-process sops nil (list :file sops-enc-file) nil
-                  "--encrypt" tun-file))
-
   (when-let* (((eq 'android system-type))
               (android-dir "/storage/emulated/0/io.nekohasekai.sfa/")
               (version (shell-command-to-string "curl -sxsocks5h://127.0.0.1:10807 --etag-compare _etag.txt --etag-save _etag.txt https://api.github.com/repos/SagerNet/sing-box/releases/latest  | jq -j '.name'"))
