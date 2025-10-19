@@ -84,6 +84,13 @@ order aria2_middleware before reverse_proxy
 auto_https disable_redirects
 #+end_src
 
+#+begin_src caddy :tangle (zr-org-by-tangle-dir "servers.Caddyfile")
+servers {
+    trusted_proxies static private_ranges
+    trusted_proxies_strict
+}
+#+end_src
+
 #+begin_src caddy :tangle (zr-org-by-tangle-dir "l4.Caddyfile")
 layer4 {
     :1{$LISTEN} {
