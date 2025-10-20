@@ -11,7 +11,7 @@
                    ((executable-find "ncat")
                     "ProxyCommand ncat --proxy %s --proxy-type socks5 --proxy-dns remote %%h %%p")
                    ((executable-find "nc")
-                    "ProxyCommand nc -x %s %%h %%p")))
+                    "ProxyCommand nc -X connect -x %s %%h %%p")))
        (proxy-cmd (if (and proxy proxy-fmt) (format proxy-fmt proxy) "")))
   (plstore-close zr-local-pls)
   (org-babel-tangle))
@@ -22,9 +22,17 @@
 :CUSTOM_ID: f5e58b4d-428d-4730-aa4e-8cfe7a6730b0
 :header-args:conf-space: :tangle (zr-org-by-tangle-dir) :var proxy-cmd=(concat proxy-cmd)
 :END:
+
+If not in *Host* block, *Include* directive must go to the top of the config file (before the "body" made of *Host* blocks).
+
 #+name: tty
 #+begin_src conf :tangle no
 RequestTTY yes
+#+end_src
+
+#+name: debug
+#+begin_src conf-space
+LogLevel DEBUG
 #+end_src
 
 #+name: vim
