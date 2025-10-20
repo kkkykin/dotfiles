@@ -222,3 +222,26 @@
   ]
 }
 #+end_src
+
+* claude-settings
+:PROPERTIES:
+:CUSTOM_ID: c8530a30-8e35-4310-a927-a357c02b786c
+:END:
+#+begin_src json :tangle (zr-org-by-tangle-dir "claude.json")
+<<claude-settings()>>
+#+end_src
+
+#+name: claude-settings
+#+begin_src elisp :var settings=../claude-code/20250808T132151--claude-code__entertainment.org:settings
+(let* ((settings (json-parse-string settings))
+       (env (gethash "env" settings)))
+  (maphash
+   (lambda (k v)
+     (when (string-prefix-p "ANTHROPIC_" k)
+       (remhash k env)))
+   env)
+  (puthash "ANTHROPIC_BASE_URL" "http://127.0.0.1:3456" env)
+  (puthash "ANTHROPIC_API_KEY" "any-string-is-ok" env)
+  (puthash "env" env settings)
+  (json-serialize settings))
+#+end_src
