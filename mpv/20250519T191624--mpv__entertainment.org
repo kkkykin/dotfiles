@@ -319,6 +319,119 @@ function autovsr()
 end
 mp.observe_property("video-params/pixelformat", "native", autovsr)
 #+end_src
+**** uri-transformer
+:PROPERTIES:
+:CUSTOM_ID: 21e659d6-efe3-4204-a01b-e3b16dd2147e
+:END:
+
+#+name: local-uri-transformer-rules
+#+begin_src elisp :var example=uri-transformer-example[]
+(let ((local-rules-file "_uri-transformer-rules.lua"))
+  (if (file-readable-p local-rules-file)
+      (org-file-contents local-rules-file)
+    example))
+#+end_src
+
+#+name: uri-transformer-example
+#+begin_src lua
+local uri_transform_rules = {
+  -- 示例 1：callback 写法
+  {
+    pattern = "^https://old%.example%.com/(.*)$",
+    callback = function(uri)
+      return uri:gsub("^https://old%.example%.com/(.*)$", "https://new.example.com/%1")
+    end
+  },
+
+  -- 示例 2：正则反向引用
+  {
+    pattern = "^https://old%.example%.com/(.*)$",
+    replace = "https://new.example.com/%1"
+  }
+}
+#+end_src
+
+#+name: main
+#+begin_src lua :tangle (zr-org-by-tangle-dir "uri-transformer.lua")
+local msg = require 'mp.msg'
+
+<<local-uri-transformer-rules()>>
+--------------------------------------------------
+-- 真正的改写函数：传入原始 url，返回改写后 url（失败返回 nil）
+--------------------------------------------------
+local function transform(url)
+  if not url or url == "" then return end
+  for _, rule in ipairs(uri_transform_rules) do
+    if url:match(rule.pattern) then
+      local new_url
+      if rule.callback then
+        local ok, res = pcall(rule.callback, url)
+        if ok and res and res ~= "" then new_url = res end
+      elseif rule.replace then
+        new_url = url:gsub(rule.pattern, rule.replace)
+      end
+      if new_url and new_url ~= url then
+        msg.info("URI 改写: " .. url .. " -> " .. new_url)
+        return new_url
+      end
+      break   -- 只命中第一条规则
+    end
+  end
+end
+
+--------------------------------------------------
+-- 改写“播放列表某一项”的封装
+-- idx = 0-based 播放列表索引
+--------------------------------------------------
+local function transform_playlist_item(idx)
+  local prop = string.format("playlist/%d/filename", idx)
+  local url  = mp.get_property(prop)
+  if not url then return end
+  -- 已经改过的不再改（简单防环）
+  if mp.get_property_bool(prop .. "/uri-transformed") then return end
+  local new_url = transform(url)
+  if new_url then
+    mp.set_property(prop, new_url)
+    -- 打标记，防止后面重复改
+    mp.set_property_bool(prop .. "/uri-transformed", true)
+  end
+end
+
+--------------------------------------------------
+-- 立即改写当前 + 提前改写下一条
+--------------------------------------------------
+local function update_current_and_next()
+  local pos = mp.get_property_number("playlist-current-pos", -1)
+  if pos == -1 then return end
+  -- 改当前（保险，万一有人手动 loadfile 不走 on_load）
+  transform_playlist_item(pos)
+  -- 改下一条（循环列表时自动取 0）
+  local next_pos = (pos + 1) % mp.get_property_number("playlist-count", 1)
+  if next_pos ~= pos then          -- 列表不止 1 个才需要
+    transform_playlist_item(next_pos)
+  end
+end
+
+--------------------------------------------------
+-- 事件监听
+--------------------------------------------------
+-- 1. 列表跳转 / 文件切换时
+mp.observe_property("playlist-current-pos", "number", update_current_and_next)
+-- 2. 列表内容发生增删后（防止中间插入新条目）
+mp.observe_property("playlist-count", "number", update_current_and_next)
+
+-- 3. on_load 兜底（封面、手动 loadfile 等）
+mp.add_hook("on_load", 50, function()
+  local url = mp.get_property("stream-open-filename")
+  local new_url = transform(url)
+  if new_url then
+    mp.set_property("stream-open-filename", new_url)
+  end
+end)
+
+-- 4. 脚本第一次加载时把当前+下一条都跑一遍
+update_current_and_next()
+#+end_src
 **** shadow-shadow
 :PROPERTIES:
 :CUSTOM_ID: bd222aba-8236-4e43-9f96-22e881149b6c
