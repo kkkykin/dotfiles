@@ -100,11 +100,11 @@ fi
 :CUSTOM_ID: e588620f-76c4-43c2-8a95-284e34bd2e8f
 :END:
 #+begin_src sh
-if [ -z "$INSIDE_EMACS" ] && [ "$TERM" != "DUMB" ]; then
-    GPG_TTY="$(tty)"
-    export GPG_TTY
-    gpg-connect-agent updatestartuptty /bye > /dev/null
-fi    
+update-gpg-tty() {
+  GPG_TTY="$(tty)"
+  export GPG_TTY
+  gpg-connect-agent updatestartuptty /bye > /dev/null
+}
 #+end_src
 
 **** pnpm
