@@ -19,14 +19,11 @@
 :CUSTOM_ID: adfd55f4-ab10-4045-bfc0-d3d794ebf571
 :END:
 #+name: settings
-#+header: :var modelscope_api_key=(auth-source-pick-first-password :user "apikey" :host "api-inference.modelscope.cn")
 #+begin_src json :comments no :mkdirp t :tangle (zr-org-by-tangle-dir "settings.json")
 {
   "env": {
-    "ANTHROPIC_API_KEY": "$modelscope_api_key",
-    "ANTHROPIC_BASE_URL": "https://api-inference.modelscope.cn",
-    "ANTHROPIC_MODEL": "Qwen/Qwen3-Coder-480B-A35B-Instruct",
-    "ANTHROPIC_SMALL_FAST_MODEL": "Qwen/Qwen3-30B-A3B-Instruct-2507",
+    "ANTHROPIC_API_KEY": "1",
+    "ANTHROPIC_BASE_URL": "http://127.0.0.1:3456",
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
     "CLAUDE_CODE_GIT_BASH_PATH": "<<find-git-bash()>>",
     "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "32000"
