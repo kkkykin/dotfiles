@@ -5,12 +5,26 @@
 
 * tangle
 #+begin_src elisp
-(org-babel-tangle)
+(let ((babels (org-babel-tangle))
+      (conf-dir (pcase system-type
+                  ('windows-nt (substitute-in-file-name "$userprofile/.mitmproxy/"))
+                  (_ (expand-file-name "~/.mitmproxy/")))))
+  (when-let* ((conf (cl-some (lambda (f) (and (string-suffix-p "config.yaml" f) f)) babels)))
+    (make-symbolic-link conf conf-dir t))
+  (make-symbolic-link
+   (expand-file-name "_tangle/scripts")
+   (expand-file-name "scripts" conf-dir)
+   t))
+#+end_src
 
-(make-symbolic-link
- (expand-file-name "_tangle/scripts")
- (expand-file-name "~/.mitmproxy/scripts")
- t)
+* config
+:PROPERTIES:
+:CUSTOM_ID: b260ea6c-1aea-425f-a62f-340fbf76a8ac
+:END:
+#+header: :var ssl_dir=(let ((dir (expand-file-name "_tangle/ssl"))) (mkdir dir t) dir)
+#+begin_src yml :tangle (zr-org-by-tangle-dir "config.yaml") :mkdirp t
+ssl_verify_upstream_trusted_ca: $ssl_dir/ca.crt
+ssl_verify_upstream_trusted_confdir: $ssl_dir/confdir/
 #+end_src
 
 * plugins
@@ -21,6 +35,9 @@
 :END:
 
 *** hosts-mapper
+:PROPERTIES:
+:CUSTOM_ID: fcf0dd34-c73b-41ef-bbb8-a775fece0e2a
+:END:
 #+begin_src python :tangle (zr-org-by-tangle-dir "hosts-mapper.py") :mkdirp t
 from mitmproxy import ctx
 import json
@@ -72,6 +89,9 @@ addons = [HostsMapper()]
 :END:
 
 *** hosts
+:PROPERTIES:
+:CUSTOM_ID: 6ed7cffa-7ad9-44ab-bd05-667b9755c680
+:END:
 #+begin_src json :tangle (zr-org-by-tangle-dir "hosts.json") :mkdirp t
 {
   "baidu.com": "110.242.68.66"
