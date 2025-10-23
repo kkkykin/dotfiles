@@ -1069,7 +1069,8 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
 
 #+name: gen-direct-rule-set
 #+begin_src elisp
-(let* ((default [((domain_suffix . []))])
+(let* ((default [((domain_suffix . [])
+                  (process_name . "cloudflared"))])
        (local-file "_direct.eld")
        (local (and (file-exists-p local-file)
                    (with-temp-buffer
