@@ -51,7 +51,8 @@
   (mkdir sub-dir t)
 
   (dolist (sub clash-subscribes)
-    (let ((name (car sub)))
+    (when-let* ((name (car sub))
+                ((not (string-prefix-p "disable-" name))))
       (condition-case nil
           (let* ((uri (cdr sub))
                  (content
