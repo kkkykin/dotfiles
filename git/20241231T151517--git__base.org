@@ -20,6 +20,7 @@
 :PROPERTIES:
 :CUSTOM_ID: 92ec3b0a-3362-4cd6-8790-d486db17253a
 :END:
+#+header: :var proxy=(or (getenv "all_proxy") "socks5h://127.0.0.1:10807")
 #+begin_src conf :tangle (zr-org-by-tangle-dir "gitconfig") :mkdirp t
 [user]
     email = kkkykin@foxmail.com
@@ -33,7 +34,7 @@
 [pull]
 	ff = only
 [http "https://github.com"]
-	proxy = socks5h://127.0.0.1:10807
+	proxy = $proxy
 #+end_src
 
 #+begin_src conf :tangle no
