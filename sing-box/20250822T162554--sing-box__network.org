@@ -298,14 +298,6 @@
       "secret": "$clash_secret"
     }
   },
-  "inbounds": [
-    {
-      "listen_port": 10807,
-      "set_system_proxy": false,
-      "tag": "mixed-in",
-      "type": "mixed"
-    }
-  ],
   "log": {
     "level": "info"
   },
@@ -734,6 +726,13 @@
       (vps (plstore-find zr-local-pls '(:user-name ("kkky"))))
       s-tags)
   (push `(state_directory . ,tailscale-state-dir) ts-ep)
+
+  (unless (file-exists-p "_500-inbounds.json")
+    (push '((listen_port . 10807)
+            (set_system_proxy . :false)
+            (tag . "mixed-in")
+            (type . "mixed"))
+          ibds))
 
   ;; misc outbounds
   (push '((server . "127.0.0.1")
