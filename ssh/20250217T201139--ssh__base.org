@@ -6,7 +6,9 @@
 * tangle
 #+begin_src elisp
 (let* ((zr-local-pls (plstore-open "ssh.pls"))
-       (proxy (plist-get (cdr (plstore-get zr-local-pls "proxy")) :proxy))
+       (proxy (if-let* ((env-proxy (getenv "all_proxy")))
+                  (replace-regexp-in-string ".+//" "" env-proxy)
+                (plist-get (cdr (plstore-get zr-local-pls "proxy")) :proxy)))
        (proxy-fmt (cond
                    ((executable-find "ncat")
                     "ProxyCommand ncat --proxy %s --proxy-type socks5 --proxy-dns remote %%h %%p")
