@@ -19,6 +19,7 @@
 :PROPERTIES:
 :CUSTOM_ID: 31f80453-32fa-4602-8245-9ba3c141aba6
 :END:
+#+header: :var zr_kosync=(nth 2 (plstore-get zr-local-pls "kosync"))
 #+begin_src lua :tangle (zr-org-by-tangle-dir "settings.reader.lua") :mkdirp t
 return {
   ["android_ignore_volume_keys"] = true,
@@ -29,6 +30,16 @@ return {
   ["home_dir"] = "/storage/emulated/0/Books",
   ["http_proxy"] = "http://127.0.0.1:10807",
   ["http_proxy_enabled"] = false,
+  ["kosync"] =
+   {
+     ["auto_sync"] = true,
+     ["checksum_method"] = 0,
+     ["sync_backward"] = 3,
+     ["sync_forward"] = 1,
+     ["custom_server"] = zr_kosync[1],
+     ["username"] = zr_kosync[2],
+     ["userkey"] = zr_kosync[3],
+   },
   ["last_migration_date"] = 20250601,
   ["multiswipes_enabled"] = true,
   ["profiles_autoexec"] =
