@@ -1,20 +1,20 @@
 ;;; public entries -*- mode: plstore -*- 
 (("cs" :secret-server t) ("opds" :secret-server t)
- ("kosync" :secret-server t))
+ ("kosync" :secret-servers t :secret-user t :secret-authkey t))
 ;;; secret entries
 "-----BEGIN PGP MESSAGE-----
 
-hF4DhteJcpg+xyQSAQdAw78hXwrla7qD2J62XdiVy7QPhEIADojxzBokozeLLEQw
-OoZAO9ZLyg8aEuqyhSjjDzpYkj+WNOeyfplLDliEjzT6LLfxWpOKaxKuFMMj6ugl
-1MDBAQkCEMJCv9eGaBnKu27aVSNkM5uGp2/1l7xQkGyC8fpwe2xy1Uwb83104xyT
-FwPjG/nloYHDn2GpL8k/HtfU2f7NKOYx9g17WKw3+vrCmDGzqynouBVvWDpBXbuc
-nf8yDcASGKdsoXwxtVQRxwTdYBcPWRRQxPVGpzJoBpghL8K+umVQrwZZ1v2oSuKq
-gYE0u683+/sAOhnBv0jorfJY3C4ef/KOoR6j3VezW9Sr9N3Gkr8w4LQW8RT5NJQE
-d6NKSr6HT0vbk+2wyJfS/b4UKy8N8mcROnLgJAAPXC0Zi70ZeNk8crK7DakOPfeG
-FVXPhQCeq+z0xc3CCL6boHM0tRp2kywKiQ34x3r48EYTq5etAd2acDD1cy5c4CfI
-ZWNO1k+Y968qk215JmQ0qf4iZgNDm9uPlIfRfx/Wb14ojAvhR9x4dKMYuHBzYQo7
-VzIH2O8YVs4eDsAYZxxARMvtDKAHfUj9Bdnu+wfpbdXh9R7YhqcpefknciyDp9k1
-YZVvEw==
-=L3IX
+hF0DhteJcpg+xyQSAP9PmcHQSSVNx4vo8QPH6Jl9xLTirngM3q8LCayrKy3CTjDO
+x/QcC/8G+TqU3IZaKzjEt/HBHJtiruSOkYbycfR4khvSA0WqskJMf6OAoooJ3NjU
+wM8BCQIQ2HP1zqwr/Cp9tFM4x5IZowyMWH+jG+2L/tsGHrDPjjLbcdaE+QiRmnaz
+j6ZVmthDalJsedShZEHxhH4L8GoGg6W2dlUou0hu3M2uWPW9eSjMS5IsgnL9o3ER
++7e83L1prxcwwtbO3Rg5MXjv1Zh1pvpZqYOqtUN3bnDHoVUZDghg+P/vT7tWFvSa
+C6Xsrc33XSqpXl+/mvRZ3mG93FhPGkcYiIvcUUJDsQ3nC3hr5H4OpS1F+WVpOCO4
+rdb5bL8f8BqlzFFK0xTngoeV3a4Qq+LHsQKgXHDX5gP5Nxol3DGQx+fylHNyT0Zd
+md30NdRjoShpaiNWx0slHGA6XjE7iu1pXCUOuYAGVdMUyxb/FXStCapLVtFJ+T4u
+6ZEiwyvgxFsbyz4cno6SeBUuUyHXyxZDzf4g66ThDQmr1ouW+U5WINwrT9KfPcY9
+xC48tSyUHrNf1GoiZBKwRusNNxUP/vSZGT9ivYoBnlpzgp2zWfh9CK9uAfLF/hIJ
+QYpFOWELejPEGfVUIZEXYoA=
+=Uy8d
 -----END PGP MESSAGE-----
 "

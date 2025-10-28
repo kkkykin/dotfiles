@@ -19,7 +19,9 @@
 :PROPERTIES:
 :CUSTOM_ID: 31f80453-32fa-4602-8245-9ba3c141aba6
 :END:
-#+header: :var zr_kosync=(nth 2 (plstore-get zr-local-pls "kosync"))
+#+header: :var zr_kosync_server=(car (plist-get (cdr (plstore-get zr-local-pls "kosync")) :servers))
+#+header: :var zr_kosync_user=(plist-get (cdr (plstore-get zr-local-pls "kosync")) :user)
+#+header: :var zr_kosync_authkey=(plist-get (cdr (plstore-get zr-local-pls "kosync")) :authkey)
 #+begin_src lua :tangle (zr-org-by-tangle-dir "settings.reader.lua") :mkdirp t
 return {
   ["android_ignore_volume_keys"] = true,
@@ -36,9 +38,9 @@ return {
      ["checksum_method"] = 0,
      ["sync_backward"] = 3,
      ["sync_forward"] = 1,
-     ["custom_server"] = zr_kosync[1],
-     ["username"] = zr_kosync[2],
-     ["userkey"] = zr_kosync[3],
+     ["custom_server"] = zr_kosync_server,
+     ["username"] = zr_kosync_user,
+     ["userkey"] = zr_kosync_authkey,
    },
   ["last_migration_date"] = 20250601,
   ["multiswipes_enabled"] = true,
@@ -159,6 +161,17 @@ img, svg {
 :CUSTOM_ID: 0fc9e81f-6433-4e73-b443-f545f4e4c87e
 :END:
 
+** init
+:PROPERTIES:
+:CUSTOM_ID: 7b822f94-9aa2-49e2-b1f5-60cdd19a5a6a
+:END:
+#+begin_src lua :tangle (zr-org-by-tangle-dir "1-aaa-init.lua")
+local DataStorage = require("datastorage")  
+local patch_dir = DataStorage:getDataDir() .. "/patches"  
+  
+package.path = patch_dir .. "/?.lua;" .. package.path  
+#+end_src
+
 ** http-trans
 :PROPERTIES:
 :CUSTOM_ID: 6a69e3c5-a3fe-417f-a563-22fc42f8416f
@@ -241,6 +254,53 @@ end
     "local local_http_rules = {}"))
 #+end_src
 
+** kosync-patch
+:PROPERTIES:
+:CUSTOM_ID: 20d3efb5-22c9-4c21-ab16-b9ca1c197108
+:END:
+#+begin_src lua :tangle (zr-org-by-tangle-dir "2-kosync-patch.lua")
+local userpatch = require("userpatch")
+local Dispatcher = require("dispatcher")
+local UIManager = require("ui/uimanager")
+local InfoMessage = require("ui/widget/infomessage")
+<<gen-kosync-servers()>>
+
+userpatch.registerPatchPluginFunc("kosync", function(plugin)
+  local orig_onReaderReady = plugin.onReaderReady
+
+  plugin.onReaderReady = function(self)
+    orig_onReaderReady(self)
+
+    Dispatcher:registerAction("toggle_kosync_server", {
+      category = "none",
+      event = "ToggleKOSyncServer",
+      title = "Toggle KOSync server",
+      reader = true,
+    })
+  end
+
+  plugin.onToggleKOSyncServer = function(self)
+    local current_server = self.settings.custom_server
+    local new_server = (current == zr_kosync_servers[1]) and zr_kosync_servers[2] or zr_kosync_servers[1]
+
+    self:setCustomServer(new_server)
+
+    UIManager:show(InfoMessage:new{
+      text = "KOSync server switched",
+      timeout = 3,
+    })
+
+    return true
+  end
+end)
+#+end_src
+
+#+name: gen-kosync-servers
+#+begin_src elisp
+(let ((servers (plist-get (cdr (plstore-get zr-local-pls "kosync")) :servers)))
+  (format "local zr_kosync_servers={'%s','%s'}" (car servers) (cadr servers)))
+#+end_src
+
 ** hide-cutout
 :PROPERTIES:
 :CUSTOM_ID: 13adabbe-183c-4fac-9a20-e8dcd762a921
@@ -310,57 +370,67 @@ end
 logger.info("Unified HTTP Authorization header patch applied successfully")
 #+end_src
 
-** utils
+** helper
 :PROPERTIES:
 :CUSTOM_ID: a0ab750b-b797-4535-a6f9-39f856b6a9f6
 :END:
-#+begin_src lua :tangle (zr-org-by-tangle-dir "2-utils.lua")
-local android = require('android')
+#+begin_src lua :tangle (zr-org-by-tangle-dir "patch-helper.lua")
 local ffi = require("ffi")
 local C = ffi.C
-local DataStorage = require("datastorage")
+local util = require("util")
+local logger = require("logger")
 
-C.setenv("RISH_APPLICATION_ID", 'org.koreader.launcher', 1)
-
-local function shell_quote_argument(arg)
-  return "'" .. arg:gsub("'", "'\"'\"'") .. "'"
-end
+local helper = {}
 
 local function rish(command, mode)
-  local shell = 'app_process -Djava.class.path="plugins/terminal.koplugin/rish_shizuku.dex" /system/bin --nice-name=rish rikka.shizuku.shell.ShizukuShellLoader'
+  C.setenv("RISH_APPLICATION_ID", 'org.koreader.launcher', 1)
+  mode = mode or 'r'
+  local shell = {
+    'app_process',
+    '-Djava.class.path=plugins/terminal.koplugin/rish_shizuku.dex',
+    '/system/bin',
+    '--nice-name=rish',
+    'rikka.shizuku.shell.ShizukuShellLoader',
+  }
   local output
   local handle
   local one_shot
 
   if mode == 'f' then
-    one_shot = shell .. ' ' .. shell_quote_argument(command)
+    table.insert(shell, command)
     mode = 'r'
-  else
-    one_shot = shell .. ' -c ' .. shell_quote_argument(command)
+  elseif mode ~= 'w' then
+    table.insert(shell, '-c')
+    table.insert(shell, command)
   end
 
+  one_shot = util.shell_escape(shell)
+  logger.dbg("userpatch: rish command:", one_shot)
   if mode == 'e' then
     output = os.execute(one_shot)
   elseif mode == 'r' then
     handle = io.popen(one_shot, 'r')
+    if not handle then
+      return nil, "Failed to execute command"
+    end
     output = handle:read('*a')
     handle:close()
   else
-    handle = io.popen(shell, 'w')
+    handle = io.popen(one_shot, 'w')
+    if not handle then
+      return nil, "Failed to execute command"
+    end
     handle:write(command)
     handle:close()
   end
   return output
 end
 
-local function cur_wifi_name()
+function helper:cur_wifi_name()
   return rish('dumpsys wifi | grep "^current SSID" | cut -d\\" -f2', 'r')
 end
 
-local function record_log(s)
-  local command = string.format('echo %s > %s/tmp.log', shell_quote_argument(s), DataStorage:getDataDir())
-  os.execute(command)
-end
+return helper
 #+end_src
 
 * terminal
