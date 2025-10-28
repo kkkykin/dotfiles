@@ -159,6 +159,88 @@ img, svg {
 :CUSTOM_ID: 0fc9e81f-6433-4e73-b443-f545f4e4c87e
 :END:
 
+** http-trans
+:PROPERTIES:
+:CUSTOM_ID: 6a69e3c5-a3fe-417f-a563-22fc42f8416f
+:END:
+#+begin_src lua :tangle (zr-org-by-tangle-dir "1-http-trans.lua")
+local logger = require("logger")
+local http = require("socket.http")
+local url = require("socket.url")
+
+local RULES = {
+  {
+    match = function(req, parsed)
+      return req.user and req.password
+    end,
+    transform = function(req, parsed)
+      local mime = require("mime")
+      req.headers = req.headers or {}
+      req.headers["Authorization"] = "Basic " .. mime.b64(req.user .. ":" .. req.password)
+      req.user, req.password = nil, nil
+    end
+  },
+  {
+    match = function(req, parsed)
+      return parsed.host == "translate.googleapis.com"
+    end,
+    transform = function(req, parsed)
+      parsed.host = "180.163.151.162"
+      req.headers = req.headers or {}
+      req.headers["Host"] = "translate.googleapis.com"
+    end
+  },
+}
+
+<<local-http-rules()>>
+for _, rule in ipairs(local_http_rules) do
+  table.insert(RULES, rule)
+end
+
+local orig_http_request = http.request
+
+http.request = function(request_or_url, body)
+  local req = type(request_or_url) == "string"
+    and { url = request_or_url }
+    or request_or_url
+
+  -- Handle body parameter for string URL style
+  if type(request_or_url) == "string" and body then
+    local ltn12 = require("ltn12")
+    req.source = ltn12.source.string(body)
+  end
+
+  local parsed = url.parse(req.url)
+  if not parsed then
+    logger.warn("HTTP patch: failed to parse URL:", req.url)
+    return orig_http_request(req)
+  end
+
+  for _, rule in ipairs(RULES) do
+    if rule.match(req, parsed) then
+      rule.transform(req, parsed)
+      local new_url = url.build(parsed)
+      if new_url then
+        req.url = new_url
+      else
+        logger.warn("HTTP patch: failed to rebuild URL")
+      end
+      break
+    end
+  end
+
+  return orig_http_request(req)
+end
+#+end_src
+
+#+name: local-http-rules
+#+begin_src elisp
+(let ((local-rule-file "_local-http-rules.lua"))
+  (if (file-readable-p local-rule-file)
+      (org-file-contents local-rule-file)
+    "local local_http_rules = {}"))
+#+end_src
+
 ** hide-cutout
 :PROPERTIES:
 :CUSTOM_ID: 13adabbe-183c-4fac-9a20-e8dcd762a921
@@ -172,7 +254,7 @@ img, svg {
 :PROPERTIES:
 :CUSTOM_ID: 40e0faad-2d9d-44c2-a846-2e976044e265
 :END:
-#+begin_src lua :tangle (zr-org-by-tangle-dir "1-auth-header.lua")
+#+begin_src lua :tangle no
 -- 统一patch http.request，将user/password参数转换为Authorization头
 -- 解决与HTTP代理服务器的兼容性问题
 
