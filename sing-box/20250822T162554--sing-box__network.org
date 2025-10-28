@@ -151,8 +151,9 @@
       (mkdir termux-bin-dir t)
       (call-process-shell-command (format "curl -Lxsocks5h://127.0.0.1:10807 -o- 'https://github.com/SagerNet/sing-box/releases/download/v%s/sing-box-%s-android-arm64.tar.gz' | tar -xzvf - -C '%s' --wildcards --no-anchored --transform='s|^.*/||' '*/sing-box'" version version termux-bin-dir)))
     (mkdir android-dir t)
-    (dolist (f (file-directory client-dir))
-      (copy-file f android-dir t))
+    (dolist (f (directory-files client-dir t "^[^.]" t))
+      (unless (file-directory-p f)
+        (copy-file f android-dir t)))
     (copy-directory rule-sets-dir android-dir)
     (copy-directory hosts-dir android-dir)
     (zr-android-call-rish
