@@ -1048,6 +1048,7 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
                    (with-temp-buffer
                      (insert-file-contents local-file)
                      (read (current-buffer)))))
+       (default [((domain . ["x.com"]))])
        suffix)
   (cl-mapc
    (lambda (p h)
@@ -1056,7 +1057,8 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
    proxy hosts)
   (json-serialize
    `((version . 3)
-     (rules . ,(vconcat local (vector `((domain_suffix . ,(apply #'vconcat suffix)))))))))
+     (rules . ,(vconcat local default
+                        (vector `((domain_suffix . ,(apply #'vconcat suffix)))))))))
 #+end_src
 
 ** direct
