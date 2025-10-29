@@ -313,6 +313,11 @@ userpatch.registerPatchPluginFunc("kosync", function(plugin)
 
     return true
   end
+
+  local orig_getLastProgress = plugin.getLastProgress
+  plugin.getLastProgress = function(self)
+    return orig_getLastProgress(self):gsub("(/body/DocFragment%[%d+%]).+", "%1.0")
+  end
 end)
 #+end_src
 
