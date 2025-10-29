@@ -195,7 +195,7 @@ local RULES = {
   },
   {
     match = function(req, parsed)
-      return parsed.host == "translate.googleapis.com"
+      return parsed.host == "translate.googleapis.com" and parsed.scheme == "http"
     end,
     transform = function(req, parsed)
       parsed.host = "180.163.151.162"
