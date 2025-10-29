@@ -280,7 +280,7 @@ userpatch.registerPatchPluginFunc("kosync", function(plugin)
   end
 
   plugin.onToggleKOSyncServer = function(self)
-    local current_server = self.settings.custom_server
+    local current = self.settings.custom_server
     local new_server = (current == zr_kosync_servers[1]) and zr_kosync_servers[2] or zr_kosync_servers[1]
 
     self:setCustomServer(new_server)
