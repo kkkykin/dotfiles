@@ -141,6 +141,10 @@
     (make-symbolic-link main-file tun-dir t)
     (call-process "sing-box" nil nil nil "merge" tun-file "-C" tun-dir))
 
+  (dolist (f (directory-files rule-sets-dir t "\\.json$" t))
+    (call-process "sing-box" nil nil nil "rule-set" "compile"
+                  "--output" (file-name-with-extension f "srs") f))
+
   (when-let* (((eq 'android system-type))
               (android-dir "/storage/emulated/0/io.nekohasekai.sfa/")
               (version (shell-command-to-string "curl -sxsocks5h://127.0.0.1:10807 --etag-compare _etag.txt --etag-save _etag.txt https://api.github.com/repos/SagerNet/sing-box/releases/latest  | jq -j '.name'"))
@@ -310,25 +314,25 @@
     "rule_set": [
       {
         "format": "source",
-        "path": "$rule_sets_dir/proxy.json",
+        "path": "$rule_sets_dir/proxy.srs",
         "tag": "proxy-rules",
         "type": "local"
       },
       {
         "format": "source",
-        "path": "$rule_sets_dir/direct.json",
+        "path": "$rule_sets_dir/direct.srs",
         "tag": "direct-rules",
         "type": "local"
       },
       {
         "format": "source",
-        "path": "$rule_sets_dir/tailscale.json",
+        "path": "$rule_sets_dir/tailscale.srs",
         "tag": "tailscale-rules",
         "type": "local"
       },
       {
         "format": "source",
-        "path": "$rule_sets_dir/mitm.json",
+        "path": "$rule_sets_dir/mitm.srs",
         "tag": "mitm-rules",
         "type": "local"
       },
