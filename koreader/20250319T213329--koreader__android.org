@@ -203,6 +203,27 @@ local RULES = {
       req.headers["Host"] = "translate.googleapis.com"
     end
   },
+  {
+    -- push to kavita kosync server
+    match = function(req, parsed)
+      return req.env and req.env.spore and req.env.spore.caller == "update_progress"
+    end,
+    transform = function(req, parsed)
+      local JSON = require("rapidjson")
+      local ltn12 = require("ltn12")
+
+      local params = req.env.spore.params
+      if params and params.progress then
+        params.progress = params.progress:gsub("%].*$", "]/body/div/a/text().0")
+      end
+
+      local json_str = JSON.encode(params)
+
+      req.source = ltn12.source.string(json_str)
+      req.headers = req.headers or {}
+      req.headers["content-length"] = tostring(#json_str)
+    end
+  }
 }
 
 <<local-http-rules()>>
