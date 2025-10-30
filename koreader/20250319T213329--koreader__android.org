@@ -6,14 +6,18 @@
 
 * tangle
 #+begin_src elisp
-(let ((zr-local-pls (plstore-open "koreader.pls")))
+(let ((zr-local-pls (plstore-open "koreader.pls"))
+      (zr-org-tangle-default-dir (if (eq 'android system-type)
+                                     "/storage/emulated/0/koreader"
+                                   (expand-file-name "~/.config/koreader")))
+      (books-dir (if (eq 'android system-type)
+                    "/storage/emulated/0/Books"
+                  (expand-file-name "~/Books"))))
+  (mkdir books-dir t)
   (org-babel-tangle))
 #+end_src
 
 * settings
-:PROPERTIES:
-:tangle-dir: (if (eq 'android system-type) "/storage/emulated/0/koreader" zr-org-tangle-default-dir)
-:END:
 
 ** main
 :PROPERTIES:
@@ -22,15 +26,17 @@
 #+header: :var zr_kosync_server=(car (plist-get (cdr (plstore-get zr-local-pls "kosync")) :servers))
 #+header: :var zr_kosync_user=(plist-get (cdr (plstore-get zr-local-pls "kosync")) :user)
 #+header: :var zr_kosync_authkey=(plist-get (cdr (plstore-get zr-local-pls "kosync")) :authkey)
+#+header: :var zr_books_dir=(concat books-dir)
+#+header: :var zr_proxy=(let ((proxy (or (getenv "all_proxy") "http://127.0.0.1:10807"))) (replace-regexp-in-string "^socks5h?" "http" proxy))
 #+begin_src lua :tangle (zr-org-by-tangle-dir "settings.reader.lua") :mkdirp t
 return {
   ["android_ignore_volume_keys"] = true,
   ["android_screen_timeout"] = -1,
   ["autoremove_deleted_items_from_history"] = true,
   ["collate"] = "access",
-  ["download_dir"] = "/storage/emulated/0/Books",
-  ["home_dir"] = "/storage/emulated/0/Books",
-  ["http_proxy"] = "http://127.0.0.1:10807",
+  ["download_dir"] = zr_books_dir,
+  ["home_dir"] = zr_books_dir,
+  ["http_proxy"] = zr_proxy,
   ["http_proxy_enabled"] = false,
   ["kosync"] =
    {
@@ -59,7 +65,7 @@ return {
 
 ** other
 :PROPERTIES:
-:tangle-dir: (if (eq 'android system-type) "/storage/emulated/0/koreader/settings" zr-org-tangle-default-dir)
+:tangle-dir: (expand-file-name "settings" zr-org-tangle-default-dir)
 :END:
 
 *** cloudstorage
@@ -142,14 +148,14 @@ return {
 
 * style
 :PROPERTIES:
-:tangle-dir: (if (eq 'android system-type) "/storage/emulated/0/koreader/styletweaks" zr-org-tangle-default-dir)
+:tangle-dir: (expand-file-name "styletweaks" zr-org-tangle-default-dir)
 :END:
 
 ** no-image
 :PROPERTIES:
 :CUSTOM_ID: f064a0e2-42de-425a-8aca-82dbeb7dcad4
 :END:
-#+begin_src css :tangle (zr-org-by-tangle-dir "no-image.css")
+#+begin_src css :tangle (zr-org-by-tangle-dir "no-image.css") :mkdirp t
 img, svg {
   display: none;
 }
@@ -157,7 +163,7 @@ img, svg {
 
 * patches
 :PROPERTIES:
-:tangle-dir: (if (eq 'android system-type) "/storage/emulated/0/koreader/patches" zr-org-tangle-default-dir)
+:tangle-dir: (expand-file-name "patches" zr-org-tangle-default-dir)
 :CUSTOM_ID: 0fc9e81f-6433-4e73-b443-f545f4e4c87e
 :END:
 
@@ -165,7 +171,7 @@ img, svg {
 :PROPERTIES:
 :CUSTOM_ID: 7b822f94-9aa2-49e2-b1f5-60cdd19a5a6a
 :END:
-#+begin_src lua :tangle (zr-org-by-tangle-dir "1-aaa-init.lua")
+#+begin_src lua :tangle (zr-org-by-tangle-dir "1-aaa-init.lua") :mkdirp t
 local DataStorage = require("datastorage")  
 local patch_dir = DataStorage:getDataDir() .. "/patches"  
   
@@ -333,7 +339,7 @@ end)
 :END:
 #+header: :prologue "local screen = require('android').screen"
 #+header: :var screen.height=(if (eq 'android system-type) (string-to-number (replace-regexp-in-string "^Physical size: [[:digit:]]+x\\([[:digit:]]+\\)\n" "\\1" (zr-android-rish-command-to-string "wm size"))) "dummy")
-#+begin_src lua :mkdirp t :tangle (zr-org-by-tangle-dir "10-hide-cutout.lua")
+#+begin_src lua :mkdirp t :tangle (if (eq 'android system-type) (zr-org-by-tangle-dir "10-hide-cutout.lua") "no")
 #+end_src
 
 ** auth-header
@@ -461,10 +467,10 @@ return helper
 
 * terminal
 :PROPERTIES:
-:tangle-dir: (if (eq 'android system-type) "/storage/emulated/0/koreader/scripts" zr-org-tangle-default-dir)
+:tangle-dir: (expand-file-name "scripts" zr-org-tangle-default-dir)
 :CUSTOM_ID: d813743c-d2d6-49dc-8655-b17dd74b20ac
 :END:
-#+begin_src sh :tangle (zr-org-by-tangle-dir "profile.user")
+#+begin_src sh :tangle (zr-org-by-tangle-dir "profile.user") :mkdirp t
 export RISH_APPLICATION_ID="org.koreader.launcher"
 export PRIVATE_BIN_DIR="$TERMINAL_HOME/plugins/terminal.koplugin"
 
