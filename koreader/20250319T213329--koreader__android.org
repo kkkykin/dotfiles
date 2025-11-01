@@ -277,6 +277,16 @@ local RULES = {
   },
   {
     match = function(req, parsed)
+      return parsed.host:match("%.asus%.local$") ~= nil and parsed.scheme == "http"
+    end,
+    transform = function(req, parsed)
+      req.headers = req.headers or {}
+      req.headers["Host"] = parsed.host
+      parsed.host = "192.168.1.8"
+    end
+  },
+  {
+    match = function(req, parsed)
       return parsed.host == "translate.googleapis.com" and parsed.scheme == "http"
     end,
     transform = function(req, parsed)
@@ -288,7 +298,7 @@ local RULES = {
   {
     -- push to kavita kosync server
     match = function(req, parsed)
-      return req.env and req.env.spore and req.env.spore.caller == "update_progress"
+      return parsed.host:match("^kavita%.") ~= nil and req.env and req.env.spore and req.env.spore.caller == "update_progress"
     end,
     transform = function(req, parsed)
       local JSON = require("rapidjson")
@@ -396,10 +406,10 @@ userpatch.registerPatchPluginFunc("kosync", function(plugin)
     return true
   end
 
-  local orig_getLastProgress = plugin.getLastProgress
-  plugin.getLastProgress = function(self)
-    return orig_getLastProgress(self):gsub("(/body/DocFragment%[%d+%]).+", "%1.0")
-  end
+  -- local orig_getLastProgress = plugin.getLastProgress
+  -- plugin.getLastProgress = function(self)
+  --   return orig_getLastProgress(self):gsub("(/body/DocFragment%[%d+%]).+", "%1.0")
+  -- end
 end)
 #+end_src
 
