@@ -313,25 +313,25 @@
     "final": "direct",
     "rule_set": [
       {
-        "format": "source",
+        "format": "binary",
         "path": "$rule_sets_dir/proxy.srs",
         "tag": "proxy-rules",
         "type": "local"
       },
       {
-        "format": "source",
+        "format": "binary",
         "path": "$rule_sets_dir/direct.srs",
         "tag": "direct-rules",
         "type": "local"
       },
       {
-        "format": "source",
+        "format": "binary",
         "path": "$rule_sets_dir/tailscale.srs",
         "tag": "tailscale-rules",
         "type": "local"
       },
       {
-        "format": "source",
+        "format": "binary",
         "path": "$rule_sets_dir/mitm.srs",
         "tag": "mitm-rules",
         "type": "local"
