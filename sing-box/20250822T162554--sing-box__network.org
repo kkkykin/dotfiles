@@ -675,8 +675,8 @@
     },
     "rules": [
       {
-        "domain": [
-          "e-hentai.org"
+        "domain_regex": [
+          "^(.+\\.)?e[-x]hentai\\.org$"
         ],
         "outbound": "direct"
       }
