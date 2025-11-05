@@ -290,7 +290,90 @@ handle_path /aria2-jsonrpc {
     }
 }
 #+end_src
+* misc
+** universal proxy
+#+begin_src caddy
+{
+	# 使用本地 CA 自动生成证书
+	local_certs
+	
+	# 日志配置
+	log {
+		output file caddy.log {
+			roll_size 100mb
+			roll_keep 5
+		}
+		level INFO
+	}
+}
 
+# ============================================
+# HTTPS 通用代理 (端口 443)
+# ============================================
+:443 {
+	# 使用内部 CA 按需生成证书
+	tls internal {
+		on_demand
+	}
+	
+	# 反向代理到真实服务器
+	reverse_proxy {http.request.host}:443 {
+		# 保持原始 Host 头
+		header_up Host {http.request.host}
+
+		# 移除可能泄漏本地 IP 的头部
+		header_up X-Forwarded-For ""
+		header_up X-Real-IP ""
+		header_up X-Forwarded-Proto ""
+		header_up X-Forwarded-Host ""
+
+		# TLS 配置
+		transport http {
+			tls
+			tls_insecure_skip_verify
+		}
+	}
+}
+
+# ============================================
+# HTTP 通用代理 (端口 80)
+# ============================================
+:80 {
+	# 反向代理到真实服务器
+	reverse_proxy {http.request.host}:80 {
+		# 保持原始 Host 头
+		header_up Host {http.request.host}
+
+		# 移除可能泄漏本地 IP 的头部
+		header_up X-Forwarded-For ""
+		header_up X-Real-IP ""
+		header_up X-Forwarded-Proto ""
+		header_up X-Forwarded-Host ""
+
+		# 性能优化：低延迟模式（禁用缓冲）
+		flush_interval -1
+
+		# 性能优化：传输层配置
+		transport http {
+			# 使用公共 DNS 解析器
+			resolvers 8.8.8.8 1.1.1.1
+
+			# 增大缓冲区（1MB = 1024KB）
+			read_buffer  1MB
+			write_buffer 1MB
+
+			# 优化连接池
+			keepalive 5m
+			keepalive_idle_conns_per_host 100
+			keepalive_idle_conns 1000
+
+			# 优化超时
+			dial_timeout 5s
+			response_header_timeout 10s
+		}
+	}
+}
+#+end_src
 * helper
 ** rsshub
 #+name: rsshub-public-instance
