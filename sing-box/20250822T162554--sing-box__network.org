@@ -99,6 +99,7 @@
                                              '("chacha20-poly1305"))
                                      (member (alist-get 'type (alist-get 'transport obd))
                                              '("xhttp"))
+                                     (assoc 'utls obd)
                                      (assoc 'plugin obd))))
                            (tag (format "%s[%s]" (alist-get 'tag obd) name)))
                  ;; (cond
