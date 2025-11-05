@@ -130,7 +130,10 @@
         (json-parse-error (message "Sub: %s json not valid." name))
         (json-end-of-file (message "Sub: %s json not valid." name)))))
 
-  (let ((coding-system-for-write 'utf-8))
+  (let* ((dns-remote-server (string-trim (or (org-file-contents "_dns-remote-server" t t)
+                                             "127.0.0.1")))
+         (dns-remote-ipv6-p (string-match-p ":" dns-remote-server))
+         (coding-system-for-write 'utf-8))
     (org-babel-tangle))
 
   (dolist (f (directory-files "." t "^_.+\\.json$" t))
@@ -194,6 +197,7 @@
 #+header: :var jsdelivr="https://fastly.jsdelivr.net"
 #+header: :var dns_strategy=(if (zr-net-has-public-ipv6-addr-p) "prefer_ipv6" "ipv4_only")
 #+header: :var dns_default="ld-tuso-us1"
+#+header: :var dns_remote_answer=(format "localhost. IN %s %s" (if dns-remote-ipv6-p "AAAA" "A") dns-remote-server)
 #+header: :var clash_secret=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "clash")) :secret)) 1 -1)
 #+name: client-config
 #+begin_src json :tangle (zr-org-by-tangle-dir "_500-main.json") :mkdirp t
@@ -201,6 +205,24 @@
   "dns": {
     "final": "$dns_default",
     "rules": [
+      {
+        "action": "predefined",
+        "answer": [
+          "localhost. IN A 127.0.0.1"
+        ],
+        "ip_accept_any": true,
+        "rcode": "NOERROR",
+        "rule_set": "dns-local-rules"
+      },
+      {
+        "action": "predefined",
+        "answer": [
+          "$dns_remote_answer"
+        ],
+        "ip_accept_any": true,
+        "rcode": "NOERROR",
+        "rule_set": "dns-remote-rules"
+      },
       {
         "ip_accept_any": true,
         "rule_set": "tailscale-rules",
@@ -313,6 +335,18 @@
     },
     "final": "direct",
     "rule_set": [
+      {
+        "format": "binary",
+        "path": "$rule_sets_dir/dns-local.srs",
+        "tag": "dns-local-rules",
+        "type": "local"
+      },
+      {
+        "format": "binary",
+        "path": "$rule_sets_dir/dns-remote.srs",
+        "tag": "dns-remote-rules",
+        "type": "local"
+      },
       {
         "format": "binary",
         "path": "$rule_sets_dir/proxy.srs",
@@ -1076,10 +1110,12 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
 
 #+name: gen-direct-rule-set
 #+begin_src elisp
-(let* ((default [((domain_suffix . [])
-                  (process_name
-                   . ["cfst"
-                      "cloudflared"]))])
+(let* ((default `(((domain_suffix . [])
+                   (ip_cidr
+                    . ,(vector (format "%s/%s" dns-remote-server (if dns-remote-ipv6-p "128" "32"))))
+                   (process_name
+                    . ["cfst"
+                       "cloudflared"]))))
        (local-file "_direct.eld")
        (local (and (file-exists-p local-file)
                    (with-temp-buffer
@@ -1137,6 +1173,51 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
   (json-serialize
    `((version . 3)
      (rules . ,(or local place-holder)))))
+#+end_src
+
+** dns-local
+:PROPERTIES:
+:CUSTOM_ID: a02fb290-ed0d-45d4-9b62-a86d148727bf
+:END:
+#+begin_src json :tangle (zr-org-by-tangle-dir "dns-local.json") :mkdirp t
+<<gen-dns-local-rules()>>
+#+end_src
+
+#+name: gen-dns-local-rules
+#+begin_src elisp
+(let* ((default (vector
+                 `(,(cons 'domain_suffix
+                          (vector
+                           (concat (downcase (system-name)) ".local"))))))
+       (local-file "_dns-local.eld")
+       (local (and (file-exists-p local-file)
+                   (with-temp-buffer
+                     (insert-file-contents local-file)
+                     (read (current-buffer))))))
+  (json-serialize
+   `((version . 3)
+     (rules . ,(vconcat local default)))))
+#+end_src
+
+** dns-remote
+:PROPERTIES:
+:CUSTOM_ID: c4683997-5c7f-4181-bed1-743ffc858cb6
+:END:
+#+begin_src json :tangle (zr-org-by-tangle-dir "dns-remote.json") :mkdirp t
+<<gen-dns-remote-rules()>>
+#+end_src
+
+#+name: gen-dns-remote-rules
+#+begin_src elisp
+(let* ((default [((domain_suffix . [".it-just-a-dns-remote-placeholder"]))])
+       (local-file "_dns-remote.eld")
+       (local (and (file-exists-p local-file)
+                   (with-temp-buffer
+                     (insert-file-contents local-file)
+                     (read (current-buffer))))))
+  (json-serialize
+   `((version . 3)
+     (rules . ,(vconcat local default)))))
 #+end_src
 
 * helper
