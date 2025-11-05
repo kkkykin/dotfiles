@@ -538,11 +538,19 @@
 {
   "inbounds": [
     {
+      "listen": "::1",
+      "listen_port": 53,
+      "network": "udp",
+      "sniff_override_destination": true,
+      "tag": "dns6-in",
+      "type": "direct"
+    },
+    {
       "listen": "127.0.0.1",
       "listen_port": 53,
       "network": "udp",
       "sniff_override_destination": true,
-      "tag": "dns-in",
+      "tag": "dns4-in",
       "type": "direct"
     }
   ],
