@@ -92,13 +92,16 @@
                            sub-dir))
             (mapc
              (lambda (obd)
-               (when-let* (((not (or (member (alist-get 'type obd)
+               (when-let* ((type (alist-get 'type obd))
+                           ((not (or (member type
                                              '("direct" "selector" "urltest"
                                                "block" "dns"))
                                      (member (alist-get 'method obd)
                                              '("chacha20-poly1305"))
                                      (member (alist-get 'type (alist-get 'transport obd))
                                              '("xhttp"))
+                                     (and (string= type "tuic")
+                                          (not (assoc 'tls obd)))
                                      (assoc 'utls obd)
                                      (assoc 'plugin obd))))
                            (tag (format "%s[%s]" (alist-get 'tag obd) name)))
