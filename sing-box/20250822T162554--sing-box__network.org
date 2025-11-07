@@ -1199,7 +1199,10 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
 (let* ((default (vector
                  `(,(cons 'domain_suffix
                           (vector
-                           (concat (downcase (system-name)) ".local"))))))
+                           (concat (downcase (system-name)) ".local")))
+                   (source_ip_cidr
+                    . ["127.0.0.1/32"
+                       "::1/128"]))))
        (local-file "_dns-local.eld")
        (local (and (file-exists-p local-file)
                    (with-temp-buffer
