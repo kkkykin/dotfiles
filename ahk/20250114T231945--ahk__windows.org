@@ -120,7 +120,7 @@ edgeToggle(){
   }
   local edgeWins := WinGetList(edgeWinName)
   switch edgeWins.length {
-    case 0: Run(EnvGet('ProgramFiles(x86)') '\Microsoft\Edge\Application\msedge.exe --profile-directory=Default --remote-debugging-port=9222')
+    case 0: Run(EnvGet('ProgramFiles(x86)') '\Microsoft\Edge\Application\msedge.exe --profile-directory=Default --enable-features=EncryptedClientHello --remote-debugging-port=9222')
     case 1: WinActivate(edgeWins[1])
     default:
     {
