@@ -1120,10 +1120,9 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
 
 #+name: gen-direct-rule-set
 #+begin_src elisp
-(let* ((default `(((domain_suffix . [])
-                   (ip_cidr
-                    . ,(vector (format "%s/%s" dns-remote-server (if dns-remote-ipv6-p "128" "32"))))
-                   (process_name
+(let* ((default `(((ip_cidr
+                    . ,(vector (format "%s/%s" dns-remote-server (if dns-remote-ipv6-p "128" "32")))))
+                  ((process_name
                     . ["cfst"
                        "cloudflared"]))))
        (local-file "_direct.eld")
