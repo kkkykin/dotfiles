@@ -375,54 +375,63 @@
         "type": "local"
       },
       {
+        "download_detour": "direct",
         "format": "binary",
         "tag": "geoip-cloudflare",
         "type": "remote",
         "url": "$jsdelivr/gh/chocolate4u/Iran-sing-box-rules@rule-set/geoip-cloudflare.srs"
       },
       {
+        "download_detour": "direct",
         "format": "binary",
         "tag": "geoip-cn",
         "type": "remote",
         "url": "$jsdelivr/gh/SagerNet/sing-geoip@rule-set/geoip-cn.srs"
       },
       {
+        "download_detour": "direct",
         "format": "binary",
         "tag": "geosite-geolocation-cn",
         "type": "remote",
         "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-geolocation-cn.srs"
       },
       {
+        "download_detour": "direct",
         "format": "binary",
         "tag": "geosite-geolocation-!cn",
         "type": "remote",
         "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-geolocation-!cn.srs"
       },
       {
+        "download_detour": "direct",
         "format": "binary",
         "tag": "geosite-category-porn",
         "type": "remote",
         "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-category-porn.srs"
       },
       {
+        "download_detour": "direct",
         "format": "binary",
         "tag": "geosite-category-ai-!cn",
         "type": "remote",
         "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-category-ai-!cn.srs"
       },
       {
+        "download_detour": "direct",
         "format": "binary",
         "tag": "geosite-google@!cn",
         "type": "remote",
         "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-google@!cn.srs"
       },
       {
+        "download_detour": "direct",
         "format": "binary",
         "tag": "geosite-microsoft",
         "type": "remote",
         "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-microsoft.srs"
       },
       {
+        "download_detour": "direct",
         "format": "binary",
         "tag": "geosite-adblockplus",
         "type": "remote",
@@ -639,14 +648,6 @@
       "auto_redirect": true,
       "mtu": 9000,
       "route_exclude_address_set": ["geoip-cn"],
-      "route_exclude_address": [
-        "192.168.0.0/16",
-        "172.16.0.0/12",
-        "10.0.0.0/8",
-        "127.0.0.1/8",
-        "fd00::/8",
-        "::1/128"
-      ],
       "stack": "system",
       "strict_route": true,
       "tag": "tun-in",
