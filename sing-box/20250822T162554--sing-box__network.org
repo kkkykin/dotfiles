@@ -13,6 +13,7 @@
        (client-tmp-dir "_tangle/tmp/")
        (tun-dir (expand-file-name "tun/" client-tmp-dir))
        (client-dir "_tangle/client/")
+       (server-dir (expand-file-name "_tangle/server/"))
        (hosts-dir "_tangle/hosts/")
        (hosts-uris `(;; ("github" . "https://gitlab.com/ineo6/hosts/-/raw/master/hosts")
                      ("local" . ,(expand-file-name "_hosts"))))
@@ -149,8 +150,10 @@
     (call-process "sing-box" nil nil nil "merge" tun-file "-C" tun-dir))
 
   (dolist (f (directory-files rule-sets-dir t "\\.json$" t))
-    (call-process "sing-box" nil nil nil "rule-set" "compile"
-                  "--output" (file-name-with-extension f "srs") f))
+    (let ((out (file-name-with-extension f "srs")))
+      (call-process "sing-box" nil nil nil "rule-set" "compile" "--output" out f)
+      (when (string-prefix-p "server-" (file-name-base out))
+        (make-symbolic-link out server-dir t))))
 
   (when-let* (((eq 'android system-type))
               (android-dir "/storage/emulated/0/io.nekohasekai.sfa/")
@@ -375,6 +378,12 @@
         "type": "local"
       },
       {
+        "format": "binary",
+        "path": "$rule_sets_dir/server-direct.srs",
+        "tag": "server-direct-rules",
+        "type": "local"
+      },
+      {
         "download_detour": "direct",
         "format": "binary",
         "tag": "geoip-cloudflare",
@@ -463,6 +472,7 @@
         "outbound": "s[this-way]",
         "rule_set": [
           "geosite-category-porn",
+          "server-direct-rules",
           "proxy-rules"
         ]
       },
@@ -682,7 +692,7 @@
 
 ** server
 :PROPERTIES:
-:tangle-dir: _tangle/server
+:tangle-dir: (concat server-dir)
 :END:
 
 *** main
@@ -690,6 +700,7 @@
 :CUSTOM_ID: b85ab91b-1175-4b51-9f3c-f37a0b589979
 :END:
 
+#+header: :var rule_sets_dir="/etc/sing-box"
 #+name: server-config
 #+begin_src json :tangle (zr-org-by-tangle-dir "500-main.json") :mkdirp t
 {
@@ -718,12 +729,18 @@
     "default_domain_resolver": {
       "server": "cf-dot"
     },
+    "rule_set": [
+      {
+        "format": "binary",
+        "path": "$rule_sets_dir/server-direct.srs",
+        "tag": "server-direct-rules",
+        "type": "local"
+      }
+    ],
     "rules": [
       {
-        "domain_regex": [
-          "^(.+\\.)?e[-x]hentai\\.org$"
-        ],
-        "outbound": "direct"
+        "outbound": "direct",
+        "rule_set": "server-direct-rules"
       }
     ]
   }
@@ -1230,6 +1247,27 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
   (json-serialize
    `((version . 3)
      (rules . ,(vconcat local default)))))
+#+end_src
+
+** server-direct
+:PROPERTIES:
+:CUSTOM_ID: b85b7b4c-c7d5-47d0-8251-d92ee5072716
+:END:
+#+begin_src json :mkdirp t :tangle (zr-org-by-tangle-dir "server-direct.json")
+{
+  "rules": [
+    {
+      "domain": [
+        "static.metabrainz.org",
+        "musicbrainz.org"
+      ],
+      "domain_regex": [
+        "^(.+\\.)?e[-x]hentai\\.org$"
+      ]
+    }
+  ],
+  "version": 3
+}
 #+end_src
 
 * helper
