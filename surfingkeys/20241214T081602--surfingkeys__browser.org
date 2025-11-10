@@ -417,6 +417,41 @@ mapkey(';pl', 'toggle proxy current site', () => {
 });
 #+end_src
 
+#+begin_src js :noweb-prefix no
+const zrProxyConf = <<json-file-to-js-obj(file="pac.json.gpg")>>
+#+end_src
+
+#+begin_src js
+const ECH_BYPASS = 'PROXY 127.0.0.1:10807';
+
+const updateProxy = (mode, predicate) => {
+  const { proxy, autoproxy_hosts } = zrProxyConf;
+  const result = { proxy: [], autoproxy_hosts: [] };
+
+  for (let i = 0; i < proxy.length; i++) {
+    if (predicate(proxy[i])) {
+      result.proxy.push(proxy[i]);
+      result.autoproxy_hosts.push(autoproxy_hosts[i]);
+    }
+  }
+
+  RUNTIME('updateProxy', {
+    operation: 'set',
+    host: result.autoproxy_hosts,
+    proxy: result.proxy,
+    mode
+  });
+};
+
+mapkey(';py', 'set proxy bypass', () => {
+  updateProxy('bypass', item => item === ECH_BYPASS);
+});
+
+mapkey(';pb', 'set proxy byhost', () => {
+  updateProxy('byhost', item => item !== ECH_BYPASS);
+});
+#+end_src
+
 **** pac
 :PROPERTIES:
 :CUSTOM_ID: 1dcc733d-0fa2-4156-8020-04f6a8446d27
