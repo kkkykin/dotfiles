@@ -468,13 +468,6 @@ show-console-readout=false
   config,
   ...
 }: {
-  sops = {
-    secrets.aria2_rpc_secret= {
-      owner = "aria2";
-      sopsFile = ../secrets/aria2.json;
-      restartUnits = [ "aria2.service" ];
-    };
-  };
   services = {
     aria2 = {
       enable = true;
