@@ -202,7 +202,7 @@
 #+header: :var cache_path=(expand-file-name "cache.db" "_tangle")
 #+header: :var jsdelivr="https://fastly.jsdelivr.net"
 #+header: :var dns_strategy=(if (zr-net-has-public-ipv6-addr-p) "prefer_ipv6" "ipv4_only")
-#+header: :var dns_default="ld-tuso-us1"
+#+header: :var dns_default="ld-neo"
 #+header: :var dns_remote_answer=(format "localhost. IN %s %s" (if dns-remote-ipv6-p "AAAA" "A") dns-remote-server)
 #+header: :var clash_secret=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "clash")) :secret)) 1 -1)
 #+name: client-config
@@ -286,6 +286,13 @@
         "type": "https"
       },
       {
+        "domain_resolver": "ali-quic",
+        "path": "/query-dns",
+        "server": "ld.ddd.oaifree.com",
+        "tag": "ld-neo",
+        "type": "https"
+      },
+      {
         "accept_default_resolvers": false,
         "endpoint": "ts-ep",
         "tag": "tailscale-dns",
@@ -337,7 +344,7 @@
   },
   "route": {
     "default_domain_resolver": {
-      "server": "ali-quic"
+      "server": "$dns_default"
     },
     "final": "direct",
     "rule_set": [
