@@ -1264,11 +1264,10 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
 {
   "rules": [
     {
-      "domain": [
-        "static.metabrainz.org",
-        "musicbrainz.org"
-      ],
       "domain_regex": [
+        "^(.+\\.)?metabrainz\\.org$",
+        "^(.+\\.)?listenbrainz\\.org$",
+        "^(.+\\.)?musicbrainz\\.org$",
         "^(.+\\.)?e[-x]hentai\\.org$"
       ]
     }
