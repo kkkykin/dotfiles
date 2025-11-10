@@ -1125,7 +1125,7 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
        suffix)
   (cl-mapc
    (lambda (p h)
-     (when (string= "HTTP 127.0.0.1:10808" p)
+     (when (string= "PROXY 127.0.0.1:10808" p)
        (push h suffix)))
    proxy hosts)
   (json-serialize
