@@ -157,13 +157,9 @@
 
   (when-let* (((eq 'android system-type))
               (android-dir "/storage/emulated/0/io.nekohasekai.sfa/")
-              (version (shell-command-to-string "curl -sxsocks5h://127.0.0.1:10807 --etag-compare _etag.txt --etag-save _etag.txt https://api.github.com/repos/SagerNet/sing-box/releases/latest  | jq -j '.name'"))
               (media-dir "/storage/emulated/0/Android/media")
               (termux-bin-dir (expand-file-name "com.termux/bin" media-dir))
               (android-target-dir (expand-file-name "io.nekohasekai.sfa/" media-dir)))
-    (unless (string-empty-p version)
-      (mkdir termux-bin-dir t)
-      (call-process-shell-command (format "curl -Lxsocks5h://127.0.0.1:10807 -o- 'https://github.com/SagerNet/sing-box/releases/download/v%s/sing-box-%s-android-arm64.tar.gz' | tar -xzvf - -C '%s' --wildcards --no-anchored --transform='s|^.*/||' '*/sing-box'" version version termux-bin-dir)))
     (mkdir android-dir t)
     (dolist (f (directory-files client-dir t "^[^.]" t))
       (unless (file-directory-p f)
@@ -176,6 +172,8 @@
                     (expand-file-name "_tangle/")
                     android-target-dir
                     android-dir)
+            (format "rm -rf %s/{hosts,rule-sets}"
+                    (shell-quote-argument android-target-dir))
             (format "mv -f %s/* %s"
                     (shell-quote-argument android-dir)
                     (shell-quote-argument android-target-dir)))
