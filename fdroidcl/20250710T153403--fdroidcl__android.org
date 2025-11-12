@@ -20,7 +20,7 @@
 #+begin_src toml :tangle (zr-org-by-tangle-dir "config.toml") :mkdirp t
 [[repos]]
 id = 'kkky'
-url = 'https://dadadawauuuo.kkky.eu.org/fdroid/repo'
+url = 'https://fdroid.kkky.eu.org/repo'
 enabled = true
 
 [[repos]]
