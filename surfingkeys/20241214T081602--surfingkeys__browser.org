@@ -583,6 +583,7 @@ mapkey(',,', '根据当前URL执行特定操作', function() {
   const actions = [];
   let match;
 
+  const codewiki_home = 'https://codewiki.google'
   <<github>>
 
   doActions(actions);
@@ -600,15 +601,19 @@ if (match) {
   const user = match[1];
   const repo = match[2];
   const name = `${user}/${repo}`;
-  const wiki_home = 'https://deepwiki.com'
+  const deepwiki_home = 'https://deepwiki.com'
   const zread_home = 'https://zread.ai'
   actions.push({
     title: `打开 DeepWiki: ${name}`,
-    action: () => tabOpenLink(`${wiki_home}/${name}`)
+    action: () => tabOpenLink(`${deepwiki_home}/${name}`)
   });
   actions.push({
     title: `打开 Zread: ${name}`,
     action: () => tabOpenLink(`${zread_home}/${name}`)
+  });
+  actions.push({
+    title: `打开 CodeWiki: ${name}`,
+    action: () => tabOpenLink(`${codewiki_home}/github.com/${name}`)
   });
 }
 #+end_src
