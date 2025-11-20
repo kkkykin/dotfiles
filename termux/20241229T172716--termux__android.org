@@ -98,7 +98,9 @@ extra-keys = [[ \
 :PROPERTIES:
 :CUSTOM_ID: 4bf09652-8c4c-44ad-96bf-7335f0efe5b5
 :END:
-#+begin_src sh :tangle (zr-org-by-tangle-dir "emacs") :var EMACS_SOCKET_NAME=(expand-file-name server-name server-socket-dir) emacsclient=(symbol-value 'emacsclient-program-name)
+#+header: :var EMACS_SOCKET_NAME=(if (boundp 'server-name) (expand-file-name server-name server-socket-dir) "")
+#+header: :var emacsclient=(symbol-value 'emacsclient-program-name)
+#+begin_src sh :tangle (if (and (eq 'android system-type) (display-graphic-p)) (zr-org-by-tangle-dir "emacs") "no")
 set -euo pipefail
 
 cleanup() {
@@ -881,6 +883,9 @@ esac
 #+end_src
 
 ** audio-record
+:PROPERTIES:
+:CUSTOM_ID: 74b8d062-f203-42c2-9191-24f6b7224a4d
+:END:
 #+begin_src sh :tangle (zr-org-by-tangle-dir "audio-record")
 # 录音脚本 - 支持start、stop和toggle动作
 # 文件保存到指定目录，文件名为当前时间戳
@@ -1214,6 +1219,201 @@ case "$1" in
   ,*)
     echo "Usage: $0 {minip|resolution}"
     exit 1
+    ;;
+esac
+#+end_src
+
+** proxy
+:PROPERTIES:
+:CUSTOM_ID: c8fc3282-523d-4708-a145-864c4c16d1ff
+:END:
+#+begin_src sh :tangle (zr-org-by-tangle-dir "proxy")
+PROXY_KEY="http_proxy"
+DEFAULT_PROXY="127.0.0.1:10807"
+
+# 获取当前代理（处理 null、空值和换行符）
+get_proxy() {
+  proxy=$(settings get global "$PROXY_KEY" 2>/dev/null)
+  proxy=$(echo "$proxy" | tr -d ' \r\n' | head -n1)
+  
+  if [ -z "$proxy" ] || [ "$proxy" = "null" ] || [ "$proxy" = ":0" ]; then
+    echo ":0"
+  else
+    echo "$proxy"
+  fi
+}
+
+# 验证 IP:端口格式（完全兼容 POSIX sh）
+validate_proxy() {
+  proxy="$1"
+  
+  # 基本格式检查（glob 模式）
+  case "$proxy" in
+    [0-9]*.[0-9]*.[0-9]*.[0-9]*:[0-9]*) ;;
+    ,*) return 1 ;;
+  esac
+  
+  # 提取端口
+  port=$(echo "$proxy" | cut -d':' -f2)
+  
+  # 端口验证
+  case "$port" in
+    ,*[!0-9]*) return 1 ;;
+    ,*)
+      if [ "$port" -lt 1 ] || [ "$port" -gt 65535 ]; then
+        return 1
+      fi
+      ;;
+  esac
+  
+  # 提取并验证 IP 各段
+  ip=$(echo "$proxy" | cut -d':' -f1)
+  i=1
+  while [ $i -le 4 ]; do
+    octet=$(echo "$ip" | cut -d'.' -f$i)
+    
+    # 非空和数字检查
+    if [ -z "$octet" ]; then
+      return 1
+    fi
+    
+    case "$octet" in
+      ,*[!0-9]*) return 1 ;;
+    esac
+    
+    # 范围检查
+    if [ "$octet" -lt 0 ] || [ "$octet" -gt 255 ]; then
+      return 1
+    fi
+    
+    i=$((i + 1))
+  done
+  
+  return 0
+}
+
+# 显示当前状态
+show_status() {
+  current=$(get_proxy)
+  if [ "$current" = ":0" ]; then
+    echo "代理已禁用"
+  else
+    echo "代理已启用 ($current)"
+  fi
+}
+
+# 启用代理
+enable_proxy() {
+  proxy="${1:-$DEFAULT_PROXY}"
+  
+  if ! validate_proxy "$proxy"; then
+    echo "错误: 代理格式无效 '$proxy'" >&2
+    echo "正确格式: <IP地址>:<端口> (例如: 127.0.0.1:10807)" >&2
+    return 1
+  fi
+
+  current=$(get_proxy)
+  if [ "$current" = "$proxy" ]; then
+    echo "代理已经是 $proxy"
+    return 0
+  fi
+
+  echo "正在设置代理: $proxy"
+  if settings put global "$PROXY_KEY" "$proxy" 2>/dev/null; then
+    echo "成功: 代理已启用 ($proxy)"
+  else
+    echo "错误: 设置失败，请检查 Shizuku 权限" >&2
+    return 1
+  fi
+}
+
+# 禁用代理
+disable_proxy() {
+  current=$(get_proxy)
+  if [ "$current" = ":0" ]; then
+    echo "代理已经是禁用状态"
+    return 0
+  fi
+
+  echo "正在禁用代理..."
+  if settings put global "$PROXY_KEY" ":0" 2>/dev/null; then
+    echo "成功: 代理已禁用"
+  else
+    echo "错误: 设置失败，请检查 Shizuku 权限" >&2
+    return 1
+  fi
+}
+
+# 切换代理
+toggle_proxy() {
+  current=$(get_proxy)
+  if [ "$current" = ":0" ]; then
+    enable_proxy "$DEFAULT_PROXY"
+  else
+    disable_proxy
+  fi
+}
+
+# 显示帮助
+show_help() {
+  cat << EOF
+代理管理脚本 - 通过 Shizuku (rish) 控制系统代理
+
+用法: rish $0 <命令> [参数]
+
+命令:
+  enable [代理]   启用代理 (默认: $DEFAULT_PROXY)
+  disable     禁用代理
+  toggle      切换代理状态
+  status      显示当前状态
+  help      显示此帮助
+
+直接指定:
+  <ip>:<端口>   直接设置代理地址
+
+示例:
+  rish $0 enable
+  rish $0 enable 192.168.1.100:8888
+  rish $0 disable
+  rish $0 toggle
+  rish $0 192.168.1.10:8888
+  rish $0 status
+
+当前状态: $(show_status)
+EOF
+}
+
+# 主逻辑
+case "$1" in
+  enable)
+    enable_proxy "$2"
+    ;;
+  disable)
+    disable_proxy
+    ;;
+  toggle)
+    toggle_proxy
+    ;;
+  status)
+    show_status
+    ;;
+  help|--help|-h)
+    show_help
+    ;;
+  "")
+    echo "错误: 缺少参数" >&2
+    echo "运行 'rish $0 help' 查看用法" >&2
+    exit 1
+    ;;
+  ,*)
+    # 检查是否为 ip:port 格式
+    if validate_proxy "$1"; then
+      enable_proxy "$1"
+    else
+      echo "错误: 未知命令或格式 '$1'" >&2
+      echo "运行 'rish $0 help' 查看用法" >&2
+      exit 1
+    fi
     ;;
 esac
 #+end_src
