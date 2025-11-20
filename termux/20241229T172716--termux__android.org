@@ -1292,16 +1292,6 @@ validate_proxy() {
   return 0
 }
 
-# 显示当前状态
-show_status() {
-  current=$(get_proxy)
-  if [ "$current" = ":0" ]; then
-    echo "代理已禁用"
-  else
-    echo "代理已启用 ($current)"
-  fi
-}
-
 # 启用代理
 enable_proxy() {
   proxy="${1:-$DEFAULT_PROXY}"
@@ -1395,7 +1385,7 @@ case "$1" in
     toggle_proxy
     ;;
   status)
-    show_status
+    get_proxy
     ;;
   help|--help|-h)
     show_help
