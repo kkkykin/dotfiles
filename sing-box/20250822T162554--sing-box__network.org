@@ -199,7 +199,7 @@
 #+header: :var rule_sets_dir=(expand-file-name rule-sets-dir)
 #+header: :var cache_path=(expand-file-name "cache.db" "_tangle")
 #+header: :var jsdelivr="https://fastly.jsdelivr.net"
-#+header: :var dns_strategy=(if (zr-net-has-public-ipv6-addr-p) "prefer_ipv6" "ipv4_only")
+#+header: :var clash_mode=(if (zr-net-has-public-ipv6-addr-p) "ipv6" "ipv4")
 #+header: :var dns_default="ld-neo"
 #+header: :var dns_remote_answer=(format "localhost. IN %s %s" (if dns-remote-ipv6-p "AAAA" "A") dns-remote-server)
 #+header: :var clash_secret=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "clash")) :secret)) 1 -1)
@@ -319,7 +319,7 @@
         "type": "quic"
       }
     ],
-    "strategy": "$dns_strategy"
+    "strategy": "prefer_ipv4"
   },
   "experimental": {
     "cache_file": {
@@ -333,6 +333,7 @@
         "http://127.0.0.1"
       ],
       "access_control_allow_private_network": true,
+      "default_mode": "$clash_mode",
       "external_controller": "127.0.0.1:9090",
       "secret": "$clash_secret"
     }
@@ -493,8 +494,15 @@
         ]
       },
       {
+        "clash_mode": "ipv4",
         "outbound": "direct",
-        "override_address": "<<find-ip()>>",
+        "override_address": "<<find-ip(type=4)>>",
+        "rule_set": "geoip-cloudflare"
+      },
+      {
+        "clash_mode": "ipv6",
+        "outbound": "direct",
+        "override_address": "<<find-ip(type=6)>>",
         "rule_set": "geoip-cloudflare"
       },
       {
@@ -1281,17 +1289,21 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
 * helper
 #+name: find-ip
 #+begin_src elisp :var cdn="cf" type=(if (zr-net-has-public-ipv6-addr-p) 6 4)
-(let* ((result-dir (format "../cloudflarest/_results/%s-%d/" cdn type))
-       (results (directory-files result-dir t "^[^.]+\\.csv$"))
-       (result "104.17.133.211"))
-  (when results
-    (let ((latest (car (last results))))
-      (with-temp-buffer
-        (insert-file-contents latest)
-        (goto-char (point-min))
-        (forward-line)
-        (let ((pos (point)))
-          (search-forward "," (pos-eol))
-          (setq result (buffer-substring pos (1- (point))))))))
-  result)
+(cl-letf
+    (((symbol-function 'extract-ip)
+      (lambda (file)
+        (with-temp-buffer
+          (insert-file-contents file)
+          (goto-char (point-min))
+          (forward-line)
+          (let ((pos (point)))
+            (search-forward "," (pos-eol))
+            (buffer-substring pos (1- (point))))))))
+  (let ((result-dir (format "../cloudflarest/_results/%s-%d/" cdn type))
+        (default "104.17.133.211")
+        results)
+    (mkdir result-dir t)
+    (if-let* ((latest (car (last (directory-files result-dir t "^[^.]+\\.csv$")))))
+        (extract-ip latest)
+      default)))
 #+end_src
