@@ -455,6 +455,28 @@
     ],
     "rules": [
       {
+        "action": "sniff",
+        "sniffer": [
+          "bittorrent",
+          "dns",
+          "ntp",
+          "stun"
+        ]
+      },
+      {
+        "action": "hijack-dns",
+        "mode": "or",
+        "rules": [
+          {
+            "protocol": "dns"
+          },
+          {
+            "port": 53
+          }
+        ],
+        "type": "logical"
+      },
+      {
         "outbound": "mitm",
         "rule_set": "mitm-rules"
       },
@@ -464,6 +486,11 @@
       },
       {
         "outbound": "direct",
+        "protocol": [
+          "bittorrent",
+          "ntp",
+          "stun"
+        ],
         "rule_set": "direct-rules"
       },
       {
@@ -586,28 +613,7 @@
       "tag": "dns4-in",
       "type": "direct"
     }
-  ],
-  "route": {
-    "rules": [
-      {
-        "action": "sniff",
-        "sniffer": "dns"
-      },
-      {
-        "type": "logical",
-        "mode": "or",
-        "rules": [
-          {
-            "protocol": "dns"
-          },
-          {
-            "port": 53
-          }
-        ],
-        "action": "hijack-dns"
-      }
-    ]
-  }
+  ]
 }
 #+end_src
 
