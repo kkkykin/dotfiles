@@ -406,6 +406,13 @@
       {
         "download_detour": "direct",
         "format": "binary",
+        "tag": "geosite-cn",
+        "type": "remote",
+        "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-cn.srs"
+      },
+      {
+        "download_detour": "direct",
+        "format": "binary",
         "tag": "geosite-geolocation-cn",
         "type": "remote",
         "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-geolocation-cn.srs"
@@ -517,6 +524,7 @@
         "outbound": "direct",
         "rule_set": [
           "geosite-geolocation-cn",
+          "geosite-cn",
           "geoip-cn"
         ]
       },
@@ -547,8 +555,18 @@
         "type": "logical"
       },
       {
+        "mode": "and",
         "outbound": "s[this-way]",
-        "rule_set": "geosite-geolocation-!cn"
+        "rules": [
+          {
+            "rule_set": "geosite-geolocation-!cn"
+          },
+          {
+            "invert": true,
+            "rule_set": "geoip-cn"
+          }
+        ],
+        "type": "logical"
       }
     ]
   }
