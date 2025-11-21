@@ -564,20 +564,6 @@
       },
       {
         "mode": "and",
-        "outbound": "direct",
-        "rules": [
-          {
-            "rule_set": "geoip-cn"
-          },
-          {
-            "invert": true,
-            "rule_set": "geosite-geolocation-!cn"
-          }
-        ],
-        "type": "logical"
-      },
-      {
-        "mode": "and",
         "outbound": "s[this-way]",
         "rules": [
           {
