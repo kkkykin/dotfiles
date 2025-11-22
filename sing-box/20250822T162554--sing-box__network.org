@@ -1159,16 +1159,15 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
                    (with-temp-buffer
                      (insert-file-contents local-file)
                      (read (current-buffer)))))
-       (default [((domain . ["x.com"]))])
+       (default [((domain . []))])
        suffix)
   (cl-mapc
    (lambda (p h)
-     (when (string= "PROXY 127.0.0.1:10808" p)
-       (push
-        (mapcar (lambda (domain)
-                  (format "^(.+\\.)?%s$" (regexp-quote domain)))
-                h)
-        suffix)))
+     (push
+      (mapcar (lambda (domain)
+                (format "^(.+\\.)?%s$" (regexp-quote domain)))
+              h)
+      suffix))
    proxy hosts)
   (json-serialize
    `((version . 3)

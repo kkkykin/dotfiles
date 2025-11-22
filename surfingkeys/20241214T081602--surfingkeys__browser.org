@@ -422,33 +422,26 @@ const zrProxyConf = <<json-file-to-js-obj(file="pac.json.gpg")>>
 #+end_src
 
 #+begin_src js
-const ECH_BYPASS = 'PROXY 127.0.0.1:10807';
-
-const updateProxy = (mode, predicate) => {
+const updateProxy = (mode) => {
   const { proxy, autoproxy_hosts } = zrProxyConf;
-  const result = { proxy: [], autoproxy_hosts: [] };
+  const defaultProxy = proxy.at(-1);
 
-  for (let i = 0; i < proxy.length; i++) {
-    if (predicate(proxy[i])) {
-      result.proxy.push(proxy[i]);
-      result.autoproxy_hosts.push(autoproxy_hosts[i]);
-    }
-  }
+  const [start, end] = mode === 'bypass' 
+    ? [0, 1] 
+    : [1, autoproxy_hosts.length];
 
-  RUNTIME('updateProxy', {
-    operation: 'set',
-    host: result.autoproxy_hosts,
-    proxy: result.proxy,
-    mode
-  });
+  const hosts = autoproxy_hosts.slice(start, end);
+  const proxies = hosts.map(() => defaultProxy);
+
+  RUNTIME('updateProxy', { operation: 'set', host: hosts, proxy: proxies, mode });
 };
 
 mapkey(';py', 'set proxy bypass', () => {
-  updateProxy('bypass', item => item === ECH_BYPASS);
+  updateProxy('bypass');
 });
 
 mapkey(';pb', 'set proxy byhost', () => {
-  updateProxy('byhost', item => item !== ECH_BYPASS);
+  updateProxy('byhost');
 });
 #+end_src
 
