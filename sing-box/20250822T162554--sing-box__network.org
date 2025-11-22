@@ -1159,7 +1159,7 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
                    (with-temp-buffer
                      (insert-file-contents local-file)
                      (read (current-buffer)))))
-       (default [((domain . []))])
+       (default [])
        suffix)
   (cl-mapc
    (lambda (p h)
