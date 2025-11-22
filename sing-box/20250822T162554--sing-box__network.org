@@ -1166,7 +1166,7 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
      (push
       (mapcar (lambda (domain)
                 (format "^(.+\\.)?%s$" (regexp-quote domain)))
-              h)
+              (cl-remove "local" h :test #'string= :count 1))
       suffix))
    proxy hosts)
   (json-serialize
