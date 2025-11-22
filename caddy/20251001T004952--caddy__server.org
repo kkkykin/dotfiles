@@ -224,6 +224,18 @@ route /mpv/ {
 }
 #+end_src
 
+*** pac
+:PROPERTIES:
+:CUSTOM_ID: 9d031bef-33c9-4fe8-aee8-31fb9a29d1fc
+:END:
+#+header: :var pac_dir=(expand-file-name "../surfingkeys/_tangle")
+#+begin_src caddy :tangle (zr-org-by-tangle-dir "pac.Caddyfile")
+handle /pac.js {
+    root * "$pac_dir"
+    file_server
+}
+#+end_src
+
 *** browse-url
 :PROPERTIES:
 :CUSTOM_ID: 96e9671c-2992-4c32-94e9-435f82f60950
