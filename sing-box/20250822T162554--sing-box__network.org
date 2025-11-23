@@ -514,13 +514,21 @@
         "rule_set": "tailscale-rules"
       },
       {
+        "mode": "or",
         "outbound": "direct",
-        "protocol": [
-          "bittorrent",
-          "ntp",
-          "stun"
+        "rules": [
+          {
+            "rule_set": "direct-rules"
+          },
+          {
+            "protocol": [
+              "bittorrent",
+              "ntp",
+              "stun"
+            ]
+          }
         ],
-        "rule_set": "direct-rules"
+        "type": "logical"
       },
       {
         "outbound": "s[self]",
