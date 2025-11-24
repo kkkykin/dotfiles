@@ -1,0 +1,94 @@
+#+title:      snow-ai
+#+date:       [2025-11-24 Mon 23:57]
+#+filetags:   :entertainment:
+#+identifier: 20251124T235723
+
+* tangle
+#+begin_src elisp
+(let* ((zr-local-pls (plstore-open "snow-ai.pls"))
+       (load-host (plist-get (cdr (plstore-get zr-local-pls "load")) :host))
+       (keys (cdr (plstore-get zr-local-pls "keys"))))
+  (plstore-close zr-local-pls)
+  (org-babel-tangle))
+#+end_src
+
+* config
+:PROPERTIES:
+:header-args:json: :mkdirp t :var load-host=(concat load-host)
+:END:
+
+** main
+#+begin_src json :tangle (zr-org-by-tangle-dir "config.json")
+{
+  "proxy": {
+    "enabled": false,
+    "port": 7890
+  }
+}
+#+end_src
+
+** profiles
+:PROPERTIES:
+:tangle-dir: _tangle/profiles
+:END:
+
+*** default
+:PROPERTIES:
+:CUSTOM_ID: 0e761f30-c24d-493a-8f37-8e6c3187ac2a
+:END:
+#+header: :var key=(plist-get keys :cc)
+#+begin_src json :tangle (zr-org-by-tangle-dir "default.json")
+{
+  "snowcfg": {
+    "baseUrl": "https://$load-host/proxy/mufasa_dot-cc/v1",
+    "apiKey": "$key",
+    "requestMethod": "anthropic",
+    "anthropicBeta": true,
+    "enablePromptOptimization": true,
+    "enableAutoCompress": true,
+    "thinking": {
+      "type": "enabled",
+      "budget_tokens": 10000
+    },
+    "advancedModel": "claude-sonnet-4-5-20250929",
+    "basicModel": "claude-sonnet-4-5-20250929",
+    "maxContextTokens": 200000,
+    "maxTokens": 32000,
+    "compactModel": {
+      "modelName": "claude-haiku-4-5-20251001"
+    }
+  }
+}
+#+end_src
+
+** codebase
+:PROPERTIES:
+:CUSTOM_ID: 455bb60f-d48c-4afd-a43f-b66462042925
+:END:
+#+header: :var key=(plist-get keys :e)
+#+begin_src json :mkdirp t :tangle (zr-org-by-tangle-dir "codebase.json")
+{
+  "enabled": false,
+  "enableAgentReview": true,
+  "embedding": {
+    "modelName": "jina-embeddings-v3",
+    "baseUrl": "https://$load-host/proxy/mufasa_dot-e/v1",
+    "apiKey": "$key",
+    "dimensions": 1024
+  },
+  "batch": {
+    "maxLines": 10,
+    "concurrency": 3
+  }
+}
+#+end_src
+
+** active
+:PROPERTIES:
+:CUSTOM_ID: 08a05ab7-8684-40c5-8bc8-dee6496e1edc
+:END:
+#+begin_src json :tangle (zr-org-by-tangle-dir "active-profile.json")
+{
+  "activeProfile": "default"
+}
+#+end_src
