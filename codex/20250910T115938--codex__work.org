@@ -7,7 +7,9 @@
 #+begin_src elisp
 (let* ((conf-dir (pcase system-type
                    ('windows-nt (substitute-in-file-name "$userprofile/.codex/"))
-                   (_ (expand-file-name "~/.codex/")))))
+                   (_ (expand-file-name "~/.codex/"))))
+       (zr-local-pls (plstore-open "../.global.pls"))
+       (load-host (plist-get (cdr (plstore-get zr-local-pls "load")) :host)))
   (mkdir conf-dir t)
   (dolist (f (org-babel-tangle))
     (make-symbolic-link f conf-dir t)))
@@ -21,16 +23,25 @@
 :PROPERTIES:
 :CUSTOM_ID: 2726e3c5-3391-4dc0-af41-b0df5a024f78
 :END:
+#+header: :var load-host=(concat load-host)
 #+begin_src toml :tangle (zr-org-by-tangle-dir "config.toml") :mkdirp t
-model_provider = "88code"
-model = "gpt-5-codex"
+model_provider = "load"
+model = "gpt-5.1-codex"
 model_reasoning_effort = "high"
 disable_response_storage = true
 sandbox_mode = "workspace-write" 
 
-[model_providers.88code]
-name = "88code"
-base_url = "https://88code.org/openai/v1"
+[features]
+plan_tool = true
+apply_patch_freeform = true
+view_image_tool = true
+web_search_request = true
+streamable_shell = false
+rmcp_client = true
+
+[model_providers.load]
+name = "load"
+base_url = "https://$load-host/proxy/cx/v1"
 wire_api = "responses"
 requires_openai_auth = true
 
@@ -41,9 +52,9 @@ network_access = true
 :PROPERTIES:
 :CUSTOM_ID: bb6a8f50-0139-42ad-9db0-7b9a3eed9323
 :END:
-#+header: :var 88_api_key=(auth-source-pick-first-password :user "apikey" :host "88code.org")
+#+header: :var load_key=(auth-source-pick-first-password :user "apikey" :host "codex-load")
 #+begin_src json :comments no :tangle (zr-org-by-tangle-dir "auth.json")
 {
-  "OPENAI_API_KEY": "$88_api_key"
+  "OPENAI_API_KEY": "$load_key"
 }
 #+end_src
