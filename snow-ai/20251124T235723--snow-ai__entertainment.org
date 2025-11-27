@@ -7,14 +7,18 @@
 #+begin_src elisp
 (let* ((zr-local-pls (plstore-open "snow-ai.pls"))
        (load-host (plist-get (cdr (plstore-get zr-local-pls "load")) :host))
+       (conf-dir (pcase system-type
+                   ('windows-nt (substitute-in-file-name "$userprofile/.snow"))
+                   (_ (expand-file-name "~/.snow"))))
        (keys (cdr (plstore-get zr-local-pls "keys"))))
   (plstore-close zr-local-pls)
-  (org-babel-tangle))
+  (org-babel-tangle)
+  (make-symbolic-link (expand-file-name "_tangle") conf-dir t))
 #+end_src
 
 * config
 :PROPERTIES:
-:header-args:json: :mkdirp t :var load-host=(concat load-host)
+:header-args:json: :comments no :mkdirp t :var load-host=(concat load-host)
 :END:
 
 ** main
