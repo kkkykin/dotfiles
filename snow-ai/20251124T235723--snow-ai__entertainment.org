@@ -5,11 +5,12 @@
 
 * tangle
 #+begin_src elisp
-(let* ((zr-local-pls (plstore-open "snow-ai.pls"))
-       (load-host (plist-get (cdr (plstore-get zr-local-pls "load")) :host))
+(let* ((zr-local-pls (plstore-open "../.global.pls"))
+       (load-host (concat "gpt-load." (plist-get (cdr (plstore-get zr-local-pls "host")) :main)))
        (conf-dir (pcase system-type
                    ('windows-nt (substitute-in-file-name "$userprofile/.snow"))
                    (_ (expand-file-name "~/.snow"))))
+       (zr-local-pls (plstore-open "snow-ai.pls"))
        (keys (cdr (plstore-get zr-local-pls "keys"))))
   (plstore-close zr-local-pls)
   (org-babel-tangle)
@@ -54,12 +55,68 @@
       "type": "enabled",
       "budget_tokens": 10000
     },
-    "advancedModel": "claude-sonnet-4-5-20250929",
+    "advancedModel": "claude-opus-4-5-20251101",
     "basicModel": "claude-sonnet-4-5-20250929",
     "maxContextTokens": 200000,
     "maxTokens": 32000,
     "compactModel": {
       "modelName": "claude-haiku-4-5-20251001"
+    }
+  }
+}
+#+end_src
+
+*** codex
+#+header: :var key=(plist-get keys :cx)
+#+begin_src json :tangle (zr-org-by-tangle-dir "codex.json")
+{
+  "snowcfg": {
+    "baseUrl": "https://$load-host/proxy/mufasa_dot-cx/v1",
+    "apiKey": "$key",
+    "requestMethod": "responses",
+    "anthropicBeta": false,
+    "enablePromptOptimization": true,
+    "enableAutoCompress": true,
+    "responsesReasoning": {
+      "enabled": true,
+      "effort": "high"
+    },
+    "advancedModel": "gpt-5.1-codex-max",
+    "basicModel": "gpt-5.1-codex",
+    "maxContextTokens": 400000,
+    "maxTokens": 64000,
+    "compactModel": {
+      "modelName": "gpt-5.1"
+    }
+  }
+}
+#+end_src
+
+*** gemini
+#+header: :var key=(plist-get keys :g)
+#+begin_src json :tangle (zr-org-by-tangle-dir "gemini.json")
+{
+  "snowcfg": {
+    "baseUrl": "https://$load-host/proxy/mufasa_dot-g/v1beta",
+    "apiKey": "$key",
+    "requestMethod": "gemini",
+    "anthropicBeta": false,
+    "enablePromptOptimization": true,
+    "enableAutoCompress": true,
+    "geminiThinking": {
+      "enabled": true,
+      "budget": 1024
+    },
+    "responsesReasoning": {
+      "enabled": false,
+      "effort": "high"
+    },
+    "advancedModel": "gemini-3-pro-preview",
+    "basicModel": "gemini-2.5-pro",
+    "maxContextTokens": 1000000,
+    "maxTokens": 32000,
+    "compactModel": {
+      "modelName": "gemini-2.5-flash"
     }
   }
 }

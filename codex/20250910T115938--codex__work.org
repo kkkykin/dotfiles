@@ -9,7 +9,7 @@
                    ('windows-nt (substitute-in-file-name "$userprofile/.codex/"))
                    (_ (expand-file-name "~/.codex/"))))
        (zr-local-pls (plstore-open "../.global.pls"))
-       (load-host (plist-get (cdr (plstore-get zr-local-pls "load")) :host)))
+       (load-host (concat "gpt-load." (plist-get (cdr (plstore-get zr-local-pls "host")) :main))))
   (mkdir conf-dir t)
   (dolist (f (org-babel-tangle))
     (make-symbolic-link f conf-dir t)))
