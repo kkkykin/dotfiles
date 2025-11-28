@@ -477,6 +477,465 @@ catch {
 reg add HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\OOBE /v BypassNRO /t REG_DWORD /d 1 /f shutdown /r /t 0
 #+end_src
 
+** Debug-Firewall
+https://superuser.com/a/1141671
+#+begin_src powershell :tangle (zr-org-by-tangle-dir "debug-firewall.ps1")
+#Requires -RunAsAdministrator
+
+<#
+.SYNOPSIS
+    Windows 防火墙调试自动化脚本
+.DESCRIPTION
+    自动化 Windows Filtering Platform (WFP) 调试流程，帮助定位阻止连接的防火墙规则
+.NOTES
+    需要管理员权限运行
+    文件编码：UTF-8 with BOM（避免中文乱码）
+    
+    本脚本使用 GUID 而非名称调用 auditpol 命令，确保在所有语言版本的 Windows 上都能正常工作：
+    - {0CCE9225-69AE-11D9-BED3-505054503030} = Filtering Platform Packet Drop
+    - {0CCE9226-69AE-11D9-BED3-505054503030} = Filtering Platform Connection
+#>
+
+[CmdletBinding()]
+param()
+
+# 颜色输出函数
+function Write-ColorOutput {
+    param(
+        [string]$Message,
+        [string]$ForegroundColor = "White"
+    )
+    Write-Host $Message -ForegroundColor $ForegroundColor
+}
+
+# 显示菜单
+function Show-Menu {
+    Clear-Host
+    Write-ColorOutput "`n==================== Windows 防火墙调试工具 ====================" "Cyan"
+    Write-ColorOutput "`n请选择操作：" "Yellow"
+    Write-ColorOutput "1. 启用防火墙审计 (开始调试)" "Green"
+    Write-ColorOutput "2. 生成 WFP 状态文件 (重现问题后执行)" "Green"
+    Write-ColorOutput "3. 打开事件查看器 (查找被阻止的数据包)" "Green"
+    Write-ColorOutput "4. 搜索 Filter ID (在 XML 文件中查找规则名称)" "Green"
+    Write-ColorOutput "5. 关闭防火墙审计 (完成调试)" "Red"
+    Write-ColorOutput "6. 完整调试流程 (交互式引导)" "Magenta"
+    Write-ColorOutput "7. 查看当前审计状态" "Cyan"
+    Write-ColorOutput "0. 退出" "Gray"
+    Write-ColorOutput "`n===============================================================" "Cyan"
+}
+
+# 启用审计
+function Enable-FirewallAudit {
+    Write-ColorOutput "`n[步骤 1/7] 启用 Windows Filtering Platform 审计..." "Yellow"
+    
+    # 使用 GUID 避免多语言问题
+    # {0CCE9225-69AE-11D9-BED3-505054503030} = Filtering Platform Packet Drop
+    # {0CCE9226-69AE-11D9-BED3-505054503030} = Filtering Platform Connection
+    
+    try {
+        Write-ColorOutput "启用 'Filtering Platform Packet Drop' 审计..." "Gray"
+        auditpol /set /subcategory:"{0CCE9225-69AE-11D9-BED3-505054503030}" /success:enable /failure:enable
+        
+        Write-ColorOutput "启用 'Filtering Platform Connection' 审计..." "Gray"
+        auditpol /set /subcategory:"{0CCE9226-69AE-11D9-BED3-505054503030}" /success:enable /failure:enable
+        
+        Write-ColorOutput "`n✓ 审计已成功启用！" "Green"
+        Write-ColorOutput "注意：这可能会产生大量事件日志数据" "Yellow"
+    }
+    catch {
+        Write-ColorOutput "`n✗ 启用审计失败: $_" "Red"
+    }
+}
+
+# 关闭审计
+function Disable-FirewallAudit {
+    Write-ColorOutput "`n[步骤 7/7] 关闭 Windows Filtering Platform 审计..." "Yellow"
+    
+    # 使用 GUID 避免多语言问题
+    # {0CCE9225-69AE-11D9-BED3-505054503030} = Filtering Platform Packet Drop
+    # {0CCE9226-69AE-11D9-BED3-505054503030} = Filtering Platform Connection
+    
+    try {
+        Write-ColorOutput "关闭 'Filtering Platform Packet Drop' 审计..." "Gray"
+        auditpol /set /subcategory:"{0CCE9225-69AE-11D9-BED3-505054503030}" /success:disable /failure:disable
+        
+        Write-ColorOutput "关闭 'Filtering Platform Connection' 审计..." "Gray"
+        auditpol /set /subcategory:"{0CCE9226-69AE-11D9-BED3-505054503030}" /success:disable /failure:disable
+        
+        Write-ColorOutput "`n✓ 审计已成功关闭！" "Green"
+    }
+    catch {
+        Write-ColorOutput "`n✗ 关闭审计失败: $_" "Red"
+    }
+}
+
+# 生成 WFP 状态文件
+function Export-WFPState {
+    Write-ColorOutput "`n[步骤 3/7] 生成 WFP 状态文件..." "Yellow"
+    
+    $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
+    $outputFile = "wfpstate_$timestamp.xml"
+    
+    try {
+        Write-ColorOutput "正在导出 WFP 状态到 $outputFile ..." "Gray"
+        
+        # 执行 netsh 命令并隐藏输出（命令会自动生成 wfpstate.xml 文件）
+        $netshOutput = netsh wfp show state 2>&1 | Out-String
+        
+        # 显示 netsh 命令的状态消息（如果有）
+        if ($netshOutput -and $netshOutput.Trim()) {
+            Write-ColorOutput "netsh 输出: $($netshOutput.Trim())" "Gray"
+        }
+        
+        # 等待文件生成（有时需要短暂延迟）
+        Start-Sleep -Milliseconds 500
+        
+        # 查找生成的文件
+        $generatedFile = Get-ChildItem -Path . -Filter "wfpstate.xml" -ErrorAction SilentlyContinue | Select-Object -First 1
+        
+        if ($generatedFile) {
+            # 重命名为带时间戳的文件名
+            Rename-Item -Path $generatedFile.FullName -NewName $outputFile -Force
+            Write-ColorOutput "`n✓ WFP 状态文件已生成: $outputFile" "Green"
+            Write-ColorOutput "文件位置: $(Get-Location)\$outputFile" "Cyan"
+            return $outputFile
+        }
+        else {
+            Write-ColorOutput "`n✗ 未找到生成的 wfpstate.xml 文件" "Red"
+            return $null
+        }
+    }
+    catch {
+        Write-ColorOutput "`n✗ 生成 WFP 状态文件失败: $_" "Red"
+        return $null
+    }
+}
+
+# 打开事件查看器
+function Open-EventViewer {
+    Write-ColorOutput "`n[步骤 4/7] 打开事件查看器..." "Yellow"
+    
+    try {
+        Start-Process eventvwr.msc
+        Write-ColorOutput "`n✓ 事件查看器已打开" "Green"
+        Write-ColorOutput "`n请按以下步骤操作：" "Cyan"
+        Write-ColorOutput "1. 导航到 'Windows 日志' > '安全'" "White"
+        Write-ColorOutput "2. 在右侧菜单使用 '查找' 功能" "White"
+        Write-ColorOutput "3. 搜索与您的问题相关的项目（源 IP、目标端口等）" "White"
+        Write-ColorOutput "4. 找到被丢弃的数据包日志" "White"
+        Write-ColorOutput "5. 在日志详细信息中向下滚动，记录 Filter ID" "White"
+    }
+    catch {
+        Write-ColorOutput "`n✗ 打开事件查看器失败: $_" "Red"
+    }
+}
+
+# 搜索 Filter ID
+function Search-FilterID {
+    param(
+        [string]$XmlFile = "",
+        [string]$FilterID = ""
+    )
+    
+    Write-ColorOutput "`n[步骤 5-6/7] 在 XML 文件中搜索 Filter ID..." "Yellow"
+    
+    # 如果没有提供 XML 文件，列出当前目录的 XML 文件
+    if ([string]::IsNullOrEmpty($XmlFile)) {
+        $xmlFiles = Get-ChildItem -Path . -Filter "wfpstate*.xml" | Sort-Object LastWriteTime -Descending
+        
+        if ($xmlFiles.Count -eq 0) {
+            Write-ColorOutput "`n✗ 当前目录没有找到 wfpstate*.xml 文件" "Red"
+            Write-ColorOutput "提示：请先执行选项 2 生成 WFP 状态文件" "Yellow"
+            return
+        }
+        
+        Write-ColorOutput "`n找到以下 XML 文件：" "Cyan"
+        for ($i = 0; $i -lt $xmlFiles.Count; $i++) {
+            Write-ColorOutput "$($i + 1). $($xmlFiles[$i].Name) (修改时间: $($xmlFiles[$i].LastWriteTime))" "White"
+        }
+        
+        $fileChoice = Read-Host "`n请选择文件编号 (直接回车使用最新的)"
+        
+        if ([string]::IsNullOrEmpty($fileChoice)) {
+            $XmlFile = $xmlFiles[0].FullName
+        }
+        else {
+            $index = [int]$fileChoice - 1
+            if ($index -ge 0 -and $index -lt $xmlFiles.Count) {
+                $XmlFile = $xmlFiles[$index].FullName
+            }
+            else {
+                Write-ColorOutput "✗ 无效的选择" "Red"
+                return
+            }
+        }
+    }
+    
+    # 如果没有提供 Filter ID，提示输入
+    if ([string]::IsNullOrEmpty($FilterID)) {
+        $FilterID = Read-Host "`n请输入要搜索的 Filter ID"
+    }
+    
+    if ([string]::IsNullOrEmpty($FilterID)) {
+        Write-ColorOutput "✗ Filter ID 不能为空" "Red"
+        return
+    }
+    
+    try {
+        Write-ColorOutput "`n正在搜索 Filter ID: $FilterID ..." "Gray"
+        Write-ColorOutput "文件路径: $XmlFile" "Gray"
+        
+        # 检查文件是否存在
+        if (-not (Test-Path $XmlFile)) {
+            Write-ColorOutput "`n✗ 文件不存在: $XmlFile" "Red"
+            return
+        }
+        
+        # 获取文件大小
+        $fileSize = (Get-Item $XmlFile).Length / 1MB
+        Write-ColorOutput "文件大小: $([math]::Round($fileSize, 2)) MB" "Gray"
+        
+        # 读取 XML 文件
+        Write-ColorOutput "正在加载 XML 文件..." "Gray"
+        
+        $xmlContent = $null
+        $loadSuccess = $false
+        
+        # 方法1: 直接加载（适用于标准 XML）
+        try {
+            $xmlContent = New-Object System.Xml.XmlDocument
+            $xmlContent.Load($XmlFile)
+            $loadSuccess = $true
+            Write-ColorOutput "✓ XML 加载成功（使用 XmlDocument.Load 方法）" "Gray"
+        }
+        catch {
+            Write-ColorOutput "⚠ 方法1失败: $_" "Yellow"
+            Write-ColorOutput "⚠ 检测到多根元素 XML（netsh wfp 文件的常见问题），尝试特殊处理..." "Yellow"
+            
+            # 方法2: 处理多根元素 XML（netsh wfp show state 生成的文件特有问题）
+            try {
+                $xmlString = Get-Content -Path $XmlFile -Encoding UTF8 -Raw
+                
+                # 移除原始的 XML 声明（如果存在）
+                $xmlString = $xmlString -replace '^\s*<\?xml[^>]+\?>\s*', ''
+                
+                # 包装在单个根元素中
+                $wrappedXml = "<?xml version=`"1.0`" encoding=`"UTF-8`"?>`n<root>`n$xmlString`n</root>"
+                
+                $xmlContent = New-Object System.Xml.XmlDocument
+                $xmlContent.LoadXml($wrappedXml)
+                $loadSuccess = $true
+                Write-ColorOutput "✓ XML 加载成功（使用特殊处理多根元素）" "Gray"
+                Write-ColorOutput "说明: netsh wfp 生成的文件包含多个根元素，已自动修正" "Gray"
+            }
+            catch {
+                Write-ColorOutput "✗ XML 加载失败: $_" "Red"
+                Write-ColorOutput "⚠ 尝试使用文本搜索模式..." "Yellow"
+                $loadSuccess = $false
+            }
+        }
+        
+        if (-not $loadSuccess) {
+            Write-ColorOutput "✗ 无法加载 XML 文件" "Red"
+            return
+        }
+        
+        # 搜索包含 Filter ID 的节点
+        Write-ColorOutput "正在搜索节点..." "Gray"
+        $filters = $xmlContent.SelectNodes("//*[contains(., '$FilterID')]")
+        
+        if ($filters.Count -eq 0) {
+            Write-ColorOutput "`n✗ 未找到 Filter ID: $FilterID" "Red"
+            Write-ColorOutput "提示: 请确认 Filter ID 是否正确" "Yellow"
+            return
+        }
+        
+        Write-ColorOutput "`n✓ 找到 $($filters.Count) 个匹配项：" "Green"
+        
+        $matchCount = 0
+        foreach ($filter in $filters) {
+            $matchCount++
+            Write-ColorOutput "`n--- 匹配项 #$matchCount ---" "Cyan"
+            
+            # 尝试获取 displayData/name
+            $nameNode = $filter.SelectSingleNode(".//displayData/name")
+            if ($nameNode) {
+                Write-ColorOutput "规则名称: $($nameNode.InnerText)" "Cyan"
+            }
+            
+            # 尝试获取 filterId
+            $filterIdNode = $filter.SelectSingleNode(".//filterId")
+            if ($filterIdNode) {
+                Write-ColorOutput "Filter ID: $($filterIdNode.InnerText)" "White"
+            }
+            
+            # 尝试获取 layerKey
+            $layerKeyNode = $filter.SelectSingleNode(".//layerKey")
+            if ($layerKeyNode) {
+                Write-ColorOutput "Layer Key: $($layerKeyNode.InnerText)" "Gray"
+            }
+            
+            # 显示节点的部分内容
+            $nodeText = $filter.OuterXml
+            if ($nodeText.Length -gt 500) {
+                $nodeText = $nodeText.Substring(0, 500) + "..."
+            }
+            Write-ColorOutput "`nXML 片段:" "Gray"
+            Write-ColorOutput $nodeText "White"
+            Write-ColorOutput ("-" * 80) "Gray"
+        }
+        
+        # 提供更详细的搜索选项
+        $detailed = Read-Host "`n是否要将所有匹配的完整 XML 内容保存到文件? (Y/N)"
+        if ($detailed -eq 'Y' -or $detailed -eq 'y') {
+            $outputFile = "filter_${FilterID}_details.xml"
+            $filters | ForEach-Object { $_.OuterXml } | Out-File -FilePath $outputFile -Encoding UTF8
+            Write-ColorOutput "✓ 详细信息已保存到: $outputFile" "Green"
+            Write-ColorOutput "文件位置: $(Get-Location)\$outputFile" "Cyan"
+        }
+    }
+    catch {
+        Write-ColorOutput "`n✗ 搜索失败: $_" "Red"
+        Write-ColorOutput "错误详情: $($_.Exception.Message)" "Yellow"
+        Write-ColorOutput "堆栈跟踪: $($_.ScriptStackTrace)" "Gray"
+    }
+}
+
+# 查看审计状态
+function Get-AuditStatus {
+    Write-ColorOutput "`n查看当前审计状态..." "Yellow"
+    
+    # 使用 GUID 避免多语言问题
+    # {0CCE9225-69AE-11D9-BED3-505054503030} = Filtering Platform Packet Drop
+    # {0CCE9226-69AE-11D9-BED3-505054503030} = Filtering Platform Connection
+    
+    try {
+        Write-ColorOutput "`n当前审计策略：" "Cyan"
+        auditpol /get /subcategory:"{0CCE9225-69AE-11D9-BED3-505054503030}","{0CCE9226-69AE-11D9-BED3-505054503030}"
+        
+        Write-ColorOutput "`n说明：使用 GUID 查询，兼容所有语言版本的 Windows" "Gray"
+    }
+    catch {
+        Write-ColorOutput "`n✗ 获取审计状态失败: $_" "Red"
+    }
+}
+
+# 完整调试流程
+function Start-FullDebugWorkflow {
+    Write-ColorOutput "`n==================== 完整调试流程 ====================" "Magenta"
+    
+    # 步骤 1: 启用审计
+    Enable-FirewallAudit
+    Read-Host "`n按回车继续..."
+    
+    # 步骤 2: 提示重现问题
+    Write-ColorOutput "`n[步骤 2/7] 重现问题" "Yellow"
+    Write-ColorOutput "请执行导致连接被阻止的操作（例如：访问特定网址、运行特定应用等）" "Cyan"
+    Read-Host "完成后按回车继续..."
+    
+    # 步骤 3: 生成 WFP 状态文件
+    $xmlFile = Export-WFPState
+    
+    # 步骤 4: 询问是否关闭审计（数据收集完成）
+    Write-ColorOutput "`n[步骤 4/7] 关闭防火墙审计" "Yellow"
+    Write-ColorOutput "说明: WFP 状态文件和事件日志数据已收集完成" "Cyan"
+    Write-ColorOutput "建议: 立即关闭审计以减少系统负载和日志量" "Yellow"
+    $closeAuditNow = Read-Host "`n是否现在关闭防火墙审计? (Y/N，建议选择 Y)"
+    
+    if ($closeAuditNow -eq 'Y' -or $closeAuditNow -eq 'y') {
+        Disable-FirewallAudit
+        Write-ColorOutput "✓ 审计已关闭" "Green"
+    }
+    else {
+        Write-ColorOutput "⚠ 审计仍在运行，请记得稍后手动关闭（选项 5）" "Yellow"
+    }
+    Read-Host "`n按回车继续..."
+    
+    # 步骤 5: 打开事件查看器
+    Open-EventViewer
+    Read-Host "`n按回车继续..."
+    
+    # 步骤 6: 搜索 Filter ID
+    if ($xmlFile) {
+        Search-FilterID -XmlFile $xmlFile
+    }
+    else {
+        Search-FilterID
+    }
+    Read-Host "`n按回车继续..."
+    
+    # 完成
+    Write-ColorOutput "`n==================== 调试流程已完成 ====================" "Green"
+    Write-ColorOutput "✓ WFP 状态文件已生成" "Green"
+    Write-ColorOutput "✓ 所有数据已收集并可供分析" "Green"
+    
+    # 提醒检查审计状态
+    if ($closeAuditNow -ne 'Y' -and $closeAuditNow -ne 'y') {
+        Write-ColorOutput "`n⚠ 提醒：防火墙审计仍在运行" "Yellow"
+        Write-ColorOutput "请使用选项 5 或选项 7 检查并关闭审计" "Yellow"
+    }
+}
+
+# 主程序
+function Main {
+    # 检查管理员权限
+    $currentPrincipal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
+    if (-not $currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+        Write-ColorOutput "✗ 此脚本需要管理员权限运行！" "Red"
+        Write-ColorOutput "请右键单击 PowerShell 并选择 '以管理员身份运行'" "Yellow"
+        Read-Host "按回车退出"
+        exit
+    }
+    
+    do {
+        Show-Menu
+        $choice = Read-Host "`n请输入选项"
+        
+        switch ($choice) {
+            '1' {
+                Enable-FirewallAudit
+                Read-Host "`n按回车返回主菜单"
+            }
+            '2' {
+                Export-WFPState
+                Read-Host "`n按回车返回主菜单"
+            }
+            '3' {
+                Open-EventViewer
+                Read-Host "`n按回车返回主菜单"
+            }
+            '4' {
+                Search-FilterID
+                Read-Host "`n按回车返回主菜单"
+            }
+            '5' {
+                Disable-FirewallAudit
+                Read-Host "`n按回车返回主菜单"
+            }
+            '6' {
+                Start-FullDebugWorkflow
+                Read-Host "`n按回车返回主菜单"
+            }
+            '7' {
+                Get-AuditStatus
+                Read-Host "`n按回车返回主菜单"
+            }
+            '0' {
+                Write-ColorOutput "`n感谢使用！再见！" "Cyan"
+                break
+            }
+            default {
+                Write-ColorOutput "`n✗ 无效的选项，请重新选择" "Red"
+                Start-Sleep -Seconds 1
+            }
+        }
+    } while ($choice -ne '0')
+}
+
+# 运行主程序
+Main
+#+end_src
+
 * Custom
 
 ** Explorer Network Driver
