@@ -19,7 +19,7 @@
 :END:
 #+begin_src toml :mkdirp t :tangle (zr-org-by-tangle-dir "uv.toml")
 [[index]]
-url = "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple/"
+url = "https://pypi.mirrors.ustc.edu.cn/simple/"
 default = true
 #+end_src
 
