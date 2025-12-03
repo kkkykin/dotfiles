@@ -5,9 +5,14 @@
 
 * tangle
 #+begin_src elisp
-(let ((conf (expand-file-name "~/.gitconfig"))
-      (coding-system-for-write 'utf-8-unix)
-      (zr-local-pls (plstore-open "git.pls")))
+(let* ((conf (expand-file-name "~/.gitconfig"))
+       (coding-system-for-write 'utf-8-unix)
+       (attr-path (expand-file-name "gitattributes" "_tangle"))
+       (zr-local-pls (plstore-open "../.global.pls"))
+       (proxy (cdr (plstore-get zr-local-pls "proxy")))
+       (proxy-server (format "socks5h://%s:%d"
+                             (plist-get proxy :host)
+                             (plist-get proxy :port))))
   (org-babel-tangle)
   (when (file-exists-p conf)
     (unless (file-symlink-p conf)
@@ -20,17 +25,20 @@
 :PROPERTIES:
 :CUSTOM_ID: 92ec3b0a-3362-4cd6-8790-d486db17253a
 :END:
-#+header: :var proxy=(or (getenv "all_proxy") "socks5h://127.0.0.1:10807")
+#+header: :var proxy=(or (getenv "all_proxy") proxy-server)
+#+header: :var attr_path=(identity attr-path)
 #+begin_src conf :tangle (zr-org-by-tangle-dir "gitconfig") :mkdirp t
 [user]
-    email = kkkykin@foxmail.com
-    name = kkky
+	email = kkkykin@foxmail.com
+	name = kkky
+[core]
+	attributesFile = $attr_path
 [init]
-    defaultBranch = main
+	defaultBranch = main
 [diff "gpg"]
-    textconv = gpg -d -q
+	textconv = gpg -d -q
 [merge]
-    tool = vimdiff
+	tool = vimdiff
 [pull]
 	ff = only
 [http "https://github.com"]
@@ -39,13 +47,21 @@
 
 #+begin_src conf :tangle no
 [color]
-ui = always
+	ui = always
 #+end_src
 
 #+begin_src conf :tangle (if (eq system-type 'windows-nt) (zr-org-by-tangle-dir "gitconfig") "no")
 [core]
-filemode = false
-sshCommand = C:/Windows/System32/OpenSSH/ssh.exe
+	filemode = false
+	sshCommand = C:/Windows/System32/OpenSSH/ssh.exe
 [gc]
-auto = 256
+	auto = 256
+#+end_src
+
+* attributes
+:PROPERTIES:
+:CUSTOM_ID: 4f95a641-6f5d-4979-be64-af50a3057a42
+:END:
+#+begin_src conf-space :tangle (identity attr-path)
+*.gpg diff=gpg
 #+end_src
