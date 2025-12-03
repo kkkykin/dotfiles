@@ -219,7 +219,7 @@
 #+header: :var rule_sets_dir=(expand-file-name rule-sets-dir)
 #+header: :var cache_path=(expand-file-name "cache.db" "_tangle")
 #+header: :var jsdelivr="https://fastly.jsdelivr.net"
-#+header: :var clash_mode=(if (zr-net-has-public-ipv6-addr-p) "ipv6" "ipv4")
+#+header: :var clash_mode=(if (zr-net-has-public-ipv6-addr-p) "cf-v6" "cf-v4")
 #+header: :var dns_cf_v6=(concat cf-6)
 #+header: :var dns_cf_v4=(concat cf-4)
 #+header: :var dns_default="ld-neo"
@@ -559,13 +559,18 @@
         ]
       },
       {
-        "clash_mode": "ipv4",
+        "clash_mode": "cf-direct",
+        "outbound": "direct",
+        "rule_set": "geoip-cloudflare"
+      },
+      {
+        "clash_mode": "cf-v4",
         "outbound": "direct",
         "override_address": "$dns_cf_v4",
         "rule_set": "geoip-cloudflare"
       },
       {
-        "clash_mode": "ipv6",
+        "clash_mode": "cf-v6",
         "outbound": "direct",
         "override_address": "$dns_cf_v6",
         "rule_set": "geoip-cloudflare"
