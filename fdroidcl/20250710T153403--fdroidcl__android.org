@@ -25,25 +25,27 @@ enabled = true
 
 [[repos]]
 id = 'f-droid'
-url = 'https://mirrors.tuna.tsinghua.edu.cn/fdroid/repo'
+url = 'https://mirrors.nju.edu.cn/fdroid/repo'
 enabled = true
 
 [[repos]]
 id = 'f-droid-archive'
-url = 'https://mirrors.tuna.tsinghua.edu.cn/fdroid/archive'
+url = 'https://mirrors.nju.edu.cn/fdroid/archive'
 enabled = false
+
+[[repos]]
+id = 'lzzy'
+url = 'https://apt.izzysoft.de/fdroid/repo'
+enabled = true
 
 [[setups]]
 id = 'base'
 apps = [
 'InfinityLoop1309.NewPipeEnhanced',
+'com.capyreader.app',
 'com.ichi2.anki',
 'com.network.proxy',
 'com.retroarch.aarch64',
-'com.seazon.feedme',
-'com.tailscale.ipn',
-'com.termux',
-'com.termux.api',
 'cyou.joiplay.joiplay',
 'cyou.joiplay.runtime.rpgmaker',
 'de.felixnuesse.extract',
@@ -51,12 +53,15 @@ apps = [
 'io.nekohasekai.sfa',
 'is.xyz.mpv.ytdl',
 'moe.shizuku.privileged.api',
-'org.courville.nova',
-'org.gnu.emacs',
 'org.koreader.launcher',
 'player.phonograph.plus'
 ]
-repos = ['kkky', 'f-droid', 'f-droid-archive']
+repos = [
+'kkky',
+'f-droid',
+'f-droid-archive',
+'lzzy'
+]
 #+end_src
 
 * update
