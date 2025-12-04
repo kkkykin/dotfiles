@@ -219,7 +219,7 @@
 #+header: :var rule_sets_dir=(expand-file-name rule-sets-dir)
 #+header: :var cache_path=(expand-file-name "cache.db" "_tangle")
 #+header: :var jsdelivr="https://fastly.jsdelivr.net"
-#+header: :var clash_mode=(if (zr-net-has-public-ipv6-addr-p) "cf-v6" "cf-v4")
+#+header: :var clash_mode=(if (and (not zr-sys-android-p) (zr-net-has-public-ipv6-addr-p)) "cf-v6" "cf-v4")
 #+header: :var dns_cf_v6=(concat cf-6)
 #+header: :var dns_cf_v4=(concat cf-4)
 #+header: :var dns_default="ld-neo"
