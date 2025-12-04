@@ -1175,16 +1175,22 @@ daemon-manager() {
   return 1
   fi
 
+  local stop_act="$manager_path $daemon_name stop"
+
   case "$action" in
     start)
-      local stop_act="$manager_path $daemon_name stop"
-      termux-notification \
-        --ongoing -c "$daemon_name" -t "$daemon_name" \
-        --group "$NOTIFICATION_GROUP" \
-        -i "$notification_id" --priority min \
-        --on-delete "$stop_act"
       stop
       start
+      # 优先使用自定义 notify，否则显示默认通知
+      if declare -f "notify" >/dev/null; then
+        notify
+      else
+        termux-notification \
+          --ongoing -c "$daemon_name" -t "$daemon_name" \
+          --group "$NOTIFICATION_GROUP" \
+          -i "$notification_id" --priority min \
+          --on-delete "$stop_act"
+      fi
       ;;
     stop)
       stop
@@ -1201,8 +1207,13 @@ daemon-manager() {
       fi
       ;;
     *)
-      echo "Usage: $0 DAEMON_NAME {start|stop|stat|toggle}"
-      return 1
+      # 扩展：支持任意自定义 action
+      if declare -f "$action" >/dev/null; then
+        "$action"
+      else
+        echo "Usage: $0 DAEMON_NAME {start|stop|stat|toggle|<custom>}"
+        return 1
+      fi
       ;;
   esac
 }
@@ -1653,22 +1664,28 @@ stop(){
 #+begin_src sh :tangle (zr-org-by-tangle-dir "sing-box")
 stat(){
   curl -m1 -xsocks5h://127.0.0.1:10807 http://127.0.0.1:1
-  [ $? -eq 97 ]
+  [ $? -eq 52 ]
+}
+
+notify(){
+  local system_proxy
+  system_proxy="$($zr_cli proxy status)"
+  termux-notification \
+    --ongoing -c "sys: $system_proxy" -t "sing-box" \
+    --group "$NOTIFICATION_GROUP" \
+    -i "$notification_id" \
+    --action "$zr_cli proxy toggle && $zr_cli daemon sing-box notify" \
+    --on-delete "$stop_act"
 }
 
 start(){
   local base_dir
   base_dir="/storage/emulated/0/Android/media/io.nekohasekai.sfa"
-  nohup zr-cli runbin -c "sing-box run -c '$base_dir'/500-main.json > '$base_dir'/log 2>&1 &" >/dev/null 2>&1 &
-  termux-notification \
-    --ongoing -c "ADB Running" -t "sing-box" \
-    --group "$NOTIFICATION_GROUP" \
-    -i "$notification_id" \
-    --on-delete "$stop_act"
+  nohup "$zr_cli" runbin -c "sing-box run -c '$base_dir'/500-main.json > '$base_dir'/log 2>&1 &" >/dev/null 2>&1 &
 }
 
 stop(){
-  rish -c 'pkill sing-box'
+  rish -c 'settings put global http_proxy ":0" & pkill sing-box'
 }
 #+end_src
 
