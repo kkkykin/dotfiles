@@ -483,6 +483,35 @@ fi
 export PATH="$ADB_DIR:$PATH"
 export https_proxy="socks5h://127.0.0.1:10807"
 
+# 仅当 https_proxy 环境变量已设置且代理可用时才应用
+if [[ -n "${https_proxy:-}" ]]; then
+  # 提取代理主机和端口进行连通性检测
+  proxy_host=""
+  proxy_port=""
+  
+  if [[ "$https_proxy" =~ ^socks5h?://([^:]+):([0-9]+)$ ]]; then
+    proxy_host="${BASH_REMATCH[1]}"
+    proxy_port="${BASH_REMATCH[2]}"
+  elif [[ "$https_proxy" =~ ^https?://([^:]+):([0-9]+)$ ]]; then
+    proxy_host="${BASH_REMATCH[1]}"
+    proxy_port="${BASH_REMATCH[2]}"
+  fi
+  
+  if [[ -n "$proxy_host" && -n "$proxy_port" ]]; then
+    # 使用 nc 或 timeout 检测代理端口是否可达 (超时 2 秒)
+    if timeout 2 bash -c ">/dev/tcp/$proxy_host/$proxy_port" 2>/dev/null; then
+      echo "[fdroid] 使用代理: $https_proxy"
+      export https_proxy
+    else
+      echo "[fdroid] 代理不可用，忽略: $https_proxy"
+      unset https_proxy
+    fi
+  else
+    echo "[fdroid] 无法解析代理地址，忽略: $https_proxy"
+    unset https_proxy
+  fi
+fi
+
 # --- Execute fdroidcl ---
 # Execute the real fdroidcl command, passing along the filtered arguments.
 exec fdroidcl "${args[@]}"
