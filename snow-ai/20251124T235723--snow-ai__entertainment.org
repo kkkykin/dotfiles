@@ -153,3 +153,165 @@
   "activeProfile": "default"
 }
 #+end_src
+
+** sensitive
+#+begin_src json :tangle (zr-org-by-tangle-dir "sensitive-commands.json")
+{
+  "commands": [
+    {
+      "id": "rm",
+      "pattern": "*rm*",
+      "description": "Delete files or directories (rm, rm -rf, etc.)",
+      "enabled": false,
+      "isPreset": true
+    },
+    {
+      "id": "rmdir",
+      "pattern": "*rmdir*",
+      "description": "Remove directories",
+      "enabled": true,
+      "isPreset": true
+    },
+    {
+      "id": "mv-to-trash",
+      "pattern": "*mv * /tmp*",
+      "description": "Move files to trash/tmp (potential data loss)",
+      "enabled": true,
+      "isPreset": true
+    },
+    {
+      "id": "chmod",
+      "pattern": "*chmod*",
+      "description": "Change file permissions",
+      "enabled": true,
+      "isPreset": true
+    },
+    {
+      "id": "chown",
+      "pattern": "*chown*",
+      "description": "Change file ownership",
+      "enabled": true,
+      "isPreset": true
+    },
+    {
+      "id": "dd",
+      "pattern": "*dd*",
+      "description": "Low-level data copy (disk operations)",
+      "enabled": true,
+      "isPreset": true
+    },
+    {
+      "id": "mkfs",
+      "pattern": "*mkfs*",
+      "description": "Format filesystem",
+      "enabled": true,
+      "isPreset": true
+    },
+    {
+      "id": "fdisk",
+      "pattern": "*fdisk*",
+      "description": "Disk partition manipulation",
+      "enabled": true,
+      "isPreset": true
+    },
+    {
+      "id": "killall",
+      "pattern": "*killall*",
+      "description": "Kill all processes by name",
+      "enabled": true,
+      "isPreset": true
+    },
+    {
+      "id": "pkill",
+      "pattern": "*pkill*",
+      "description": "Kill processes by pattern",
+      "enabled": true,
+      "isPreset": true
+    },
+    {
+      "id": "reboot",
+      "pattern": "*reboot*",
+      "description": "Reboot the system",
+      "enabled": true,
+      "isPreset": true
+    },
+    {
+      "id": "shutdown",
+      "pattern": "*shutdown*",
+      "description": "Shutdown the system",
+      "enabled": true,
+      "isPreset": true
+    },
+    {
+      "id": "sudo",
+      "pattern": "*sudo*",
+      "description": "Execute commands with superuser privileges",
+      "enabled": true,
+      "isPreset": true
+    },
+    {
+      "id": "su",
+      "pattern": "*su*",
+      "description": "Switch user",
+      "enabled": true,
+      "isPreset": true
+    },
+    {
+      "id": "curl-post",
+      "pattern": "*curl*-X POST*",
+      "description": "HTTP POST requests (potential data transmission)",
+      "enabled": false,
+      "isPreset": true
+    },
+    {
+      "id": "wget",
+      "pattern": "*wget*",
+      "description": "Download files from internet",
+      "enabled": false,
+      "isPreset": true
+    },
+    {
+      "id": "git-push",
+      "pattern": "*git push*",
+      "description": "Push code to remote repository",
+      "enabled": false,
+      "isPreset": true
+    },
+    {
+      "id": "git-force-push",
+      "pattern": "*git push*--force*",
+      "description": "Force push to remote repository (destructive)",
+      "enabled": true,
+      "isPreset": true
+    },
+    {
+      "id": "npm-publish",
+      "pattern": "*npm publish*",
+      "description": "Publish package to npm registry",
+      "enabled": true,
+      "isPreset": true
+    },
+    {
+      "id": "docker-rm",
+      "pattern": "*docker rm*",
+      "description": "Remove Docker containers",
+      "enabled": false,
+      "isPreset": true
+    },
+    {
+      "id": "docker-rmi",
+      "pattern": "*docker rmi*",
+      "description": "Remove Docker images",
+      "enabled": false,
+      "isPreset": true
+    },
+    {
+      "id": "b3457d23-2ca7-4465-b2bb-11ae314a6d31",
+      "pattern": "*rm *",
+      "description": "rm",
+      "enabled": true,
+      "isPreset": false
+    }
+  ]
+}
+#+end_src
