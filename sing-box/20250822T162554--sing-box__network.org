@@ -24,6 +24,11 @@
        (sublink-domain (or (plist-get clash-pls :sublink)
                            "linuxdo.icmpmiao.cc"))
        (sub-dir "_tangle/sub/")
+       (disabled-sub-file "_disabled-sub.eld")
+       (disabled-sub (and (file-exists-p disabled-sub-file)
+                          (with-temp-buffer
+                            (insert-file-contents disabled-sub-file)
+                            (read (current-buffer)))))
        sub-outbounds
        us-outbounds
        ja-outbounds
@@ -55,6 +60,7 @@
 
   (dolist (sub clash-subscribes)
     (when-let* ((name (car sub))
+                ((not (member name disabled-sub)))
                 ((not (string-prefix-p "disable-" name))))
       (condition-case nil
           (let* ((uri (cdr sub))
