@@ -225,9 +225,6 @@
 #+header: :var rule_sets_dir=(expand-file-name rule-sets-dir)
 #+header: :var cache_path=(expand-file-name "cache.db" "_tangle")
 #+header: :var jsdelivr="https://fastly.jsdelivr.net"
-#+header: :var clash_mode=(if (and (not zr-sys-android-p) (zr-net-has-public-ipv6-addr-p)) "cf-v6" "cf-v4")
-#+header: :var dns_cf_v6=(concat cf-6)
-#+header: :var dns_cf_v4=(concat cf-4)
 #+header: :var dns_default="ld-neo"
 #+header: :var dns_remote_answer=(format "localhost. IN %s %s" (if dns-remote-ipv6-p "AAAA" "A") dns-remote-server)
 #+header: :var clash_secret=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "clash")) :secret)) 1 -1)
@@ -361,7 +358,6 @@
         "http://127.0.0.1"
       ],
       "access_control_allow_private_network": true,
-      "default_mode": "$clash_mode",
       "external_controller": "127.0.0.1:9090",
       "secret": "$clash_secret"
     }
@@ -376,224 +372,99 @@
     "final": "direct",
     "rule_set": [
       {
-        "format": "binary",
         "path": "$rule_sets_dir/dns-local.srs",
         "tag": "dns-local-rules",
         "type": "local"
       },
       {
-        "format": "binary",
         "path": "$rule_sets_dir/dns-remote.srs",
         "tag": "dns-remote-rules",
         "type": "local"
       },
       {
-        "format": "binary",
         "path": "$rule_sets_dir/proxy.srs",
         "tag": "proxy-rules",
         "type": "local"
       },
       {
-        "format": "binary",
         "path": "$rule_sets_dir/direct.srs",
         "tag": "direct-rules",
         "type": "local"
       },
       {
-        "format": "binary",
         "path": "$rule_sets_dir/tailscale.srs",
         "tag": "tailscale-rules",
         "type": "local"
       },
       {
-        "format": "binary",
         "path": "$rule_sets_dir/mitm.srs",
         "tag": "mitm-rules",
         "type": "local"
       },
       {
-        "format": "binary",
         "path": "$rule_sets_dir/server-direct.srs",
         "tag": "server-direct-rules",
         "type": "local"
       },
       {
         "download_detour": "direct",
-        "format": "binary",
         "tag": "geoip-cloudflare",
         "type": "remote",
         "url": "$jsdelivr/gh/chocolate4u/Iran-sing-box-rules@rule-set/geoip-cloudflare.srs"
       },
       {
         "download_detour": "direct",
-        "format": "binary",
         "tag": "geoip-cn",
         "type": "remote",
         "url": "$jsdelivr/gh/SagerNet/sing-geoip@rule-set/geoip-cn.srs"
       },
       {
         "download_detour": "direct",
-        "format": "binary",
         "tag": "geosite-cn",
         "type": "remote",
         "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-cn.srs"
       },
       {
         "download_detour": "direct",
-        "format": "binary",
         "tag": "geosite-geolocation-cn",
         "type": "remote",
         "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-geolocation-cn.srs"
       },
       {
         "download_detour": "direct",
-        "format": "binary",
         "tag": "geosite-geolocation-!cn",
         "type": "remote",
         "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-geolocation-!cn.srs"
       },
       {
         "download_detour": "direct",
-        "format": "binary",
         "tag": "geosite-category-porn",
         "type": "remote",
         "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-category-porn.srs"
       },
       {
         "download_detour": "direct",
-        "format": "binary",
         "tag": "geosite-category-ai-!cn",
         "type": "remote",
         "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-category-ai-!cn.srs"
       },
       {
         "download_detour": "direct",
-        "format": "binary",
         "tag": "geosite-google@!cn",
         "type": "remote",
         "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-google@!cn.srs"
       },
       {
         "download_detour": "direct",
-        "format": "binary",
         "tag": "geosite-microsoft",
         "type": "remote",
         "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-microsoft.srs"
       },
       {
         "download_detour": "direct",
-        "format": "binary",
         "tag": "geosite-adblockplus",
         "type": "remote",
         "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-adblockplus.srs"
-      }
-    ],
-    "rules": [
-      {
-        "action": "sniff",
-        "sniffer": [
-          "bittorrent",
-          "dns",
-          "ntp",
-          "stun"
-        ]
-      },
-      {
-        "action": "hijack-dns",
-        "mode": "or",
-        "rules": [
-          {
-            "protocol": "dns"
-          },
-          {
-            "port": 53
-          }
-        ],
-        "type": "logical"
-      },
-      {
-        "outbound": "mitm",
-        "rule_set": "mitm-rules"
-      },
-      {
-        "outbound": "ts-ep",
-        "rule_set": "tailscale-rules"
-      },
-      {
-        "mode": "or",
-        "outbound": "direct",
-        "rules": [
-          {
-            "rule_set": "direct-rules"
-          },
-          {
-            "protocol": [
-              "bittorrent",
-              "ntp",
-              "stun"
-            ]
-          }
-        ],
-        "type": "logical"
-      },
-      {
-        "outbound": "s[self]",
-        "rule_set": [
-          "geosite-category-ai-!cn",
-          "geosite-google@!cn",
-          "geosite-microsoft"
-        ]
-      },
-      {
-        "outbound": "s[this-way]",
-        "rule_set": [
-          "geosite-category-porn",
-          "server-direct-rules",
-          "proxy-rules"
-        ]
-      },
-      {
-        "action": "resolve"
-      },
-      {
-        "ip_is_private": true,
-        "outbound": "direct",
-        "rule_set": [
-          "geosite-geolocation-cn",
-          "geosite-cn",
-          "geoip-cn"
-        ]
-      },
-      {
-        "clash_mode": "cf-direct",
-        "outbound": "direct",
-        "rule_set": "geoip-cloudflare"
-      },
-      {
-        "clash_mode": "cf-v4",
-        "outbound": "direct",
-        "override_address": "$dns_cf_v4",
-        "rule_set": "geoip-cloudflare"
-      },
-      {
-        "clash_mode": "cf-v6",
-        "outbound": "direct",
-        "override_address": "$dns_cf_v6",
-        "rule_set": "geoip-cloudflare"
-      },
-      {
-        "mode": "and",
-        "outbound": "s[this-way]",
-        "rules": [
-          {
-            "rule_set": "geosite-geolocation-!cn"
-          },
-          {
-            "invert": true,
-            "rule_set": "geoip-cn"
-          }
-        ],
-        "type": "logical"
       }
     ]
   }
@@ -606,6 +477,76 @@
 :END:
 #+begin_src json :tangle (zr-org-by-tangle-dir "_500-bounds.json")
 <<gen-client-bounds()>>
+#+end_src
+
+*** route
+:PROPERTIES:
+:CUSTOM_ID: 7a630887-b412-4cd8-a80f-584867a817e2
+:END:
+#+begin_src json :tangle (zr-org-by-tangle-dir "_500-rules.json")
+<<gen-route()>>
+#+end_src
+
+#+name: gen-route
+#+begin_src elisp
+(let* ((pre-rules '(((action . "sniff")
+                     (sniffer . ["bittorrent"
+                                 "dns"
+                                 "ntp"
+                                 "stun"]))
+                    ((action . "hijack-dns")
+                     (mode . "or")
+                     (rules . [((protocol . "dns"))
+                               ((port . 53))])
+                     (type . "logical"))
+                    ((outbound . "mitm")
+                     (rule_set . "mitm-rules"))
+                    ((outbound . "ts-ep")
+                     (rule_set . "tailscale-rules"))
+                    ((mode . "or")
+                     (outbound . "direct")
+                     (rules . [((rule_set . "direct-rules"))
+                               ((protocol . ["bittorrent"
+                                             "ntp"
+                                             "stun"]))])
+                     (type . "logical"))
+                    ((outbound . "s[self]")
+                     (rule_set . ["geosite-category-ai-!cn"
+                                  "geosite-google@!cn"
+                                  "geosite-microsoft"]))
+                    ((outbound . "s[this-way]")
+                     (rule_set . ["geosite-category-porn"
+                                  "server-direct-rules"
+                                  "proxy-rules"]))
+                    ((action . "resolve"))
+                    ((ip_is_private . t)
+                     (outbound . "direct")
+                     (rule_set . ["geosite-geolocation-cn"
+                                  "geosite-cn"
+                                  "geoip-cn"]))))
+       (mode-rules `(((clash_mode . "cf-direct")
+                      (outbound . "direct")
+                      (rule_set . "geoip-cloudflare"))
+                     ((clash_mode . "cf-v4")
+                      (outbound . "direct")
+                      (override_address . ,cf-4)
+                      (rule_set . "geoip-cloudflare"))
+                     ((clash_mode . "cf-v6")
+                      (outbound . "direct")
+                      (override_address . ,cf-6)
+                      (rule_set . "geoip-cloudflare"))))
+       (post-rules '(((mode . "and")
+                      (outbound . "s[this-way]")
+                      (rules . [((rule_set . "geosite-geolocation-!cn"))
+                                ((invert . t)
+                                 (rule_set . "geoip-cn"))])
+                      (type . "logical"))))
+       (default-mode (cond
+                      (zr-sys-android-p "cf-direct")
+                      ((zr-net-has-public-ipv6-addr-p) "cf-v6")
+                      (t "cf-v4"))))
+  (json-serialize `((experimental (clash_api (default_mode . ,default-mode)))
+                    (route (rules . ,(vconcat pre-rules mode-rules post-rules))))))
 #+end_src
 
 *** hosts
