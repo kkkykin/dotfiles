@@ -62,14 +62,14 @@
                     ( :provider "jason_wong1"
                       :notes ((alive . 1)
                               (general . 3))
-                      :model ["gemini-2.5-pro"
-                              "gemini-2.5-pro-maxthinking"
-                              "gemini-2.5-pro-nothinking"
-                              "gemini-2.5-pro-search"
-                              ((gemini-3-pro-preview . "gemini-3-pro"))
-                              ((gemini-3-pro-preview-maxthinking . "gemini-3-pro-maxthinking"))
-                              ((gemini-3-pro-preview-nothinking . "gemini-3-pro-nothinking"))
-                              ((gemini-3-pro-preview-search . "gemini-3-pro-search"))
+                      :model [;; "gemini-2.5-pro"
+                              ;; "gemini-2.5-pro-maxthinking"
+                              ;; "gemini-2.5-pro-nothinking"
+                              ;; "gemini-2.5-pro-search"
+                              ;; ((gemini-3-pro-preview . "gemini-3-pro"))
+                              ;; ((gemini-3-pro-preview-maxthinking . "gemini-3-pro-maxthinking"))
+                              ;; ((gemini-3-pro-preview-nothinking . "gemini-3-pro-nothinking"))
+                              ;; ((gemini-3-pro-preview-search . "gemini-3-pro-search"))
                               "gpt-5"
                               "grok-4.1"
                               "grok-4.1-thinking"])
