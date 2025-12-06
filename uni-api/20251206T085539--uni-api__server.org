@@ -8,7 +8,7 @@
 (let* ((zr-local-pls (plstore-open "../.global.pls"))
        (zr-org-tangle-default-dir (plist-get (cdr (plstore-get zr-local-pls "private-www")) :dir))
        (proxy-info (cdr (plstore-get zr-local-pls "proxy")))
-       (proxy (format "http://%s:%d"
+       (proxy (format "socks5h://%s:%d"
                       (plist-get proxy-info :host)
                       (plist-get proxy-info :port)))
        (coding-system-for-write 'utf-8))
