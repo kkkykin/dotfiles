@@ -193,6 +193,20 @@ layer4 {
 }
 #+end_src
 
+**** remove forward headers
+:PROPERTIES:
+:CUSTOM_ID: f60abfad-d6df-40a6-98b8-e5be1198a108
+:END:
+#+begin_src caddy :tangle (zr-org-by-tangle-dir "remove-forward-headers.Caddyfile")
+(remove-forward-headers) {
+    header_up -Cdn-Loop
+    header_up -Cf-*
+    header_up -X-Forwarded-*
+    header_up -X-Real-IP
+    header_up -Via
+}
+#+end_src
+
 ** subpath
 :PROPERTIES:
 :tangle-dir: _tangle/main/subpath
