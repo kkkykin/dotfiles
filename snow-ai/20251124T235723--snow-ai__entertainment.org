@@ -53,7 +53,7 @@
     "requestMethod": "anthropic",
     "anthropicBeta": true,
     "anthropicCacheTTL": "5m",
-    "enablePromptOptimization": true,
+    "enablePromptOptimization": false,
     "enableAutoCompress": true,
     "thinking": {
       "type": "enabled",
@@ -86,7 +86,7 @@
     "requestMethod": "responses",
     "anthropicBeta": false,
     "anthropicCacheTTL": "5m",
-    "enablePromptOptimization": true,
+    "enablePromptOptimization": false,
     "enableAutoCompress": true,
     "responsesReasoning": {
       "enabled": true,
@@ -113,7 +113,7 @@
     "requestMethod": "gemini",
     "anthropicBeta": false,
     "anthropicCacheTTL": "5m",
-    "enablePromptOptimization": true,
+    "enablePromptOptimization": false,
     "enableAutoCompress": true,
     "geminiThinking": {
       "enabled": true,
