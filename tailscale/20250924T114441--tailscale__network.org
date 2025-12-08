@@ -21,6 +21,20 @@
   "grants": [
     {
       "dst": [
+        "tag:home"
+      ],
+      "ip": [
+        "tcp:22"
+      ],
+      "src": [
+        "tag:com"
+      ],
+      "srcPosture": [
+        "posture:com"
+      ]
+    },
+    {
+      "dst": [
         "tag:home",
         "tag:phone",
         "tag:vps",
@@ -36,6 +50,14 @@
       ]
     }
   ],
+  "postures": {
+    "posture:com": [
+      "node:os IN ['windows']",
+      "node:osVersion >= '10.0.26100.4946'",
+      "node:tsVersion >= 'sing-box 1.12.12'",
+      "node:tsAutoUpdate == false"
+    ]
+  },
   "tagOwners": {
     "tag:com": [
       "$main_owner"
@@ -52,13 +74,23 @@
   },
   "tests": [
     {
+      "accept": [
+        "tag:home:22"
+      ],
       "deny": [
         "tag:home:80",
         "tag:phone:80",
         "tag:vps:80",
         "$main_owner:80"
       ],
-      "src": "tag:com"
+      "proto": "tcp",
+      "src": "tag:com",
+      "srcPostureAttrs": {
+        "node:os": "windows",
+        "node:osVersion": "10.0.26100.4946",
+        "node:tsAutoUpdate": false,
+        "node:tsVersion": "sing-box 1.12.12"
+      }
     },
     {
       "deny": [
