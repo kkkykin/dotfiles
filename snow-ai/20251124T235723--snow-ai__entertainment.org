@@ -7,14 +7,31 @@
 #+begin_src elisp
 (let* ((zr-local-pls (plstore-open "../.global.pls"))
        (host (concat "axonhub." (plist-get (cdr (plstore-get zr-local-pls "host")) :main)))
+       (proxy `((enabled . t)
+                (port . ,(plist-get (cdr (plstore-get zr-local-pls "proxy"))
+                                    :port))))
        (conf-dir (pcase system-type
                    ('windows-nt (substitute-in-file-name "$userprofile/.snow"))
                    (_ (expand-file-name "~/.snow"))))
        (zr-local-pls (plstore-open (expand-file-name "axonhub.pls" zr-secrets-dir)))
        (keys (cdr (plstore-get zr-local-pls "snow-ai"))))
-  (print keys)
   (plstore-close zr-local-pls)
-  (org-babel-tangle)
+  (cl-letf (((symbol-function 'gen-profile)
+             (lambda (url key basic compact advance extra)
+               (json-serialize
+                `((snowcfg . ,(append `((baseUrl . ,url)
+                                        (apiKey . ,key)
+                                        (basicModel . ,basic)
+                                        (compactModel (modelName . ,compact))
+                                        (advancedModel . ,advance)
+                                        (anthropicCacheTTL . "5m")
+                                        (enablePromptOptimization . :false)
+                                        (enableAutoCompress . t))
+                                      extra))
+                  (proxy . ,proxy))))))
+    (org-babel-tangle))
+  (let ((default-directory (expand-file-name "_tangle")))
+    (copy-file "config.json" "profiles/default.json" t))
   (make-symbolic-link (expand-file-name "_tangle") conf-dir t))
 #+end_src
 
@@ -25,12 +42,26 @@
 
 ** main
 #+begin_src json :tangle (zr-org-by-tangle-dir "config.json")
-{
-  "proxy": {
-    "enabled": false,
-    "port": 7890
-  }
-}
+<<gen-cc()>>
+#+end_src
+
+#+header: :var key=(plist-get keys :cc)
+#+header: :var basic="cc/claude-haiku-4-5-20251001"
+#+header: :var compact="cc/claude-haiku-4-5-20251001"
+#+header: :var advance="cc/claude-sonnet-4-5-20250929"
+#+name: gen-cc
+#+begin_src elisp
+(gen-profile (if (bound-and-true-p url) url
+               (format "https://%s/anthropic/v1" host))
+             key basic compact advance
+             '((requestMethod . "anthropic")
+               (anthropicBeta . t)
+               (thinking . ((type . "enabled")
+                            (budget_tokens . 10000)))
+               (responsesReasoning . ((enabled . :false)
+                                      (effort . "high")))
+               (maxContextTokens . 200000)
+               (maxTokens . 32000)))
 #+end_src
 
 ** profiles
@@ -38,114 +69,64 @@
 :tangle-dir: _tangle/profiles
 :END:
 
-*** default
-:PROPERTIES:
-:CUSTOM_ID: 0e761f30-c24d-493a-8f37-8e6c3187ac2a
-:END:
-#+header: :var key=(plist-get keys :cc)
-#+header: :var group="cc"
-#+name: claude-code
-#+begin_src json :tangle (zr-org-by-tangle-dir "default.json")
-{
-  "snowcfg": {
-    "baseUrl": "https://$host/anthropic/v1",
-    "apiKey": "$key",
-    "requestMethod": "anthropic",
-    "anthropicBeta": true,
-    "anthropicCacheTTL": "5m",
-    "enablePromptOptimization": false,
-    "enableAutoCompress": true,
-    "thinking": {
-      "type": "enabled",
-      "budget_tokens": 10000
-    },
-    "responsesReasoning": {
-      "enabled": false,
-      "effort": "high"
-    },
-    "advancedModel": "$group/claude-sonnet-4-5-20250929",
-    "basicModel": "$group/claude-sonnet-4-5-20250929",
-    "maxContextTokens": 200000,
-    "maxTokens": 32000,
-    "compactModel": {
-      "modelName": "$group/claude-haiku-4-5-20251001"
-    }
-  }
-}
-#+end_src
-
 *** codex
 #+header: :var host=(plist-get keys :host)
 #+header: :var key=(plist-get keys :cx)
-#+name: codex
 #+begin_src json :tangle (zr-org-by-tangle-dir "codex.json")
-{
-  "snowcfg": {
-    "baseUrl": "https://$host/openai/v1",
-    "apiKey": "$key",
-    "requestMethod": "responses",
-    "anthropicBeta": false,
-    "anthropicCacheTTL": "5m",
-    "enablePromptOptimization": false,
-    "enableAutoCompress": true,
-    "responsesReasoning": {
-      "enabled": true,
-      "effort": "high"
-    },
-    "advancedModel": "gpt-5.1-codex-max",
-    "basicModel": "gpt-5.1-codex",
-    "maxContextTokens": 400000,
-    "maxTokens": 64000,
-    "compactModel": {
-      "modelName": "gpt-5.1"
-    }
-  }
-}
+<<gen-cx()>>
+#+end_src
+
+#+header: :var host=(plist-get keys :host)
+#+header: :var key=(plist-get keys :cx)
+#+header: :var basic="gpt-5.1-codex"
+#+header: :var compact="gpt-5.1"
+#+header: :var advance="gpt-5.1-codex-max"
+#+name: gen-cx
+#+begin_src elisp
+(gen-profile (if (bound-and-true-p url) url
+               (format "https://%s/openai/v1" host))
+             key basic compact advance
+             '((requestMethod . "responses")
+               (anthropicBeta . :false)
+               (responsesReasoning . ((enabled . t)
+                                      (effort . "high")))
+               (maxContextTokens . 400000)
+               (maxTokens . 64000)))
 #+end_src
 
 *** gemini
 #+header: :var key=(plist-get keys :gmn)
 #+begin_src json :tangle (zr-org-by-tangle-dir "gemini.json")
-{
-  "snowcfg": {
-    "baseUrl": "https://$host/gemini/v1beta",
-    "apiKey": "$key",
-    "requestMethod": "gemini",
-    "anthropicBeta": false,
-    "anthropicCacheTTL": "5m",
-    "enablePromptOptimization": false,
-    "enableAutoCompress": true,
-    "geminiThinking": {
-      "enabled": true,
-      "budget": 1024
-    },
-    "responsesReasoning": {
-      "enabled": false,
-      "effort": "high"
-    },
-    "advancedModel": "gmn/gemini-3-pro-preview",
-    "basicModel": "gmn/gemini-2.5-pro",
-    "maxContextTokens": 1000000,
-    "maxTokens": 32000,
-    "compactModel": {
-      "modelName": "gmn/gemini-2.5-flash"
-    }
-  }
-}
+<<gen-gmn()>>
+#+end_src
+
+#+header: :var key=(plist-get keys :gmn)
+#+header: :var basic="gmn/gemini-2.5-pro"
+#+header: :var compact="gmn/gemini-2.5-flash"
+#+header: :var advance="gmn/gemini-3-pro-preview"
+#+name: gen-gmn
+#+begin_src elisp
+(gen-profile (if (bound-and-true-p url) url
+               (format "https://%s/gemini/v1beta" host))
+             key basic compact advance
+             '((requestMethod . "gemini")
+               (anthropicBeta . :false)
+               (geminiThinking . ((enabled . t)
+                                  (budget . 1024)))
+               (responsesReasoning . ((enabled . :false)
+                                      (effort . "high")))
+               (maxContextTokens . 1000000)
+               (maxTokens . 32000)))
 #+end_src
 
 *** 88code
-#+header: :var host=(plist-get keys :host-88)
-#+header: :var key=(plist-get keys :88)
 #+begin_src json :tangle (zr-org-by-tangle-dir "88code.json")
-<<codex>>
+<<gen-cx(host=(plist-get keys :host-88),key=(plist-get keys :88))>>
 #+end_src
 
 *** claude-code
-#+header: :var group="ccc"
-#+header: :var key=(plist-get keys :ccc)
 #+begin_src json :tangle (zr-org-by-tangle-dir "claude.json")
-<<claude-code>>
+<<gen-cc(key=(plist-get keys :ccc),basic="ccc/claude-haiku-4-5-20251001",compact="ccc/claude-haiku-4-5-20251001",advance="ccc/claude-sonnet-4-5-20250929")>>
 #+end_src
 
 ** codebase
