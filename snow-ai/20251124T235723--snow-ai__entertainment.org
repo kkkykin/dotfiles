@@ -30,8 +30,6 @@
                                       extra))
                   (proxy . ,proxy))))))
     (org-babel-tangle))
-  (let ((default-directory (expand-file-name "_tangle")))
-    (copy-file "config.json" "profiles/default.json" t))
   (make-symbolic-link (expand-file-name "_tangle") conf-dir t))
 #+end_src
 
@@ -40,8 +38,13 @@
 :header-args:json: :comments no :mkdirp t :var host=(concat host)
 :END:
 
-** main
-#+begin_src json :tangle (zr-org-by-tangle-dir "config.json")
+** profiles
+:PROPERTIES:
+:tangle-dir: _tangle/profiles
+:END:
+
+*** claude
+#+begin_src json :tangle (zr-org-by-tangle-dir "claude.json")
 <<gen-cc()>>
 #+end_src
 
@@ -64,14 +67,7 @@
                (maxTokens . 32000)))
 #+end_src
 
-** profiles
-:PROPERTIES:
-:tangle-dir: _tangle/profiles
-:END:
-
 *** codex
-#+header: :var host=(plist-get keys :host)
-#+header: :var key=(plist-get keys :cx)
 #+begin_src json :tangle (zr-org-by-tangle-dir "codex.json")
 <<gen-cx()>>
 #+end_src
@@ -95,7 +91,6 @@
 #+end_src
 
 *** gemini
-#+header: :var key=(plist-get keys :gmn)
 #+begin_src json :tangle (zr-org-by-tangle-dir "gemini.json")
 <<gen-gmn()>>
 #+end_src
@@ -125,7 +120,7 @@
 #+end_src
 
 *** claude-code
-#+begin_src json :tangle (zr-org-by-tangle-dir "claude.json")
+#+begin_src json :tangle (zr-org-by-tangle-dir "ccc.json")
 <<gen-cc(key=(plist-get keys :ccc),basic="ccc/claude-haiku-4-5-20251001",compact="ccc/claude-haiku-4-5-20251001",advance="ccc/claude-sonnet-4-5-20250929")>>
 #+end_src
 
@@ -157,7 +152,7 @@
 :END:
 #+begin_src json :tangle (zr-org-by-tangle-dir "active-profile.json")
 {
-  "activeProfile": "default"
+  "activeProfile": "codex"
 }
 #+end_src
 
