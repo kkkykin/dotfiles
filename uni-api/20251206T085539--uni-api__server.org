@@ -6,7 +6,10 @@
 * tangle
 #+begin_src elisp
 (let* ((zr-local-pls (plstore-open "../.global.pls"))
-       (zr-org-tangle-default-dir (plist-get (cdr (plstore-get zr-local-pls "private-www")) :dir))
+       (zr-org-tangle-default-dir
+        (if zr-sys-linux-p
+            (plist-get (cdr (plstore-get zr-local-pls "private-www")) :dir)
+          "_tangle"))
        (proxy-info (cdr (plstore-get zr-local-pls "proxy")))
        (proxy (format "socks5h://%s:%d"
                       (plist-get proxy-info :host)
@@ -23,114 +26,131 @@
 <<gen-config()>>
 #+end_src
 
+#+header: :var iflow=iflow[]
+#+header: :var modelscope=modelscope[]
 #+name: gen-config
 #+begin_src elisp
-(let* ((zr-local-pls (plstore-open (expand-file-name "uni-api.pls" zr-secrets-dir)))
-       (extra (plstore-find zr-local-pls '(:provider (t))))
-       (providers `(( :provider "iflow"
-                      :notes ((official . 9)
-                              (general . 1))
-                      :base_url "https://apis.iflow.cn/v1/chat/completions"
-                      :model ["qwen3-coder-plus"
-                              "qwen3-max"
-                              "qwen3-vl-plus"
-                              "kimi-k2-0905"
-                              "glm-4.6"
-                              "kimi-k2"
-                              "deepseek-v3.2"
-                              "deepseek-r1"
-                              "qwen3-235b-a22b-thinking-2507"
-                              "qwen3-235b-a22b-instruct"])
-                    ( :provider "modelscope"
-                      :notes ((official . 1)
-                              (general . 1))
-                      :base_url "https://api-inference.modelscope.cn/v1/chat/completions"
-                      :model [((deepseek-ai/DeepSeek-V3.2 . "deepseek-v3.2"))
-                              ((deepseek-ai/DeepSeek-R1-0528 . "deepseek-r1"))
-                              ((Qwen/Qwen3-Coder-480B-A35B-Instruct . "qwen3-coder-plus"))
-                              ((Qwen/Qwen3-235B-A22B-Instruct-2507 . "qwen3-235b-a22b-instruct"))
-                              ((Qwen/Qwen3-235B-A22B-Thinking-2507 . "qwen3-235b-a22b-thinking-2507"))
-                              ((Qwen/Qwen3-VL-235B-A22B-Instruct . "qwen3-vl-plus"))])
-                    ( :provider "anyrouter"
-                      :notes ((general . 1))
-                      :model ["gemini-2.5-pro"])
-                    ( :provider "meatbuns"
-                      :notes ((alive . 3)
-                              (general . 9))
-                      :model ["gemini-2.5-pro"
-                              ((gemini-2.5-pro-preview-06-05-search . "gemini-2.5-pro-search"))])
-                    ( :provider "jason_wong1"
-                      :notes ((alive . 1)
-                              (general . 3))
-                      :model [;; "gemini-2.5-pro"
-                              ;; "gemini-2.5-pro-maxthinking"
-                              ;; "gemini-2.5-pro-nothinking"
-                              ;; "gemini-2.5-pro-search"
-                              ;; ((gemini-3-pro-preview . "gemini-3-pro"))
-                              ;; ((gemini-3-pro-preview-maxthinking . "gemini-3-pro-maxthinking"))
-                              ;; ((gemini-3-pro-preview-nothinking . "gemini-3-pro-nothinking"))
-                              ;; ((gemini-3-pro-preview-search . "gemini-3-pro-search"))
-                              "gpt-5"
-                              "grok-4.1"
-                              "grok-4.1-thinking"])
-                    ( :provider "ouyangqiqi"
-                      :notes ((tavern . 1))
-                      :model [((hyb-Optimal/gemini-2.5-pro . "gemini-2.5-pro"))
-                              ((hyb-Optimal/gemini-3-pro-preview . "gemini-3-pro"))
-                              ((hyb-Optimal/gemini抗截断系列/gemini-2.5-pro . "gemini-2.5-pro"))
-                              ((hyb-Optimal/gemini抗截断系列/gemini-2.5-pro-nothinking . "gemini-2.5-pro-nothinking"))
-                              ((hyb-Optimal/gemini抗截断系列/gemini-2.5-pro-maxthinking . "gemini-2.5-pro-maxthinking"))])
-                    ( :provider "bohe"
-                      :notes ((tavern . 3))
-                      :model ["gemini-2.5-pro"
-                              ((gemini-2.5-pro-1m . "gemini-2.5-pro"))
-                              ((gemini-3-pro-high . "gemini-3-pro-maxthinking"))
-                              ((gemini-3-pro-low . "gemini-3-pro-nothinking"))])))
-       (uni-api-keys (cdr (plstore-get zr-local-pls "uni-api")))
-       (api-keys `(((api . ,(plist-get uni-api-keys :admin))
-                    (role . "admin"))))
-       (preferences `((proxy . ,proxy)))
-       groups
-       final-providers)
-  (dolist (provider providers)
-    (let ((name (plist-get provider :provider))
-          (notes (plist-get provider :notes))
-          (org-id-method 'uuid)
-          uuid)
-      (plist-put provider :notes (format "%S" notes))
-      (when-let* ((ext (alist-get name extra nil t #'string=)))
-        (setq provider (append provider ext)))
-      (if-let* ((base-url (plist-get provider :base_url))
-                ((vectorp base-url)))
-          (let (models)
-            (setq uuid (org-id-new "sk-"))
-            (seq-do-indexed
-             (lambda (url i)
-               (let ((new (copy-sequence provider))
-                     (alias (format "%s[%d]" name i)))
-                 (push (concat alias "/*") models)
-                 (plist-put new :provider alias)
-                 (plist-put new :base_url url)
-                 (push new final-providers)))
-             base-url)
-            (push `((api . ,uuid)
-                    (model . ,(vconcat models))
-                    (role . ,name))
-                  api-keys))
-        (push provider final-providers))
-      (dolist (group notes)
-        (when (and (consp group) (natnump (cdr group)))
-          (push (cons (car group)
-                      (cons (intern (concat (or uuid name) "/*")) (cdr group)))
-                groups)))))
-  (dolist (group (seq-group-by #'car groups))
-    (when-let* ((role (symbol-name (car group)))
-                (key (plist-get uni-api-keys (intern (concat ":" role)))))
-      (push `((api . ,key)
-              (model . ,(cl-map 'vector #'(lambda (e) (list (cdr e))) (cdr group)))
-              (role . ,role))
-            api-keys)))
-  (json-serialize `((providers . ,(vconcat final-providers))
-                    (api_keys . ,(vconcat api-keys))
-                    (preferences . ,preferences))))
+(cl-letf (((symbol-function 'format-models)
+           (lambda (models)
+             (cl-map
+              #'vector
+              (lambda (m)
+                (if-let* ((model (car m))
+                          (alias (cadr m))
+                          ((string-empty-p alias)))
+                    model
+                  (list (cons (intern model) alias))))
+              models))))
+  (let* ((zr-local-pls (plstore-open (expand-file-name "uni-api.pls" zr-secrets-dir)))
+         (extra (plstore-find zr-local-pls '(:provider (t))))
+         (providers `(( :provider "iflow"
+                        :notes ((official . 9)
+                                (general . 1))
+                        :base_url "https://apis.iflow.cn/v1/chat/completions"
+                        :model ,(format-models iflow))
+                      ( :provider "modelscope"
+                        :notes ((official . 1)
+                                (general . 1))
+                        :base_url "https://api-inference.modelscope.cn/v1/chat/completions"
+                        :model ,(format-models modelscope))
+                      ( :provider "anyrouter"
+                        :notes ((general . 1))
+                        :model ["gemini-2.5-pro"])
+                      ( :provider "meatbuns"
+                        :notes ((alive . 3)
+                                (general . 9))
+                        :model ["gemini-2.5-pro"
+                                ((gemini-2.5-pro-preview-06-05-search . "gemini-2.5-pro-search"))])
+                      ( :provider "jason_wong1"
+                        :notes ((alive . 1)
+                                (general . 3))
+                        :model ["gpt-5"
+                                "grok-4.1"
+                                "grok-4.1-thinking"])
+                      ( :provider "ouyangqiqi"
+                        :notes ((tavern . 1))
+                        :model [((hyb-Optimal/gemini-2.5-pro . "gemini-2.5-pro"))
+                                ((hyb-Optimal/gemini-3-pro-preview . "gemini-3-pro"))
+                                ((hyb-Optimal/gemini抗截断系列/gemini-2.5-pro . "gemini-2.5-pro"))
+                                ((hyb-Optimal/gemini抗截断系列/gemini-2.5-pro-nothinking . "gemini-2.5-pro-nothinking"))
+                                ((hyb-Optimal/gemini抗截断系列/gemini-2.5-pro-maxthinking . "gemini-2.5-pro-maxthinking"))])
+                      ( :provider "bohe"
+                        :notes ((tavern . 3))
+                        :model ["gemini-2.5-pro"
+                                ((gemini-2.5-pro-1m . "gemini-2.5-pro"))
+                                ((gemini-3-pro-high . "gemini-3-pro-maxthinking"))
+                                ((gemini-3-pro-low . "gemini-3-pro-nothinking"))])))
+         (uni-api-keys (cdr (plstore-get zr-local-pls "uni-api")))
+         (api-keys `(((api . ,(plist-get uni-api-keys :admin))
+                      (role . "admin"))))
+         (preferences `((proxy . ,proxy)))
+         groups
+         final-providers)
+    (dolist (provider providers)
+      (let ((name (plist-get provider :provider))
+            (notes (plist-get provider :notes))
+            (org-id-method 'uuid)
+            uuid)
+        (plist-put provider :notes (format "%S" notes))
+        (when-let* ((ext (alist-get name extra nil t #'string=)))
+          (setq provider (append provider ext)))
+        (if-let* ((base-url (plist-get provider :base_url))
+                  ((vectorp base-url)))
+            (let (models)
+              (setq uuid (org-id-new "sk-"))
+              (seq-do-indexed
+               (lambda (url i)
+                 (let ((new (copy-sequence provider))
+                       (alias (format "%s[%d]" name i)))
+                   (push (concat alias "/*") models)
+                   (plist-put new :provider alias)
+                   (plist-put new :base_url url)
+                   (push new final-providers)))
+               base-url)
+              (push `((api . ,uuid)
+                      (model . ,(vconcat models))
+                      (role . ,name))
+                    api-keys))
+          (push provider final-providers))
+        (dolist (group notes)
+          (when (and (consp group) (natnump (cdr group)))
+            (push (cons (car group)
+                        (cons (intern (concat (or uuid name) "/*")) (cdr group)))
+                  groups)))))
+    (dolist (group (seq-group-by #'car groups))
+      (when-let* ((role (symbol-name (car group)))
+                  (key (plist-get uni-api-keys (intern (concat ":" role)))))
+        (push `((api . ,key)
+                (model . ,(cl-map 'vector #'(lambda (e) (list (cdr e))) (cdr group)))
+                (role . ,role))
+              api-keys)))
+    (json-serialize `((providers . ,(vconcat final-providers))
+                      (api_keys . ,(vconcat api-keys))
+                      (preferences . ,preferences)))))
 #+end_src
+
+* models
+
+#+name: iflow
+| model                         | alias |
+|-------------------------------+-------|
+| qwen3-coder-plus              |       |
+| qwen3-max                     |       |
+| qwen3-vl-plus                 |       |
+| kimi-k2-0905                  |       |
+| glm-4.6                       |       |
+| kimi-k2                       |       |
+| deepseek-v3.2                 |       |
+| deepseek-r1                   |       |
+| qwen3-235b-a22b-instruct      |       |
+| qwen3-235b-a22b-thinking-2507 |       |
+
+#+name: modelscope
+| model                               | alias                         |
+|-------------------------------------+-------------------------------|
+| deepseek-ai/DeepSeek-V3.2           | deepseek-v3.2                 |
+| deepseek-ai/DeepSeek-R1-0528        | deepseek-r1                   |
+| Qwen/Qwen3-Coder-480B-A35B-Instruct | qwen3-coder-plus              |
+| Qwen/Qwen3-235B-A22B-Instruct-2507  | qwen3-235b-a22b-instruct      |
+| Qwen/Qwen3-235B-A22B-Thinking-2507  | qwen3-235b-a22b-thinking-2507 |
+| Qwen/Qwen3-VL-235B-A22B-Instruct    | qwen3-vl-plus                 |
