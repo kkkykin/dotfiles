@@ -1,0 +1,101 @@
+#+title:      litellm
+#+date:       [2025-12-10 Wed 20:18]
+#+filetags:   :server:
+#+identifier: 20251210T201813
+
+* tangle
+#+begin_src elisp
+(org-babel-tangle)
+#+end_src
+
+* config
+#+begin_src json :comments no :mkdirp t :tangle (zr-org-by-tangle-dir "config.json")
+<<gen-config()>>
+#+end_src
+
+#+header: :var models=models-tbl[] :colnames no
+#+name: gen-config
+#+begin_src elisp
+(cl-letf (((symbol-function 'format-models)
+           (lambda (name params)
+             (print name)
+             (print params)
+             (let ((model (or (plist-get params :model) name))
+                   (k-key :api_key_o)
+                   (k-base :api_base_o)
+                   result)
+               (if (string-prefix-p "ant/" model)
+                   (progn
+                     (plist-put params :model
+                                (replace-regexp-in-string "^ant/" "anthropic/" model))
+                     (setq k-key :api_key_a
+                           k-base :api_base_a))
+                 (plist-put params :model (concat "openai/" model)))
+               (mapc
+                (lambda (base)
+                  (plist-put params :api_base base)
+                  (mapc
+                   (lambda (key)
+                     (let ((new (copy-sequence params)))
+                       (plist-put new :api_key key)
+                       (push `((model_name . ,name)
+                               (litellm_params . ,new))
+                             result)))
+                   (or (plist-get params k-key)
+                       (plist-get params :api_key))))
+                (or (plist-get params k-base)
+                    (plist-get params :api_base)))
+               result))))
+  (let* ((zr-local-pls (plstore-open (expand-file-name "litellm.pls" zr-secrets-dir)))
+         (secret (plstore-find zr-local-pls '(:provider (t))))
+         (public '(("iflow" . ( :api_base ["https://apis.iflow.cn/v1"]))
+                   ("modelscope" . ( :api_base ["https://api-inference.modelscope.cn/v1"]))))
+         (common '( :additional_drop_params ["api_key_a"
+                                             "api_key_o"
+                                             "api_base_a"
+                                             "api_base_o"
+                                             "provider"] ))
+         (col (car models))
+         (model-map (cdr models))
+         (providers (cdr col))
+         (litellm-settings '((drop_params . t)))
+         model-list)
+    (seq-do-indexed
+     (lambda (provider i)
+       (let ((params (append (alist-get provider secret nil nil #'string=)
+                             (alist-get provider public nil nil #'string=)
+                             common)))
+         (dolist (model model-map)
+           (let ((name (car model))
+                 (new (copy-sequence params))
+                 (extra (zr-org-string-maybe-eval (nth (1+ i) model))))
+             ;; (print extra)
+             (pcase extra
+               ("")
+               ("t" (push (format-models name new) model-list))
+               ((pred stringp)
+                (plist-put new :model extra)
+                (push (format-models name new) model-list))
+               (_ (push (format-models name (append extra new)) model-list)))))))
+     providers)
+    (json-serialize `((model_list . ,(apply #'vconcat model-list))
+                      (litellm_settings . ,litellm-settings)))))
+#+end_src
+
+* models
+#+name: models-tbl
+| name                          | iflow | modelscope                          |
+|-------------------------------+-------+-------------------------------------|
+| qwen3-coder-plus              | t     | Qwen/Qwen3-Coder-480B-A35B-Instruct |
+| qwen3-max                     | t     |                                     |
+| qwen3-vl-plus                 | t     | Qwen/Qwen3-VL-235B-A22B-Instruct    |
+| kimi-k2-0905                  | t     |                                     |
+| glm-4.6                       | t     |                                     |
+| kimi-k2                       | t     |                                     |
+| deepseek-v3.2                 | t     | deepseek-ai/DeepSeek-V3.2           |
+| deepseek-r1                   | t     | deepseek-ai/DeepSeek-R1-0528        |
+| deepseek-v3                   | t     |                                     |
+| qwen3-235b-a22b-thinking-2507 | t     | Qwen/Qwen3-235B-A22B-Thinking-2507  |
+| qwen3-235b-a22b-instruct      | t     | Qwen/Qwen3-235B-A22B-Instruct-2507  |
+| z-image-turbo                 |       | Tongyi-MAI/Z-Image-Turbo            |
+| glm-4.6v                      |       | ZhipuAI/GLM-4.6V                    |
