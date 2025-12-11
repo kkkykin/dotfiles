@@ -18,38 +18,66 @@
 #+begin_src elisp
 (cl-letf (((symbol-function 'format-models)
            (lambda (name params)
-             (print name)
-             (print params)
-             (let ((model (or (plist-get params :model) name))
+             (let ((models (ensure-list (or (plist-get params :model) name)))
+                   (ant-headers '((anthropic-beta . "claude-code-20250219,interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14")
+                                  (anthropic-dangerous-direct-browser-access . "true")
+                                  (anthropic-version . "2023-06-01")
+                                  (user-agent . "claude-cli/2.0.61 (external, cli)")
+                                  (x-app . "cli")))
                    (k-key :api_key_o)
                    (k-base :api_base_o)
                    result)
-               (if (string-prefix-p "ant/" model)
-                   (progn
-                     (plist-put params :model
-                                (replace-regexp-in-string "^ant/" "anthropic/" model))
-                     (setq k-key :api_key_a
-                           k-base :api_base_a))
-                 (plist-put params :model (concat "openai/" model)))
                (mapc
-                (lambda (base)
-                  (plist-put params :api_base base)
-                  (mapc
-                   (lambda (key)
-                     (let ((new (copy-sequence params)))
-                       (plist-put new :api_key key)
-                       (push `((model_name . ,name)
-                               (litellm_params . ,new))
-                             result)))
-                   (or (plist-get params k-key)
-                       (plist-get params :api_key))))
-                (or (plist-get params k-base)
-                    (plist-get params :api_base)))
+                (lambda (model)
+                  (let ((this-model (copy-sequence params)))
+                    (pcase model
+                      ((rx bos "ant/")
+                       (let ((model (if (string= "ant/t" model)
+                                        (concat "anthropic/" name)
+                                      (replace-regexp-in-string "^ant/" "anthropic/" model))))
+                         (plist-put this-model :extra_headers
+                                    (append (plist-get this-model :extra_headers)
+                                            ant-headers))
+                         (plist-put this-model :model model)
+                         (setq k-key :api_key_a
+                               k-base :api_base_a)))
+                      ((rx bos "gmn/")
+                       (let ((model (if (string= "gmn/t" model)
+                                        (concat "gemini/" name)
+                                      (replace-regexp-in-string "^gmn/" "" model))))
+                         (plist-put this-model :model model)
+                         (setq k-key :api_key_g
+                               k-base :api_base_g)))
+                      (_ (plist-put this-model :model (concat "openai/" model))))
+                    (mapc
+                     (lambda (base)
+                       (let ((new-base (append `( :api_base ,base)
+                                               this-model)))
+                         (mapc
+                          (lambda (key)
+                            (let ((new (append `( :api_key ,key
+                                                  :api_key_a :null
+                                                  :api_key_o :null
+                                                  :api_base_a :null
+                                                  :api_base_o :null)
+                                               new-base)))
+                              (push `((model_name . ,name)
+                                      (litellm_params . ,new))
+                                    result)))
+                          (ensure-list (or (plist-get params k-key)
+                                           (plist-get params :api_key))))))
+                     (ensure-list (or (plist-get this-model k-base)
+                                      (plist-get this-model :api_base))))))
+                models)
                result))))
   (let* ((zr-local-pls (plstore-open (expand-file-name "litellm.pls" zr-secrets-dir)))
          (secret (plstore-find zr-local-pls '(:provider (t))))
-         (public '(("iflow" . ( :api_base ["https://apis.iflow.cn/v1"]))
-                   ("modelscope" . ( :api_base ["https://api-inference.modelscope.cn/v1"]))))
+         (public '(("iflow" . ( :api_base "https://apis.iflow.cn/v1"
+                                :weight 50))
+                   ("modelscope" . ( :api_base "https://api-inference.modelscope.cn/v1"
+                                     :weight 40))
+                   ("anyrouter" . ( :weight 30))
+                   ("jason_wong1" . ( :weight 60))))
          (common '( :additional_drop_params ["api_key_a"
                                              "api_key_o"
                                              "api_base_a"
@@ -58,13 +86,28 @@
          (col (car models))
          (model-map (cdr models))
          (providers (cdr col))
-         (litellm-settings '((drop_params . t)))
+         (litellm (cdr (plstore-get zr-local-pls "litellm")))
+         (litellm-settings '((drop_params . t)
+                             (num_retries . 10)
+                             (default_fallbacks . ["glm-4.6"])))
+         (general-settings `((forward_client_headers_to_llm_api . t)
+                             (disable_master_key_return . t)
+                             ;; (master_key . ,(plist-get litellm :master))
+                             ;; (database_url . "")
+                             (allow_requests_on_db_unavailable . t)
+                             (background_health_checks . :false)))
+         (router-settings '((allowed_fails . 3)
+                            (cooldown_time . 30)
+                            (enable_tag_filtering . t)
+                            (fallbacks . [((gemini-3-pro . ["gemini-2.5-pro"]))
+                                          ((claude-sonnet-4-20250514 . ["claude-sonnet-4-5-20250929"]))
+                                          ((claude-3-5-haiku-20241022 . ["claude-haiku-4-5-20251001"]))])))
          model-list)
     (seq-do-indexed
      (lambda (provider i)
-       (let ((params (append (alist-get provider secret nil nil #'string=)
-                             (alist-get provider public nil nil #'string=)
-                             common)))
+       (when-let* ((params (append (alist-get provider secret nil nil #'string=)
+                                   (alist-get provider public nil nil #'string=)
+                                   common)))
          (dolist (model model-map)
            (let ((name (car model))
                  (new (copy-sequence params))
@@ -79,23 +122,47 @@
                (_ (push (format-models name (append extra new)) model-list)))))))
      providers)
     (json-serialize `((model_list . ,(apply #'vconcat model-list))
-                      (litellm_settings . ,litellm-settings)))))
+                      (litellm_settings . ,litellm-settings)
+                      (general_settings . ,general-settings)))))
 #+end_src
 
 * models
 #+name: models-tbl
-| name                          | iflow | modelscope                          |
-|-------------------------------+-------+-------------------------------------|
-| qwen3-coder-plus              | t     | Qwen/Qwen3-Coder-480B-A35B-Instruct |
-| qwen3-max                     | t     |                                     |
-| qwen3-vl-plus                 | t     | Qwen/Qwen3-VL-235B-A22B-Instruct    |
-| kimi-k2-0905                  | t     |                                     |
-| glm-4.6                       | t     |                                     |
-| kimi-k2                       | t     |                                     |
-| deepseek-v3.2                 | t     | deepseek-ai/DeepSeek-V3.2           |
-| deepseek-r1                   | t     | deepseek-ai/DeepSeek-R1-0528        |
-| deepseek-v3                   | t     |                                     |
-| qwen3-235b-a22b-thinking-2507 | t     | Qwen/Qwen3-235B-A22B-Thinking-2507  |
-| qwen3-235b-a22b-instruct      | t     | Qwen/Qwen3-235B-A22B-Instruct-2507  |
-| z-image-turbo                 |       | Tongyi-MAI/Z-Image-Turbo            |
-| glm-4.6v                      |       | ZhipuAI/GLM-4.6V                    |
+| name                          | iflow | modelscope                          | jason_wong1 | anyrouter | huan | 88code | ouyangqiqi        |
+|-------------------------------+-------+-------------------------------------+-------------+-----------+------+--------+-------------------|
+| claude-opus-4-5-20251101      |       |                                     | ant/t       | ant/t     |      |        |                   |
+| claude-sonnet-4-5-20250929    |       |                                     | ant/t       | ant/t     |      |        | claude-sonnet-4.5 |
+| claude-sonnet-4-20250514      |       |                                     | ant/t       | ant/t     |      |        | claude-sonnet-4   |
+| claude-haiku-4-5-20251001     |       |                                     | ant/t       | ant/t     |      |        |                   |
+| claude-3-5-haiku-20241022     |       |                                     | ant/t       | ant/t     |      |        |                   |
+| gpt-5-codex                   |       |                                     |             | ant/t     |      | t      |                   |
+| gpt-5.1-codex                 |       |                                     |             |           |      | t      |                   |
+| gpt-5.1-codex-max             |       |                                     |             |           |      | t      |                   |
+| gemini-2.5-flash              |       |                                     |             |           |      |        |                   |
+| gemini-2.5-pro                |       |                                     |             | ant/t     |      |        | t                 |
+| gemini-3-pro-preview          |       |                                     |             |           |      |        |                   |
+| gemini-3-pro                  |       |                                     |             |           |      |        | gemini-pro-latest |
+| grok-4.1                      |       |                                     |             |           | t    |        |                   |
+| grok-4.1-thinking             |       |                                     |             |           | t    |        |                   |
+| qwen3-coder-plus              | t     | Qwen/Qwen3-Coder-480B-A35B-Instruct |             |           |      |        |                   |
+| qwen3-max                     | t     |                                     |             |           |      |        |                   |
+| qwen3-vl-plus                 | t     | Qwen/Qwen3-VL-235B-A22B-Instruct    |             |           |      |        |                   |
+| kimi-k2-0905                  | t     |                                     |             |           |      |        |                   |
+| glm-4.6                       | t     |                                     |             |           |      |        |                   |
+| kimi-k2                       | t     |                                     |             |           |      |        |                   |
+| deepseek-v3.2                 | t     | deepseek-ai/DeepSeek-V3.2           |             |           |      |        |                   |
+| deepseek-r1                   | t     | deepseek-ai/DeepSeek-R1-0528        |             |           |      |        |                   |
+| deepseek-v3                   | t     |                                     |             |           |      |        |                   |
+| qwen3-235b-a22b-thinking-2507 | t     | Qwen/Qwen3-235B-A22B-Thinking-2507  |             |           |      |        |                   |
+| qwen3-235b-a22b-instruct      | t     | Qwen/Qwen3-235B-A22B-Instruct-2507  |             |           |      |        |                   |
+| z-image-turbo                 |       | Tongyi-MAI/Z-Image-Turbo            |             |           |      |        |                   |
+| glm-4.6v                      |       | ZhipuAI/GLM-4.6V                    |             |           |      |        |                   |
+
+* knock knock
+#+begin_src elisp
+(let* ((zr-local-pls (plstore-open (expand-file-name "litellm.pls" zr-secrets-dir)))
+       (urls (plist-get (cdr (plstore-get zr-local-pls "knock")) :urls)))
+  (dolist (url (append '("https://platform.iflow.cn/profile?tab=apiKey")
+                       urls))
+    (browse-url url)))
+#+end_src
