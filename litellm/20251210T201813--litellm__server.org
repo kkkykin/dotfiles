@@ -5,10 +5,15 @@
 
 * tangle
 #+begin_src elisp
-(org-babel-tangle)
+(let ((zr-org-tangle-default-dir
+       (if zr-sys-linux-p
+           "/etc/litellm/"
+         "_tangle")))
+  (org-babel-tangle))
 #+end_src
 
 * config
+#+header: :tangle-mode o604
 #+begin_src json :comments no :mkdirp t :tangle (zr-org-by-tangle-dir "config.json")
 <<gen-config()>>
 #+end_src
