@@ -8,7 +8,8 @@
 (let ((zr-org-tangle-default-dir
        (if zr-sys-linux-p
            "/etc/litellm/"
-         "_tangle")))
+         "_tangle"))
+      (coding-system-for-write 'utf-8))
   (org-babel-tangle))
 #+end_src
 
@@ -36,6 +37,7 @@
                 (lambda (model)
                   (let ((this-model (copy-sequence params)))
                     (pcase model
+                      ("t" (plist-put this-model :model (concat "openai/" name)))
                       ((rx bos "ant/")
                        (let ((model (if (string= "ant/t" model)
                                         (concat "anthropic/" name)
@@ -66,6 +68,8 @@
                                                   :api_base_a :null
                                                   :api_base_o :null)
                                                new-base)))
+                              (unless (plist-member new :tags)
+                                (plist-put new :tags ["default"]))
                               (push `((model_name . ,name)
                                       (litellm_params . ,new))
                                     result)))
@@ -73,16 +77,28 @@
                                            (plist-get params :api_key))))))
                      (ensure-list (or (plist-get this-model k-base)
                                       (plist-get this-model :api_base))))))
-                models)
-               result))))
+                (mapcar (lambda (model) (format model name)) models))
+               result)))
+          ((symbol-function 'all-string-p)
+           (lambda (list) (cl-every #'stringp list))))
   (let* ((zr-local-pls (plstore-open (expand-file-name "litellm.pls" zr-secrets-dir)))
          (secret (plstore-find zr-local-pls '(:provider (t))))
          (public '(("iflow" . ( :api_base "https://apis.iflow.cn/v1"
-                                :weight 50))
+                                :weight 5))
                    ("modelscope" . ( :api_base "https://api-inference.modelscope.cn/v1"
-                                     :weight 40))
-                   ("anyrouter" . ( :weight 30))
-                   ("jason_wong1" . ( :weight 60))))
+                                     :weight 2))
+                   ("snow" . ( :extra_headers ((x-snow . "true")
+                                               (user-agent . "node"))
+                               :tags ["snow"]))
+                   ("ouyangqiqi" . ( :tags ["tavern"]))
+                   ("bohe" . ( :tags ["tavern"]))
+                   ("sc0152" . ( :tags ["tavern"]))
+                   ("88code" . ( :tags ["cx"]))
+                   ("zhongruan" . ( :tags ["cx"]))
+                   ("HenryXiaoYang" . (:tags ["cc"]))
+                   ("anyrouter" . (:tags ["cc"]))
+                   ("jason_wong1" . ( :weight 6
+                                      :tags ["cc"]))))
          (common '( :additional_drop_params ["api_key_a"
                                              "api_key_o"
                                              "api_base_a"
@@ -94,7 +110,9 @@
          (litellm (cdr (plstore-get zr-local-pls "litellm")))
          (litellm-settings '((drop_params . t)
                              (num_retries . 10)
-                             (default_fallbacks . ["glm-4.6"])))
+                             (default_fallbacks . ["glm-4.6"])
+                             ;; (turn_off_message_logging . t)
+                             (failure_callback . ["langfuse"])))
          (general-settings `((forward_client_headers_to_llm_api . t)
                              (disable_master_key_return . t)
                              ;; (master_key . ,(plist-get litellm :master))
@@ -105,7 +123,9 @@
                             (cooldown_time . 30)
                             (enable_tag_filtering . t)
                             (fallbacks . [((gemini-3-pro . ["gemini-2.5-pro"]))
-                                          ((claude-sonnet-4-20250514 . ["claude-sonnet-4-5-20250929"]))
+                                          ((claude-opus-4-5-20251101 . ["claude-opus-4-5"]))
+                                          ((claude-sonnet-4-5-20250929 . ["claude-sonnet-4-5" "claude-4.5-sonnet"]))
+                                          ((claude-sonnet-4-20250514 . ["claude-4-sonnet"]))
                                           ((claude-3-5-haiku-20241022 . ["claude-haiku-4-5-20251001"]))])))
          model-list)
     (seq-do-indexed
@@ -117,51 +137,55 @@
            (let ((name (car model))
                  (new (copy-sequence params))
                  (extra (zr-org-string-maybe-eval (nth (1+ i) model))))
-             ;; (print extra)
              (pcase extra
                ("")
-               ("t" (push (format-models name new) model-list))
-               ((pred stringp)
+               ((or (pred stringp)
+                    (pred all-string-p))
                 (plist-put new :model extra)
                 (push (format-models name new) model-list))
                (_ (push (format-models name (append extra new)) model-list)))))))
      providers)
     (json-serialize `((model_list . ,(apply #'vconcat model-list))
                       (litellm_settings . ,litellm-settings)
-                      (general_settings . ,general-settings)))))
+                      (general_settings . ,general-settings)
+                      (router_settings . ,router-settings)))))
 #+end_src
 
 * models
 #+name: models-tbl
-| name                          | iflow | modelscope                          | jason_wong1 | anyrouter | huan | 88code | ouyangqiqi        |
-|-------------------------------+-------+-------------------------------------+-------------+-----------+------+--------+-------------------|
-| claude-opus-4-5-20251101      |       |                                     | ant/t       | ant/t     |      |        |                   |
-| claude-sonnet-4-5-20250929    |       |                                     | ant/t       | ant/t     |      |        | claude-sonnet-4.5 |
-| claude-sonnet-4-20250514      |       |                                     | ant/t       | ant/t     |      |        | claude-sonnet-4   |
-| claude-haiku-4-5-20251001     |       |                                     | ant/t       | ant/t     |      |        |                   |
-| claude-3-5-haiku-20241022     |       |                                     | ant/t       | ant/t     |      |        |                   |
-| gpt-5-codex                   |       |                                     |             | ant/t     |      | t      |                   |
-| gpt-5.1-codex                 |       |                                     |             |           |      | t      |                   |
-| gpt-5.1-codex-max             |       |                                     |             |           |      | t      |                   |
-| gemini-2.5-flash              |       |                                     |             |           |      |        |                   |
-| gemini-2.5-pro                |       |                                     |             | ant/t     |      |        | t                 |
-| gemini-3-pro-preview          |       |                                     |             |           |      |        |                   |
-| gemini-3-pro                  |       |                                     |             |           |      |        | gemini-pro-latest |
-| grok-4.1                      |       |                                     |             |           | t    |        |                   |
-| grok-4.1-thinking             |       |                                     |             |           | t    |        |                   |
-| qwen3-coder-plus              | t     | Qwen/Qwen3-Coder-480B-A35B-Instruct |             |           |      |        |                   |
-| qwen3-max                     | t     |                                     |             |           |      |        |                   |
-| qwen3-vl-plus                 | t     | Qwen/Qwen3-VL-235B-A22B-Instruct    |             |           |      |        |                   |
-| kimi-k2-0905                  | t     |                                     |             |           |      |        |                   |
-| glm-4.6                       | t     |                                     |             |           |      |        |                   |
-| kimi-k2                       | t     |                                     |             |           |      |        |                   |
-| deepseek-v3.2                 | t     | deepseek-ai/DeepSeek-V3.2           |             |           |      |        |                   |
-| deepseek-r1                   | t     | deepseek-ai/DeepSeek-R1-0528        |             |           |      |        |                   |
-| deepseek-v3                   | t     |                                     |             |           |      |        |                   |
-| qwen3-235b-a22b-thinking-2507 | t     | Qwen/Qwen3-235B-A22B-Thinking-2507  |             |           |      |        |                   |
-| qwen3-235b-a22b-instruct      | t     | Qwen/Qwen3-235B-A22B-Instruct-2507  |             |           |      |        |                   |
-| z-image-turbo                 |       | Tongyi-MAI/Z-Image-Turbo            |             |           |      |        |                   |
-| glm-4.6v                      |       | ZhipuAI/GLM-4.6V                    |             |           |      |        |                   |
+| name                          | zhongruan | pangil            | kkkyyx     | dabuliu           | bohe                  | HenryXiaoYang | bytebender         | jason_wong1 | anyrouter | huan                 | snow | 88code | ouyangqiqi              | iflow | modelscope                          | sc0152                                    | linuxdo |
+|-------------------------------+-----------+-------------------+------------+-------------------+-----------------------+---------------+--------------------+-------------+-----------+----------------------+------+--------+-------------------------+-------+-------------------------------------+-------------------------------------------+---------|
+| claude-opus-4-5               |           |                   |            |                   | %s-thinking           |               | claude-4.5-opus    |             |           |                      |      |        |                         |       |                                     |                                           | t       |
+| claude-opus-4-5-20251101      |           | t                 |            |                   |                       | ant/t         |                    | ant/t       | ant/t     |                      |      |        |                         |       |                                     |                                           | t       |
+| claude-sonnet-4-5             |           | '("t" "%s-think") |            |                   | t                     |               | t                  |             |           |                      |      |        | t                       |       |                                     | claude-sonnet-4.5 [渠道id:33][輸出3k上限] | t       |
+| claude-4.5-sonnet             |           | '("t" "%s-think") | cursor2-%s | '("t" "%s-think") |                       |               | t                  |             |           |                      |      |        |                         |       |                                     |                                           | t       |
+| claude-sonnet-4-5-20250929    |           | t                 |            |                   |                       | ant/t         | t                  | ant/t       | ant/t     |                      |      |        |                         |       |                                     |                                           | t       |
+| claude-4-sonnet               |           | '("t" "%s-think") | cursor2-%s | '("t" "%s-think") |                       |               | '("t" "ant/%s-cc") |             |           |                      |      |        | t                       |       |                                     |                                           | t       |
+| claude-sonnet-4-20250514      |           |                   |            |                   |                       | ant/t         |                    | ant/t       | ant/t     |                      |      |        |                         |       |                                     |                                           | t       |
+| claude-haiku-4-5-20251001     |           | t                 |            |                   |                       | ant/t         |                    | ant/t       | ant/t     |                      |      |        |                         |       |                                     |                                           | t       |
+| claude-3-5-haiku-20241022     |           |                   |            |                   |                       |               |                    | ant/t       | ant/t     |                      |      |        |                         |       |                                     |                                           | t       |
+| gpt-5                         |           |                   | cursor2-%s |                   |                       |               |                    |             |           |                      | t    |        |                         |       |                                     |                                           | t       |
+| gpt-5-codex                   |           |                   | cursor2-%s |                   |                       |               |                    |             | ant/t     |                      | t    | t      |                         |       |                                     |                                           | t       |
+| gpt-5.1                       | t         |                   |            |                   |                       |               | t                  |             |           |                      | t    | t      |                         |       |                                     |                                           | t       |
+| gpt-5.1-codex                 | t         | t                 |            |                   |                       |               |                    |             |           |                      | t    | t      |                         |       |                                     |                                           |         |
+| gpt-5.1-codex-max             |           |                   |            |                   |                       |               |                    |             |           |                      | t    | t      |                         |       |                                     |                                           | t       |
+| gpt-5.2                       | t         |                   |            |                   |                       |               |                    |             |           |                      |      |        |                         |       |                                     |                                           |         |
+| gemini-2.5-pro                |           | t                 |            |                   | %s-1m                 |               | t                  |             | ant/t     |                      |      |        | '("t" "hyb-Optimal/%s") |       |                                     |                                           | t       |
+| gemini-3-pro                  |           | %s-coding-32k     |            |                   | '("%s-low" "%s-high") |               | %s-preview         |             |           |                      |      |        | gemini-pro-latest       |       |                                     |                                           | t       |
+| grok-4.1                      |           |                   |            |                   |                       |               |                    |             |           | '("t" "%s-thinking") |      |        | '("t" "%s-thinking")    |       |                                     |                                           | t       |
+| qwen3-coder-plus              |           |                   |            |                   |                       |               |                    |             |           |                      |      |        |                         | t     | Qwen/Qwen3-Coder-480B-A35B-Instruct |                                           |         |
+| qwen3-max                     |           |                   |            |                   |                       |               |                    |             |           |                      |      |        |                         | t     |                                     |                                           |         |
+| qwen3-vl-plus                 |           |                   |            |                   |                       |               |                    |             |           |                      |      |        |                         | t     | Qwen/Qwen3-VL-235B-A22B-Instruct    |                                           |         |
+| kimi-k2-0905                  |           |                   |            |                   |                       |               |                    |             |           |                      |      |        |                         | t     |                                     |                                           |         |
+| glm-4.6                       |           |                   |            |                   |                       |               |                    |             |           |                      |      |        |                         | t     |                                     |                                           |         |
+| kimi-k2                       |           |                   |            |                   |                       |               |                    |             |           |                      |      |        |                         | t     |                                     |                                           |         |
+| deepseek-v3.2                 |           |                   |            |                   |                       |               |                    |             |           |                      |      |        |                         | t     | deepseek-ai/DeepSeek-V3.2           |                                           |         |
+| deepseek-r1                   |           |                   |            |                   |                       |               |                    |             |           |                      |      |        |                         | t     | deepseek-ai/DeepSeek-R1-0528        |                                           |         |
+| deepseek-v3                   |           |                   |            |                   |                       |               |                    |             |           |                      |      |        |                         | t     |                                     |                                           |         |
+| qwen3-235b-a22b-thinking-2507 |           |                   |            |                   |                       |               |                    |             |           |                      |      |        |                         | t     | Qwen/Qwen3-235B-A22B-Thinking-2507  |                                           |         |
+| qwen3-235b-a22b-instruct      |           |                   |            |                   |                       |               |                    |             |           |                      |      |        |                         | t     | Qwen/Qwen3-235B-A22B-Instruct-2507  |                                           |         |
+| z-image-turbo                 |           |                   |            |                   |                       |               |                    |             |           |                      |      |        |                         |       | Tongyi-MAI/Z-Image-Turbo            |                                           |         |
+| glm-4.6v                      |           |                   |            |                   |                       |               |                    |             |           |                      |      |        |                         |       | ZhipuAI/GLM-4.6V                    |                                           |         |
 
 * knock knock
 #+begin_src elisp
@@ -171,3 +195,7 @@
                        urls))
     (browse-url url)))
 #+end_src
+
+# Local Variables:
+# truncate-lines: t
+# End:
