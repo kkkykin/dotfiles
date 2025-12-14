@@ -103,12 +103,12 @@
                    ("bohe" . ( :tags ("tavern")))
                    ("sc0152" . ( :tags ("tavern")))
                    ("88code" . ( :tags ("cx")))
-                   ("zhongruan" . ( :tags ("cx")))
+                   ;; ("zhongruan" . ( :tags ("cx")))
                    ;; ("api" . ( :tags ("test")))
                    ("HenryXiaoYang" . (:tags ("cc")))
                    ("Sanyela" . ( :weight 8
                                   :tags ("cc")))
-                   ("anyrouter" . (:tags ("cc")))
+                   ("anyrouter" . ( :tags ("cc")))
                    ("jason_wong1" . ( :weight 6
                                       :tags ("cc")))))
          (common '( :additional_drop_params ["api_key_a"
@@ -127,7 +127,7 @@
                              ;; (turn_off_message_logging . t)
                              (redact_user_api_key_info . t)
                              (callbacks . ["langfuse_otel"])))
-         (general-settings `((forward_client_headers_to_llm_api . t)
+         (general-settings `((forward_client_headers_to_llm_api . :false)
                              (disable_master_key_return . t)
                              ;; (master_key . ,(plist-get litellm :master))
                              ;; (database_url . "")
