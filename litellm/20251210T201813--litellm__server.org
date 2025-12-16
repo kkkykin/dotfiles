@@ -126,7 +126,8 @@
                              (default_fallbacks . ["glm-4.6"])
                              ;; (turn_off_message_logging . t)
                              (redact_user_api_key_info . t)
-                             (callbacks . ["langfuse_otel"])))
+                             (callbacks . ["langfuse_otel"
+                                           "pre_call.header_forward"])))
          (general-settings `((forward_client_headers_to_llm_api . :false)
                              (disable_master_key_return . t)
                              ;; (master_key . ,(plist-get litellm :master))
@@ -207,14 +208,80 @@
 | z-image-turbo                 |        |     |         |           |                   |            |                   |                       |               |                              |             |           |                      |      |        |                         | Tongyi-MAI/Z-Image-Turbo            |                                           |         |
 | glm-4.6v                      |        |     |         |           |                   |            |                   |                       |               |                              |             |           |                      |      |        |                         | ZhipuAI/GLM-4.6V                    |                                           |         |
 
+* plugins
+
+** pre_call
+:PROPERTIES:
+:header-args:py: :tangle (zr-org-by-tangle-dir "pre_call.py")
+:CUSTOM_ID: 1b22713f-eb49-4f94-973c-d002bf58b94c
+:END:
+
+#+begin_src py
+from litellm.integrations.custom_logger import CustomLogger
+from litellm.proxy.proxy_server import UserAPIKeyAuth, DualCache
+from typing import Literal
+#+end_src
+
+*** header forwarder
+:PROPERTIES:
+:CUSTOM_ID: 781bfabf-0729-480f-b8b2-7aa972ea01f7
+:END:
+#+begin_src py
+class HeaderForwarder(CustomLogger):
+  def __init__(self):
+    self.headers_to_copy = [
+      "conversation_id",
+      "session_id"
+    ]
+    
+    self.default_target_key = "headers"
+    self.call_type_target_mapping = {
+      "aresponses": "extra_headers",
+    }
+
+  async def async_pre_call_hook(
+      self,
+      user_api_key_dict: UserAPIKeyAuth,
+      cache: DualCache,
+      data: dict,
+      call_type: Literal[
+        "completion",
+        "text_completion",
+        "embeddings",
+        "image_generation",
+        "moderation",
+        "audio_transcription",
+      ]
+  ):
+    source_headers = data.get("secret_fields", {}).get("raw_headers", {})
+
+    headers_to_add = {
+      key: value
+      for key, value in source_headers.items()
+      if key in self.headers_to_copy
+    }
+
+    if headers_to_add:
+      target_key = self.call_type_target_mapping.get(call_type, self.default_target_key)
+      
+      data.setdefault(target_key, {}).update(headers_to_add)
+
+    return data
+
+header_forward = HeaderForwarder()
+#+end_src
+
 * knock knock
 #+begin_src elisp
 (let* ((zr-local-pls (plstore-open (expand-file-name "litellm.pls" zr-secrets-dir)))
        (urls (plist-get (cdr (plstore-get zr-local-pls "knock")) :urls)))
-  (dolist (url (append '("https://platform.iflow.cn/profile?tab=apiKey")
+  (dolist (url (append '(;; "https://platform.iflow.cn/profile?tab=apiKey"
+                         )
                        urls))
     (browse-url url)))
 #+end_src
+
+* local variables
 
 # Local Variables:
 # truncate-lines: t
