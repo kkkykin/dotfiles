@@ -30,12 +30,16 @@
                                   (anthropic-version . "2023-06-01")
                                   (user-agent . "claude-cli/2.0.61 (external, cli)")
                                   (x-app . "cli")))
+                   (tags (plist-get params :tags))
                    (k-key :api_key_o)
                    (k-base :api_base_o)
                    result)
                (mapc
                 (lambda (model)
-                  (let ((this-model (copy-sequence params)))
+                  (let ((this-model (copy-sequence params))
+                        (mode (if (seq-contains-p tags "cx")
+                                  "responses"
+                                "chat")))
                     (pcase model
                       ("t" (plist-put this-model :model (concat "openai/" name)))
                       ((rx bos "cx/")
@@ -43,7 +47,8 @@
                                         (concat "openai/" name)
                                       (replace-regexp-in-string "^cx/" "openai/" model))))
                          (plist-put this-model :model model)
-                         (setq k-key :api_key_cx)))
+                         (setq k-key :api_key_cx
+                               mode "responses")))
                       ((rx bos "ant/")
                        (let ((model (if (string= "ant/t" model)
                                         (concat "anthropic/" name)
@@ -53,6 +58,7 @@
                                             ant-headers))
                          (plist-put this-model :model model)
                          (setq k-key :api_key_a
+                               mode :null
                                k-base :api_base_a)))
                       ((rx bos "gmn/")
                        (let ((model (if (string= "gmn/t" model)
@@ -60,7 +66,14 @@
                                       (replace-regexp-in-string "^gmn/" "" model))))
                          (plist-put this-model :model model)
                          (setq k-key :api_key_g
+                               mode :null
                                k-base :api_base_g)))
+                      ((rx "embed")
+                       (plist-put this-model :model (concat "openai/" model))
+                       (setq mode "embedding"))
+                      ((rx "image")
+                       (plist-put this-model :model (concat "openai/" model))
+                       (setq mode "image_generation"))
                       (_ (plist-put this-model :model (concat "openai/" model))))
                     (mapc
                      (lambda (base)
@@ -76,8 +89,9 @@
                                                   :api_base_o :null)
                                                new-base)))
                               (when (equal k-key :api_key_cx)
-                                (plist-put new :tags (vconcat ["cx"] (plist-get new :tags))))
+                                (plist-put new :tags (vconcat ["cx"] tags)))
                               (push `((model_name . ,name)
+                                      (model_info (mode . ,mode))
                                       (litellm_params . ,new))
                                     result)))
                           (ensure-list (or (plist-get params k-key)
