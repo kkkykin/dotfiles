@@ -9,7 +9,10 @@
                    ('windows-nt (substitute-in-file-name "$userprofile/.codex/"))
                    (_ (expand-file-name "~/.codex/"))))
        (zr-local-pls (plstore-open "../.global.pls"))
-       (load-host (concat "gpt-load." (plist-get (cdr (plstore-get zr-local-pls "host")) :main))))
+       (host (concat "litellm." (plist-get (cdr (plstore-get zr-local-pls "host")) :main)))
+       (zr-local-pls (plstore-open (expand-file-name "litellm.pls" zr-secrets-dir)))
+       (keys (cdr (plstore-get zr-local-pls "litellm")))
+       (key (plist-get keys :cx)))
   (mkdir conf-dir t)
   (dolist (f (org-babel-tangle))
     (make-symbolic-link f conf-dir t)))
@@ -23,10 +26,10 @@
 :PROPERTIES:
 :CUSTOM_ID: 2726e3c5-3391-4dc0-af41-b0df5a024f78
 :END:
-#+header: :var load-host=(concat load-host)
+#+header: :var host=(concat host)
 #+begin_src toml :tangle (zr-org-by-tangle-dir "config.toml") :mkdirp t
-model_provider = "load"
-model = "gpt-5.1-codex"
+model_provider = "main"
+model = "gpt-5.1-codex-max"
 model_reasoning_effort = "high"
 disable_response_storage = true
 sandbox_mode = "workspace-write" 
@@ -39,9 +42,9 @@ web_search_request = true
 streamable_shell = false
 rmcp_client = true
 
-[model_providers.load]
-name = "load"
-base_url = "https://$load-host/proxy/cx/v1"
+[model_providers.main]
+name = "main"
+base_url = "https://$host/v1"
 wire_api = "responses"
 requires_openai_auth = true
 
@@ -52,9 +55,9 @@ network_access = true
 :PROPERTIES:
 :CUSTOM_ID: bb6a8f50-0139-42ad-9db0-7b9a3eed9323
 :END:
-#+header: :var load_key=(auth-source-pick-first-password :user "apikey" :host "codex-load")
+#+header: :var key=(identity key)
 #+begin_src json :comments no :tangle (zr-org-by-tangle-dir "auth.json")
 {
-  "OPENAI_API_KEY": "$load_key"
+  "OPENAI_API_KEY": "$key"
 }
 #+end_src
