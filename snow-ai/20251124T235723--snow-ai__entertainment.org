@@ -69,7 +69,7 @@
 
 *** snow-cx
 #+begin_src json :tangle (zr-org-by-tangle-dir "snow-cx.json")
-<<gen-cx()>>
+<<gen-cx(advance="gpt-5.1-codex")>>
 #+end_src
 
 #+header: :var basic="gpt-5.1-codex"
