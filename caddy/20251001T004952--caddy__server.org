@@ -80,6 +80,7 @@ import {$MAINPATH}/snippets/*
 :CUSTOM_ID: 87e8d3b9-696c-4dc0-b041-6ab479876b29
 :END:
 #+begin_src caddy :tangle (zr-org-by-tangle-dir "misc.Caddyfile")
+order coraza_waf first
 order aria2_middleware before reverse_proxy
 auto_https disable_redirects
 #+end_src
@@ -204,6 +205,34 @@ layer4 {
     header_up -X-Forwarded-*
     header_up -X-Real-IP
     header_up -Via
+}
+#+end_src
+
+**** rate limit
+#+begin_src caddy
+(rate-limit-by-key) {
+    rate_limit {
+        zone dynamic_limit {
+            key    "{args[0]}"
+            window "{args[1]}"
+            events {args[2]}
+        }
+    }
+}
+#+end_src
+
+**** waf
+#+begin_src caddy
+(waf) {
+    coraza_waf {
+        load_owasp_crs
+        directives `
+        Include @coraza.conf-recommended
+        Include @crs-setup.conf.example
+        Include @owasp_crs/*.conf
+        SecRuleEngine On
+        `
+    }
 }
 #+end_src
 
