@@ -29,8 +29,8 @@
 #+header: :var host=(concat host)
 #+begin_src toml :tangle (zr-org-by-tangle-dir "config.toml") :mkdirp t
 model_provider = "main"
-model = "gpt-5.1-codex-max"
-model_reasoning_effort = "high"
+model = "gpt-5.2-codex"
+model_reasoning_effort = "xhigh"
 disable_response_storage = true
 sandbox_mode = "workspace-write" 
 

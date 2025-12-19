@@ -170,6 +170,20 @@
       "description": "rm",
       "enabled": true,
       "isPreset": false
+    },
+    {
+      "id": "dd",
+      "pattern": "*dd*",
+      "description": "Low-level data copy (disk operations)",
+      "enabled": false,
+      "isPreset": true
+    },
+    {
+      "id": "390b1df9-0a8a-4473-9bd8-7f2d13cee0d9",
+      "pattern": "*dd *",
+      "description": "dd",
+      "enabled": true,
+      "isPreset": false
     }
   ]
 }
