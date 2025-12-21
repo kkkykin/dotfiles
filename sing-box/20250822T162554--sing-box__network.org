@@ -408,6 +408,12 @@
       },
       {
         "download_detour": "direct",
+        "tag": "geoip-microsoft",
+        "type": "remote",
+        "url": "$jsdelivr/gh/chocolate4u/Iran-sing-box-rules@rule-set/geoip-microsoft.srs"
+      },
+      {
+        "download_detour": "direct",
         "tag": "geoip-cloudflare",
         "type": "remote",
         "url": "$jsdelivr/gh/chocolate4u/Iran-sing-box-rules@rule-set/geoip-cloudflare.srs"
@@ -509,6 +515,11 @@
                                ((protocol . ["bittorrent"
                                              "ntp"
                                              "stun"]))])
+                     (type . "logical"))
+                    ((mode . "and")
+                     (outbound . "direct")
+                     (rules . [((rule_set . "geoip-microsoft"))
+                               ((process_name . ["rclone" "OpenList"]))])
                      (type . "logical"))
                     ((outbound . "s[self]")
                      (rule_set . ["geosite-category-ai-!cn"
