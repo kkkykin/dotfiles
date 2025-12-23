@@ -338,8 +338,10 @@ handle_path /aria2-jsonrpc {
 :END:
 
 #+name: hosts
-- github.com
-- google.com
+- googleapis.com
+- *.googleapis.com
+- antigravity-unleash.goog
+- *.googleusercontent.com
 
 #+header: :var proxy-auth-header=(plist-get caddy-proxy :header)
 #+header: :var proxy-auth-key=(plist-get caddy-proxy :key)
@@ -362,7 +364,7 @@ PROXY_AUTH_KEY=$proxy-auth-key
 (allowed-proxy) {
     @allowed-proxy {
         <<format-matcher()>>
-        header "{$PROXY_AUTH_HEADER}" "{$PROXY_AUTH_KEY}"
+        # header "{$PROXY_AUTH_HEADER}" "{$PROXY_AUTH_KEY}"
     }
 }
 
