@@ -745,6 +745,7 @@
     "default_domain_resolver": {
       "server": "cf-dot"
     },
+    "final": "direct",
     "rule_set": [
       {
         "format": "binary",
@@ -768,7 +769,7 @@
 :CUSTOM_ID: bc0f24ed-8894-45b6-9008-4a5f1879b0f1
 :END:
 #+begin_src json :tangle (zr-org-by-tangle-dir "500-s0.json")
-<<gen-server-bounds(name="vps0")>>
+<<gen-server-bounds(name="vps0",token-key="cf0")>>
 #+end_src
 
 *** server1
@@ -777,7 +778,15 @@
 :END:
 
 #+begin_src json :tangle (zr-org-by-tangle-dir "500-s1.json")
-<<gen-server-bounds(name="vps1")>>
+<<gen-server-bounds(name="vps1",token-key="cf1")>>
+#+end_src
+
+*** server2
+:PROPERTIES:
+:CUSTOM_ID: dafd128d-c905-49be-a432-42aff4d2159d
+:END:
+#+begin_src json :tangle (zr-org-by-tangle-dir "500-s2.json")
+<<gen-server-bounds(name="vps2",token-key="cf2")>>
 #+end_src
 
 *** warp
@@ -1019,7 +1028,7 @@
        (attr (cdr info))
        (user-name (plist-get attr :user-name))
        (user-pass (plist-get attr :user-pass))
-       (cf0-token (plist-get (cdr (plstore-get zr-local-pls "cf0")) :api-token)))
+       (cf-token (plist-get (cdr (plstore-get zr-local-pls token-key)) :api-token)))
 
   (when-let* ((port (plist-get attr :vl-port))
               (host (plist-get attr :vl-host))
@@ -1045,7 +1054,7 @@
               (tag (format "any[%s]" name)))
     (push `((listen . "::")
             (listen_port . ,port)
-            (tls . ((acme . ((dns01_challenge . ((api_token . ,cf0-token)
+            (tls . ((acme . ((dns01_challenge . ((api_token . ,cf-token)
                                                  (provider . "cloudflare")))
                              (domain . ,host)
                              (email . ,(plist-get attr :email))))
@@ -1063,10 +1072,11 @@
     (push `((down_mbps . 500)
             (listen . "::")
             (listen_port . ,port)
-            (masquerade . ,(plist-get attr :masq))
+            (masquerade . ((type . "string")
+                           (status_code . 403)))
             (obfs . ((password . ,(plist-get attr :obfs-pass))
                      (type . "salamander")))
-            (tls . ((acme . ((dns01_challenge . ((api_token . ,cf0-token)
+            (tls . ((acme . ((dns01_challenge . ((api_token . ,cf-token)
                                                  (provider . "cloudflare")))
                              (domain . ,host)
                              (email . ,(plist-get attr :email))))
@@ -1084,7 +1094,7 @@
               (tag (format "nv[%s]" name)))
     (push `((listen . "::")
             (listen_port . ,port)
-            (tls . ((acme . ((dns01_challenge . ((api_token . ,cf0-token)
+            (tls . ((acme . ((dns01_challenge . ((api_token . ,cf-token)
                                                  (provider . "cloudflare")))
                              (domain . ,(plist-get attr :nv-host))
                              (email . ,(plist-get attr :email))))
