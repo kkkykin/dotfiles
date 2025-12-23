@@ -395,6 +395,7 @@ PROXY_AUTH_KEY=$proxy-auth-key
 }
 
 http://127.0.0.1:9123 {
+    bind 127.0.0.1
     @allowed-host `query({'domain': [<<format-matcher(fmt="'%s'",sep=",")>>]})`
     respond @allowed-host 200
     respond 403
