@@ -4,32 +4,18 @@
 #+identifier: 20251001T004952
 
 * tangle
-#+header: :var curl-args='("-xsocks5h://127.0.0.1:10807")
 #+begin_src elisp tangle
 (let* ((name (pcase system-type
                ('windows-nt "windows-amd64")
                ('android "linux-arm64")
                ('gnu/linux "linux-amd64")))
+       (zr-local-pls (plstore-open "../.global.pls"))
+       (caddy-proxy (cdr (plstore-get zr-local-pls "caddy-proxy")))
        (zr-local-pls (plstore-open "caddy.pls"))
        (local-conf-dir (expand-file-name "_local"))
        (tangle-dir (expand-file-name "_tangle/"))
-       (bin-dir (pcase system-type
-                  ('windows-nt (substitute-in-file-name "$userprofile/.local/bin/"))
-                  ('android (expand-file-name "usr/bin/" zr-termux-root-directory))
-                  ('gnu/linux tangle-dir)))
        (url (format "https://github.com/kkkykin/custom-caddy/releases/latest/download/caddy-%s.tar.gz" name)))
   (mkdir tangle-dir t)
-  (mkdir bin-dir t)
-  (call-process-shell-command
-   (format "curl -sSL --etag-compare _etag.txt --etag-save _etag.txt %s %s | tar -xzf - -C %s"
-           (mapconcat #'shell-quote-argument curl-args " ")
-           (shell-quote-argument url)
-           (shell-quote-argument tangle-dir))
-   nil 0)
-  (when-let* (((not (string= tangle-dir bin-dir)))
-              (exec-path (list tangle-dir))
-              (caddy-path (executable-find "caddy")))
-    (make-symbolic-link caddy-path bin-dir t))
   (dolist (sub '("subpath" "global" "l4" "snippets"))
     (let ((sub-dir (expand-file-name sub local-conf-dir)))
       (mkdir sub-dir t)
@@ -81,7 +67,6 @@ import {$MAINPATH}/snippets/*
 :END:
 #+begin_src caddy :tangle (zr-org-by-tangle-dir "misc.Caddyfile")
 order coraza_waf first
-order aria2_middleware before reverse_proxy
 auto_https disable_redirects
 #+end_src
 
@@ -345,89 +330,87 @@ handle_path /aria2-jsonrpc {
     }
 }
 #+end_src
-* misc
-** universal proxy
-#+begin_src caddy
+* server
+:PROPERTIES:
+:CUSTOM_ID: c2a9e330-9166-40c1-a881-a7a9df33d308
+:header-args: :mkdirp t
+:tangle-dir: _tangle/server
+:END:
+
+#+header: :var proxy-auth-header=(plist-get caddy-proxy :header)
+#+header: :var proxy-auth-key=(plist-get caddy-proxy :key)
+#+begin_src org :tangle (zr-org-by-tangle-dir "server.env")
+PROXY_AUTH_HEADER=$proxy-auth-header
+PROXY_AUTH_KEY=$proxy-auth-key
+#+end_src
+
+#+begin_src caddy :tangle (zr-org-by-tangle-dir "server.Caddyfile")
 {
-	# 使用本地 CA 自动生成证书
 	local_certs
-	
-	# 日志配置
-	log {
-		output file caddy.log {
-			roll_size 100mb
-			roll_keep 5
-		}
-		level INFO
+    servers :443 {
+		protocols h1 h2 h2c
 	}
 }
 
-# ============================================
-# HTTPS 通用代理 (端口 443)
-# ============================================
+(allowed-proxy) {
+    @allowed-proxy {
+        host google.com
+        header "{$PROXY_AUTH_HEADER}" "{$PROXY_AUTH_KEY}"
+    }
+}
+
+(reverse-main-common) {
+    header_up Host {http.request.host}
+
+    header_up -X-Forwarded-*
+    header_up -X-Real-IP
+    header_up "-{$PROXY_AUTH_HEADER}"
+
+    # 性能优化：低延迟模式（禁用缓冲）
+    flush_interval -1
+}
+
+(reverse-trans-common) {
+    resolvers 8.8.8.8 1.1.1.1
+
+    # 增大缓冲区以提高传输性能
+    read_buffer  4MB                      # 读缓冲区：4MB（适合大文件传输）
+    write_buffer 4MB                      # 写缓冲区：4MB（减少IO操作次数）
+
+    # 优化连接池
+    keepalive 15m                         # 连接保持时间：15分钟
+    keepalive_idle_conns_per_host 100    # 每个主机的空闲连接数：100
+    keepalive_idle_conns 1000            # 总的空闲连接数：1000
+
+    # 优化超时设置
+    dial_timeout 5s                       # 建立连接超时：5秒（适合大多数网络环境）
+    response_header_timeout 10s          # 响应头超时：10秒（等待服务器返回响应头的时间）
+}
+
 :443 {
-	# 使用内部 CA 按需生成证书
 	tls internal {
 		on_demand
 	}
-	
-	# 反向代理到真实服务器
-	reverse_proxy {http.request.host}:443 {
-		# 保持原始 Host 头
-		header_up Host {http.request.host}
 
-		# 移除可能泄漏本地 IP 的头部
-		header_up X-Forwarded-For ""
-		header_up X-Real-IP ""
-		header_up X-Forwarded-Proto ""
-		header_up X-Forwarded-Host ""
-
-		# TLS 配置
+	import allowed-proxy
+	reverse_proxy @allowed-proxy {http.request.host}:443 {
+		import reverse-main-common
 		transport http {
+			import reverse-trans-common
 			tls
-			tls_insecure_skip_verify
 		}
 	}
 }
 
-# ============================================
-# HTTP 通用代理 (端口 80)
-# ============================================
-:80 {
-	# 反向代理到真实服务器
-	reverse_proxy {http.request.host}:80 {
-		# 保持原始 Host 头
-		header_up Host {http.request.host}
-
-		# 移除可能泄漏本地 IP 的头部
-		header_up X-Forwarded-For ""
-		header_up X-Real-IP ""
-		header_up X-Forwarded-Proto ""
-		header_up X-Forwarded-Host ""
-
-		# 性能优化：低延迟模式（禁用缓冲）
-		flush_interval -1
-
-		# 性能优化：传输层配置
-		transport http {
-			# 使用公共 DNS 解析器
-			resolvers 8.8.8.8 1.1.1.1
-
-			# 增大缓冲区（1MB = 1024KB）
-			read_buffer  1MB
-			write_buffer 1MB
-
-			# 优化连接池
-			keepalive 5m
-			keepalive_idle_conns_per_host 100
-			keepalive_idle_conns 1000
-
-			# 优化超时
-			dial_timeout 5s
-			response_header_timeout 10s
-		}
-	}
-}
+# :80 {
+#     import allowed-proxy
+#     reverse_proxy @allowed-proxy {http.request.host}:80 {
+#         import reverse-main-common
+#         transport http {
+#             import reverse-trans-common
+#         }
+#     }
+# }
 #+end_src
 * helper
 ** rsshub
