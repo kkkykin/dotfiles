@@ -337,6 +337,10 @@ handle_path /aria2-jsonrpc {
 :tangle-dir: _tangle/server
 :END:
 
+#+name: hosts
+- github.com
+- google.com
+
 #+header: :var proxy-auth-header=(plist-get caddy-proxy :header)
 #+header: :var proxy-auth-key=(plist-get caddy-proxy :key)
 #+begin_src org :tangle (zr-org-by-tangle-dir "server.env")
@@ -350,11 +354,14 @@ PROXY_AUTH_KEY=$proxy-auth-key
     servers :443 {
 		protocols h1 h2 h2c
 	}
+    on_demand_tls {
+		ask http://127.0.0.1:9123/ask
+	}
 }
 
 (allowed-proxy) {
     @allowed-proxy {
-        host google.com
+        <<format-matcher()>>
         header "{$PROXY_AUTH_HEADER}" "{$PROXY_AUTH_KEY}"
     }
 }
@@ -385,6 +392,12 @@ PROXY_AUTH_KEY=$proxy-auth-key
     # 优化超时设置
     dial_timeout 5s                       # 建立连接超时：5秒（适合大多数网络环境）
     response_header_timeout 10s          # 响应头超时：10秒（等待服务器返回响应头的时间）
+}
+
+http://127.0.0.1:9123 {
+    @allowed-host `query({'domain': [<<format-matcher(fmt="'%s'",sep=",")>>]})`
+    respond @allowed-host 200
+    respond 403
 }
 
 :443 {
@@ -463,4 +476,10 @@ PROXY_AUTH_KEY=$proxy-auth-key
 #+name: cors-map
 #+begin_src elisp :var cors="mpv-cors"
 (mapconcat (lambda (s) (format "%s 1" s)) (plist-get (cdr (plstore-get zr-local-pls cors)) :cors) "\n")
+#+end_src
+
+** format-matcher
+#+name: format-matcher
+#+begin_src elisp :var fmt="host %s" val=hosts[] sep="\n"
+(mapconcat (lambda (s) (format fmt s)) val sep)
 #+end_src
