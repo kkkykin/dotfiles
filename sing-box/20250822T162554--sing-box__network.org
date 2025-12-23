@@ -9,7 +9,7 @@
              "server-config"
              "android-tun"))
   (zr-org-babel-json-format c))
-(let* ((zr-local-pls (plstore-open "sing-box.pls"))
+(let* ((zr-local-pls (plstore-open (expand-file-name "sing-box.pls" zr-secrets-dir)))
        (client-tmp-dir "_tangle/tmp/")
        (tun-dir (expand-file-name "tun/" client-tmp-dir))
        (client-dir "_tangle/client/")
@@ -809,7 +809,7 @@
 
 * bounds
 :PROPERTIES:
-:header-args:elisp: :var ts-ep='((tag . "ts-ep") (type . "tailscale")) obds='(((tag . "direct") (type . "direct"))) ibds='() ep='() conf='()
+:header-args:elisp: :var wg-clients=(cdr (plstore-get zr-local-pls "wg")) wg-ep='((name . "sb-wg") (tag . "wg-ep") (type . "wireguard")) ts-ep='((tag . "ts-ep") (type . "tailscale")) obds='(((tag . "direct") (type . "direct"))) ibds='() ep='() conf='()
 :END:
 ** client
 #+name: gen-client-bounds
@@ -825,6 +825,15 @@
             (tag . "mixed-in")
             (type . "mixed"))
           ibds))
+
+  ;; (when-let* ((wg (plist-get wg-clients (intern (concat ":" (system-name))))))
+  ;;   (push (append wg-ep
+  ;;                 `((system . (if zr-sys-linux-p t :false)
+  ;;                   (address . ,(concat (plist-get wg :addr) "/24"))
+  ;;                   (private_key . ,(plist-get wg :priv))
+  ;;                   (peers . ,(vconcat peers)))
+  ;;                 )
+  ;;         ep))
 
   ;; misc outbounds
   (push '((server . "127.0.0.1")
@@ -1029,6 +1038,23 @@
        (user-name (plist-get attr :user-name))
        (user-pass (plist-get attr :user-pass))
        (cf-token (plist-get (cdr (plstore-get zr-local-pls token-key)) :api-token)))
+
+  (when-let* ((port (plist-get attr :wg-port))
+              (addr (plist-get attr :wg-addr))
+              (priv-key (plist-get attr :wg-priv-key))
+              (peers (cl-loop for p in wg-clients
+                              for i from 0
+                              when (oddp i)
+                              collect
+                              `( :public_key ,(plist-get p :pub)
+                                 :allowed_ips ,(concat (plist-get p :addr) "/32")))))
+    (push (append wg-ep
+                  `((system . t)
+                    (address . ,addr)
+                    (private_key . ,priv-key)
+                    (peers . ,(vconcat peers)))
+                  )
+          ep))
 
   (when-let* ((port (plist-get attr :vl-port))
               (host (plist-get attr :vl-host))
