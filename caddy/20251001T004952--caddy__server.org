@@ -67,6 +67,7 @@ import {$MAINPATH}/snippets/*
 :END:
 #+begin_src caddy :tangle (zr-org-by-tangle-dir "misc.Caddyfile")
 order coraza_waf first
+order aria2_middleware before reverse_proxy
 auto_https disable_redirects
 #+end_src
 
