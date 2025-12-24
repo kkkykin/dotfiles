@@ -1048,6 +1048,7 @@ SEP defaults to \"/\"."
                 (rule_set . "wireguard-rules"))
               wg-rules-group)
         (push `( (tag . ,tag)
+                 (name . ,tag)
                  (type . "wireguard")
                  (system . ,(if zr-sys-linux-p t :false))
                  (address . ,(concat (plist-get wg :addr) "/24"))
