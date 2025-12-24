@@ -1173,7 +1173,7 @@ SEP defaults to \"/\"."
               (priv-key (plist-get attr :wg-priv-key))
               (peers (cl-loop for p in wg-clients
                               for i from 0
-                              when (oddp i)
+                              when (cl-oddp i)
                               collect
                               `( :public_key ,(plist-get p :pub)
                                  :allowed_ips ,(concat (plist-get p :addr) "/32")))))
