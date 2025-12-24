@@ -32,6 +32,7 @@
        sub-outbounds
        us-outbounds
        ja-outbounds
+       mode-rules-group
 
        (main-file (expand-file-name "500-main.json" client-dir))
        (tun-file (expand-file-name "500-tun.json" client-dir))
@@ -392,6 +393,11 @@
         "type": "local"
       },
       {
+        "path": "$rule_sets_dir/wireguard.srs",
+        "tag": "wireguard-rules",
+        "type": "local"
+      },
+      {
         "path": "$rule_sets_dir/tailscale.srs",
         "tag": "tailscale-rules",
         "type": "local"
@@ -529,35 +535,100 @@
                      (rule_set . ["geosite-category-porn"
                                   "server-direct-rules"
                                   "proxy-rules"]))
-                    ((action . "resolve"))
-                    ((ip_is_private . t)
-                     (outbound . "direct")
-                     (rule_set . ["geosite-geolocation-cn"
-                                  "geosite-cn"
-                                  "geoip-cn"]))))
-       (mode-rules `(((clash_mode . "cf-direct")
+                    ((action . "resolve"))))
+       (post-rules '(((ip_is_private . t)
                       (outbound . "direct")
-                      (rule_set . "geoip-cloudflare"))
-                     ((clash_mode . "cf-v4")
-                      (outbound . "direct")
-                      (override_address . ,cf-4)
-                      (rule_set . "geoip-cloudflare"))
-                     ((clash_mode . "cf-v6")
-                      (outbound . "direct")
-                      (override_address . ,cf-6)
-                      (rule_set . "geoip-cloudflare"))))
-       (post-rules '(((mode . "and")
+                      (rule_set . ["geosite-geolocation-cn"
+                                   "geosite-cn"
+                                   "geoip-cn"]))
+                     ((mode . "and")
                       (outbound . "s[this-way]")
                       (rules . [((rule_set . "geosite-geolocation-!cn"))
                                 ((invert . t)
                                  (rule_set . "geoip-cn"))])
                       (type . "logical"))))
+       (cf-group-rules `(((clash_mode . "cf-direct")
+                          (outbound . "direct")
+                          (rule_set . "geoip-cloudflare"))
+                         ((clash_mode . "cf-v4")
+                          (outbound . "direct")
+                          (override_address . ,cf-4)
+                          (rule_set . "geoip-cloudflare"))
+                         ((clash_mode . "cf-v6")
+                          (outbound . "direct")
+                          (override_address . ,cf-6)
+                          (rule_set . "geoip-cloudflare"))))
        (default-mode (cond
-                      (zr-sys-android-p "cf-direct")
-                      ((zr-net-has-public-ipv6-addr-p) "cf-v6")
-                      (t "cf-v4"))))
-  (json-serialize `((experimental (clash_api (default_mode . ,default-mode)))
-                    (route (rules . ,(vconcat pre-rules mode-rules post-rules))))))
+                      (zr-sys-android-p "cf-direct/wg-ep[vps2]")
+                      ((zr-net-has-public-ipv6-addr-p) "cf-v6/wg-ep[vps2]")
+                      (t "cf-v4/wg-ep[vps2]"))))
+  (push cf-group-rules mode-rules-group)
+  (cl-letf*
+      (((symbol-function 'clash--cartesian-product)
+        (lambda (lists)
+          "Return cartesian product of LISTS (a list of lists).
+Example: '((a b) (c d)) => '((a c) (a d) (b c) (b d)).
+Order is preserved."
+          (let ((res (list nil)))
+            (dolist (lst lists res)
+              (setq res
+                    (cl-mapcan
+                     (lambda (prefix)
+                       (mapcar (lambda (x) (append prefix (list x))) lst))
+                     res))))))
+       ((symbol-function 'clash-expand-clash-mode-combinations)
+        (lambda (groups &optional sep)
+          "Expand GROUPS by combining `clash_mode` across all groups (cartesian product).
+
+GROUPS is a list of groups; each group is a list of rule alists.
+Each rule must have (clash_mode . STRING).
+
+Result keeps the same number of groups. For each original group i:
+- Every rule r in group i is duplicated for every combination of `clash_mode`
+  picked from all other groups.
+- The new rule keeps all fields from r, only updating `clash_mode` to the
+  concatenation of the selected modes across ALL groups, in original group order.
+
+SEP defaults to \"/\"."
+          (setq sep (or sep "/"))
+          (let* ((n (length groups))
+                 (modes-per-group
+                  (mapcar (lambda (g)
+                            (mapcar (lambda (rule)
+                                      (alist-get 'clash_mode rule))
+                                    g))
+                          groups)))
+            (cl-loop
+             for i from 0 below n
+             collect
+             (let* ((this-group (nth i groups))
+                    (other-modes
+                     (cl-loop for j from 0 below n
+                              unless (= j i)
+                              collect (nth j modes-per-group)))
+                    (combos (clash--cartesian-product other-modes)))
+               (cl-loop
+                for rule in this-group
+                append
+                (let ((this-mode (alist-get 'clash_mode rule)))
+                  (cl-loop
+                   for combo in combos
+                   collect
+                   (let* ((k 0)
+                          (all-modes
+                           (cl-loop for j from 0 below n
+                                    collect (if (= j i)
+                                                this-mode
+                                              (prog1 (nth k combo)
+                                                (setq k (1+ k))))))
+                          (new-rule (copy-tree rule t)))
+                     (setf (alist-get 'clash_mode new-rule)
+                           (mapconcat #'identity all-modes sep))
+                     new-rule))))))))))
+    (let* ((mode-rules (apply #'vconcat (clash-expand-clash-mode-combinations
+                                         mode-rules-group))))
+      (json-serialize `((experimental (clash_api (default_mode . ,default-mode)))
+                        (route (rules . ,(vconcat pre-rules mode-rules post-rules))))))))
 #+end_src
 
 *** hosts
@@ -809,13 +880,14 @@
 
 * bounds
 :PROPERTIES:
-:header-args:elisp: :var wg-clients=(cdr (plstore-get zr-local-pls "wg")) wg-ep='((name . "sb-wg") (tag . "wg-ep") (type . "wireguard")) ts-ep='((tag . "ts-ep") (type . "tailscale")) obds='(((tag . "direct") (type . "direct"))) ibds='() ep='() conf='()
+:header-args:elisp: :var wg-clients=(cdr (plstore-get zr-local-pls "wg")) ts-ep='((tag . "ts-ep") (type . "tailscale")) obds='(((tag . "direct") (type . "direct"))) ibds='() ep='() conf='()
 :END:
 ** client
 #+name: gen-client-bounds
 #+begin_src elisp
 (let ((tailscale-state-dir (expand-file-name "tailscale_state" "_tangle"))
       (vps (plstore-find zr-local-pls '(:user-name ("kkky"))))
+      wg-rules-group
       s-tags)
   (push `(state_directory . ,tailscale-state-dir) ts-ep)
 
@@ -825,15 +897,6 @@
             (tag . "mixed-in")
             (type . "mixed"))
           ibds))
-
-  ;; (when-let* ((wg (plist-get wg-clients (intern (concat ":" (system-name))))))
-  ;;   (push (append wg-ep
-  ;;                 `((system . (if zr-sys-linux-p t :false)
-  ;;                   (address . ,(concat (plist-get wg :addr) "/24"))
-  ;;                   (private_key . ,(plist-get wg :priv))
-  ;;                   (peers . ,(vconcat peers)))
-  ;;                 )
-  ;;         ep))
 
   ;; misc outbounds
   (push '((server . "127.0.0.1")
@@ -936,7 +999,36 @@
                 (tag . ,s-tag)
                 (type . "selector"))
               obds)
-        (push s-tag s-tags))))
+        (push s-tag s-tags))
+
+      (when-let* ((wg (plist-get wg-clients (intern (concat ":" (system-name)))))
+                  (port (plist-get attr :wg-port))
+                  (addr (plist-get attr :wg-addr))
+                  (pub (plist-get attr :wg-pub-key))
+                  (proto (if (and (eq ip-type :ipv6)
+                                  (not zr-sys-android-p))
+                             :ipv6
+                           :ip))
+                  (peers `( :address ,(plist-get attr proto)
+                            :port ,port
+                            :persistent_keepalive_interval 30
+                            :public_key ,pub
+                            :allowed_ips ,addr))
+                  (tag (format "wg-ep[%s]" name)))
+        (push `((clash_mode . ,tag)
+                (outbound . ,tag)
+                (rule_set . "wireguard-rules"))
+              wg-rules-group)
+        (push `( (tag . ,tag)
+                 (type . "wireguard")
+                 (system . ,(if zr-sys-linux-p t :false))
+                 (address . ,(concat (plist-get wg :addr) "/24"))
+                 (private_key . ,(plist-get wg :priv))
+                 (peers . ,(vector peers)))
+              ep))))
+
+  (when wg-rules-group
+    (push wg-rules-group mode-rules-group))
 
   ;; selector
   (let* ((u-self-tag "u[self]")
@@ -1048,12 +1140,13 @@
                               collect
                               `( :public_key ,(plist-get p :pub)
                                  :allowed_ips ,(concat (plist-get p :addr) "/32")))))
-    (push (append wg-ep
-                  `((system . t)
-                    (address . ,addr)
-                    (private_key . ,priv-key)
-                    (peers . ,(vconcat peers)))
-                  )
+    (push `((tag . "wg-ep")
+            (type . "wireguard")
+            (system . t)
+            (address . ,addr)
+            (listen_port . ,port)
+            (private_key . ,priv-key)
+            (peers . ,(vconcat peers)))
           ep))
 
   (when-let* ((port (plist-get attr :vl-port))
@@ -1232,6 +1325,27 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
                                 . ["[\\\\/]mitmproxy(\\.exe)?$"])
                                (invert . t))]
                              (or local place-holder))))]))))
+#+end_src
+
+** wireguard
+:PROPERTIES:
+:CUSTOM_ID: d8aff9df-7c29-46e7-8d01-74c5795c9be6
+:END:
+#+begin_src json :tangle (zr-org-by-tangle-dir "wireguard.json") :mkdirp t
+<<gen-wireguard-rule-set()>>
+#+end_src
+
+#+name: gen-wireguard-rule-set
+#+begin_src elisp
+(let* ((place-holder [((ip_cidr . "10.0.0.0/24"))])
+       (local-file "_wireguard.eld")
+       (local (and (file-exists-p local-file)
+                   (with-temp-buffer
+                     (insert-file-contents local-file)
+                     (read (current-buffer))))))
+  (json-serialize
+   `((version . 3)
+     (rules . ,(or local place-holder)))))
 #+end_src
 
 ** tailscale
