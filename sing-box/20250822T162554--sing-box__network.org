@@ -393,6 +393,16 @@
         "type": "local"
       },
       {
+        "path": "$rule_sets_dir/browse.srs",
+        "tag": "browse-rules",
+        "type": "local"
+      },
+      {
+        "path": "$rule_sets_dir/download.srs",
+        "tag": "download-rules",
+        "type": "local"
+      },
+      {
         "path": "$rule_sets_dir/wireguard.srs",
         "tag": "wireguard-rules",
         "type": "local"
@@ -525,7 +535,21 @@
                     ((mode . "and")
                      (outbound . "direct")
                      (rules . [((rule_set . "geoip-microsoft"))
-                               ((process_name . ["rclone" "OpenList"]))])
+                               ((rule_set . "download-rules"))])
+                     (type . "logical"))
+                    ((mode . "and")
+                     (outbound . "s[browse]")
+                     (rules . [((rule_set . ["geosite-category-porn"
+                                             "server-direct-rules"
+                                             "proxy-rules"]))
+                               ((rule_set . "browse-rules"))])
+                     (type . "logical"))
+                    ((mode . "and")
+                     (outbound . "s[download]")
+                     (rules . [((rule_set . ["geosite-category-porn"
+                                             "server-direct-rules"
+                                             "proxy-rules"]))
+                               ((rule_set . "download-rules"))])
                      (type . "logical"))
                     ((outbound . "s[self]")
                      (rule_set . ["geosite-category-ai-!cn"
@@ -887,6 +911,8 @@ SEP defaults to \"/\"."
 #+begin_src elisp
 (let ((tailscale-state-dir (expand-file-name "tailscale_state" "_tangle"))
       (vps (plstore-find zr-local-pls '(:user-name ("kkky"))))
+      (download-tags '("s[this-way]" "direct"))
+      (browse-tags '("s[this-way]" "direct"))
       wg-rules-group
       s-tags)
   (push `(state_directory . ,tailscale-state-dir) ts-ep)
@@ -919,6 +945,9 @@ SEP defaults to \"/\"."
            (u-tag (format "u[%s]" name))
            (s-tag (format "s[%s]" name))
            vps-tags)
+      (pcase (plist-get attr :type)
+        ("download" (push s-tag download-tags))
+        ("browse" (push s-tag browse-tags)))
 
       (when-let* ((port (plist-get attr :nv-port))
                   (host (plist-get attr :nv-host))
@@ -1060,6 +1089,7 @@ SEP defaults to \"/\"."
 
     (when sub-outbounds
       (push "s[sub]" s-this-way)
+      (push "s[sub]" browse-tags)
       (push "s[sub]" s-dns)
       (push `(((type . "selector")
                (tag . "s[sub]")
@@ -1096,6 +1126,14 @@ SEP defaults to \"/\"."
              (outbounds . ,(vconcat s-this-way))))
           pre-obds)
     (push `(((type . "selector")
+             (tag . "s[download]")
+             (outbounds . ,(vconcat download-tags))
+             (default . ,(car download-tags)))
+            ((type . "selector")
+             (tag . "s[browse]")
+             (outbounds . ,(vconcat browse-tags))
+             (default . ,(car browse-tags)))
+            ((type . "selector")
              (tag . "s[dns]")
              (outbounds . ,(vconcat s-dns))
              (default . ,u-dns))
@@ -1324,6 +1362,64 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
                  . ,(vconcat [((process_path_regex
                                 . ["[\\\\/]mitmproxy(\\.exe)?$"])
                                (invert . t))]
+                             (or local place-holder))))]))))
+#+end_src
+
+
+** browse
+:PROPERTIES:
+:CUSTOM_ID: 6cf04f09-9f9c-43c6-b54c-5c087842b0c5
+:END:
+#+begin_src json :tangle (zr-org-by-tangle-dir "browse.json") :mkdirp t
+<<gen-browse-rule-set()>>
+#+end_src
+
+#+name: gen-browse-rule-set
+#+begin_src elisp
+(let* ((place-holder [((domain_suffix . [".it-just-a-placeholder"]))])
+       (local-file "_browse.eld")
+       (local (and (file-exists-p local-file)
+                   (with-temp-buffer
+                     (insert-file-contents local-file)
+                     (read (current-buffer))))))
+  (json-serialize
+   `((version . 3)
+     (rules . [((type . "logical")
+                (mode . "and")
+                (rules
+                 . ,(vconcat [((process_path_regex
+                                . ["[\\/]msedge(\\.exe)?$"
+                                   "[\\/]chrome(\\.exe)?$"
+                                   "[\\/]firefox(\\.exe)?$"
+                                   "[\\/]cromite(\\.exe)?$"]))]
+                             (or local place-holder))))]))))
+#+end_src
+
+** download
+:PROPERTIES:
+:CUSTOM_ID: 7c609bc0-32ab-40dd-a48a-a330001c2f9d
+:END:
+#+begin_src json :tangle (zr-org-by-tangle-dir "download.json") :mkdirp t
+<<gen-download-rule-set()>>
+#+end_src
+
+#+name: gen-download-rule-set
+#+begin_src elisp
+(let* ((place-holder [((domain_suffix . [".it-just-a-placeholder"]))])
+       (local-file "_download.eld")
+       (local (and (file-exists-p local-file)
+                   (with-temp-buffer
+                     (insert-file-contents local-file)
+                     (read (current-buffer))))))
+  (json-serialize
+   `((version . 3)
+     (rules . [((type . "logical")
+                (mode . "and")
+                (rules
+                 . ,(vconcat [((process_path_regex
+                                . ["[\\/]aria2c(\\.exe)?$"
+                                   "[\\/]rclone(\\.exe)?$"
+                                   "[\\/]OpenList(\\.exe)?$"]))]
                              (or local place-holder))))]))))
 #+end_src
 
