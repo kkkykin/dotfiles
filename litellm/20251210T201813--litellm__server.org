@@ -138,11 +138,11 @@
          (litellm (cdr (plstore-get zr-local-pls "litellm")))
          (litellm-settings '((drop_params . t)
                              (num_retries . 3)
-                             (default_fallbacks . ["glm-4.6"])
+                             (default_fallbacks . ["glm-4.7"])
                              ;; (turn_off_message_logging . t)
                              (redact_user_api_key_info . t)
                              (callbacks . ["langfuse_otel"
-                                           "pre_call.codex_prompt_mod"
+                                           ;; "pre_call.codex_prompt_mod"
                                            "pre_call.header_forward"])))
          (general-settings `((forward_client_headers_to_llm_api . :false)
                              (disable_master_key_return . t)
@@ -157,6 +157,7 @@
                                           ((claude-opus-4-5-20251101 . ["claude-opus-4-5"]))
                                           ((claude-sonnet-4-5-20250929 . ["claude-sonnet-4-5" "claude-4.5-sonnet"]))
                                           ((claude-sonnet-4-20250514 . ["claude-4-sonnet"]))
+                                          ((gpt-5.1-codex-max . ["gpt-5.1-codex" "gpt-5.1"]))
                                           ((claude-3-5-haiku-20241022 . ["claude-haiku-4-5-20251001"]))])))
          model-list)
     (seq-do-indexed
@@ -188,6 +189,49 @@
 
 * models
 #+name: models-tbl
+| name                          | api | modelscope                          | 88code | snow | dabuliu           | jason_wong1 | anyrouter | bohe                  | ouyangqiqi                                                                                              |
+|-------------------------------+-----+-------------------------------------+--------+------+-------------------+-------------+-----------+-----------------------+---------------------------------------------------------------------------------------------------------|
+| glm-4.7                       | t   |                                     |        |      |                   |             |           |                       |                                                                                                         |
+| glm-4.6                       | t   |                                     |        |      |                   |             |           |                       |                                                                                                         |
+| qwen3-235b-a22b-instruct      | t   | Qwen/Qwen3-235B-A22B-Instruct-2507  |        |      |                   |             |           |                       |                                                                                                         |
+| qwen3-235b-a22b-thinking-2507 | t   | Qwen/Qwen3-235B-A22B-Thinking-2507  |        |      |                   |             |           |                       |                                                                                                         |
+| qwen3-coder-plus              | t   | Qwen/Qwen3-Coder-480B-A35B-Instruct |        |      |                   |             |           |                       |                                                                                                         |
+| qwen3-max                     | t   |                                     |        |      |                   |             |           |                       |                                                                                                         |
+| qwen3-vl-plus                 | t   | Qwen/Qwen3-VL-235B-A22B-Instruct    |        |      |                   |             |           |                       |                                                                                                         |
+| kimi-k2                       | t   |                                     |        |      |                   |             |           |                       |                                                                                                         |
+| kimi-k2-0905                  | t   |                                     |        |      |                   |             |           |                       |                                                                                                         |
+| kimi-k2-thinking              | t   |                                     |        |      |                   |             |           |                       |                                                                                                         |
+| deepseek-v3.2                 | t   | deepseek-ai/DeepSeek-V3.2           |        |      |                   |             |           |                       |                                                                                                         |
+| deepseek-v3.2-chat            | t   |                                     |        |      |                   |             |           |                       |                                                                                                         |
+| deepseek-v3.2-reasoner        | t   |                                     |        |      |                   |             |           |                       |                                                                                                         |
+| deepseek-r1                   | t   | deepseek-ai/DeepSeek-R1-0528        |        |      |                   |             |           |                       |                                                                                                         |
+| minimax-m2                    | t   |                                     |        |      |                   |             |           |                       |                                                                                                         |
+| minimax-m2.1                  | t   |                                     |        |      |                   |             |           |                       |                                                                                                         |
+| z-image-turbo                 |     | Tongyi-MAI/Z-Image-Turbo            |        |      |                   |             |           |                       |                                                                                                         |
+| glm-4.6v                      |     | ZhipuAI/GLM-4.6V                    |        |      |                   |             |           |                       |                                                                                                         |
+| claude-3-5-haiku-20241022     |     |                                     |        |      |                   | ant/t       | ant/t     |                       |                                                                                                         |
+| claude-4-sonnet               |     |                                     |        |      | '("t" "%s-think") |             |           |                       | t                                                                                                       |
+| claude-4.5-sonnet             |     |                                     |        |      | '("t" "%s-think") |             |           |                       |                                                                                                         |
+| claude-haiku-4-5-20251001     |     |                                     |        |      |                   | ant/t       | ant/t     |                       |                                                                                                         |
+| claude-opus-4-5               |     |                                     |        |      |                   |             |           | %s-thinking           |                                                                                                         |
+| claude-opus-4-5-20251101      |     |                                     |        |      |                   | ant/t       | ant/t     |                       |                                                                                                         |
+| claude-sonnet-4-20250514      |     |                                     |        |      |                   | ant/t       | ant/t     |                       |                                                                                                         |
+| claude-sonnet-4-5             |     |                                     |        |      |                   |             |           | t                     | t                                                                                                       |
+| claude-sonnet-4-5-20250929    |     |                                     |        |      |                   | ant/t       | ant/t     |                       |                                                                                                         |
+| gpt-5                         |     |                                     |        | t    |                   |             |           |                       |                                                                                                         |
+| gpt-5-codex                   |     |                                     | t      | t    |                   |             |           |                       |                                                                                                         |
+| gpt-5.1                       |     |                                     | t      | t    |                   |             |           |                       |                                                                                                         |
+| gpt-5.1-codex                 |     |                                     | t      | t    |                   |             |           |                       |                                                                                                         |
+| gpt-5.1-codex-max             |     |                                     | t      |      |                   |             |           |                       |                                                                                                         |
+| gpt-5.2                       |     |                                     |        |      |                   |             |           |                       |                                                                                                         |
+| gpt-5.2-codex                 |     |                                     |        |      |                   |             |           |                       |                                                                                                         |
+| gemini-2.5-flash              |     |                                     |        |      |                   |             |           |                       |                                                                                                         |
+| gemini-2.5-pro                |     |                                     |        |      |                   |             |           | %s-1m                 | '("t" "hyb-Optimal/%s" "hyb-Optimal/gemini抗截断系列/%s" "hyb-Optimal/gemini抗截断系列/%s-maxthinking") |
+| gemini-3-flash                |     |                                     |        |      |                   |             |           |                       |                                                                                                         |
+| gemini-3-pro                  |     |                                     |        |      |                   |             |           | '("%s-low" "%s-high") | %s-preview                                                                                              |
+| grok-4.1                      |     |                                     |        |      |                   |             |           |                       | '("t" "%s-thinking")                                                                                    |
+
+#+name: models-tbl-bak
 | name                          | beizhi                 | Nyxar | WCyrus | api | Sanyela | zhongruan | pangil            | kkkyyx     | dabuliu           | bohe                  | HenryXiaoYang | bytebender                   | jason_wong1 | anyrouter | huan                 | snow | 88code | ouyangqiqi              | modelscope                          | sc0152                                    | linuxdo |
 |-------------------------------+------------------------+-------+--------+-----+---------+-----------+-------------------+------------+-------------------+-----------------------+---------------+------------------------------+-------------+-----------+----------------------+------+--------+-------------------------+-------------------------------------+-------------------------------------------+---------|
 | glm-4.6                       |                        |       |        | t   |         |           |                   |            |                   |                       |               |                              |             |           |                      |      |        |                         |                                     |                                           |         |
