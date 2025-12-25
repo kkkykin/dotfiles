@@ -322,7 +322,8 @@ handle_path /rsshub/* {
 :CUSTOM_ID: c88e06a5-88ea-4ebf-934a-9a9b5be4e002
 :END:
 #+begin_src caddy :mkdirp t :tangle (zr-org-by-tangle-dir "aria2.Caddyfile")
-handle_path /aria2-jsonrpc/* {
+handle_path /aria2-jsonrpc {
+    rewrite * /jsonrpc
     @json header content-type application/json
     json_parse @json {
       # Transform aria2.addUri params whether or not a secret token is present.
