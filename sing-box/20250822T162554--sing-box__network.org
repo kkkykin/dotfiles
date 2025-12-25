@@ -842,13 +842,41 @@ SEP defaults to \"/\"."
     "final": "direct",
     "rule_set": [
       {
-        "format": "binary",
+        "download_detour": "direct",
+        "tag": "geoip-cn",
+        "type": "remote",
+        "url": "https://github.com/SagerNet/sing-geoip/raw/refs/heads/rule-set/geoip-cn.srs"
+      },
+      {
+        "path": "$rule_sets_dir/server-dns-redirect.srs",
+        "tag": "server-dns-redirect-rules",
+        "type": "local"
+      },
+      {
         "path": "$rule_sets_dir/server-direct.srs",
         "tag": "server-direct-rules",
         "type": "local"
       }
     ],
     "rules": [
+      {
+        "action": "sniff",
+        "sniffer": "dns"
+      },
+      {
+        "action": "hijack-dns",
+        "mode": "and",
+        "rules": [
+          {
+            "protocol": "dns"
+          },
+          {
+            "rule_set": "geoip-cn",
+            "rule_set_ip_cidr_match_source": true
+          }
+        ],
+        "type": "logical"
+      },
       {
         "outbound": "direct",
         "rule_set": "server-direct-rules"
@@ -903,7 +931,7 @@ SEP defaults to \"/\"."
 
 * bounds
 :PROPERTIES:
-:header-args:elisp: :var wg-clients=(cdr (plstore-get zr-local-pls "wg")) ts-ep='((tag . "ts-ep") (type . "tailscale")) obds='(((tag . "direct") (type . "direct"))) ibds='() ep='() conf='()
+:header-args:elisp: :var wg-clients=(cdr (plstore-get zr-local-pls "wg")) ts-ep='((tag . "ts-ep") (type . "tailscale")) obds='(((tag . "direct") (type . "direct"))) ibds='() ep='() conf='() dns-rules='()
 :END:
 ** client
 #+name: gen-client-bounds
@@ -1167,7 +1195,35 @@ SEP defaults to \"/\"."
        (attr (cdr info))
        (user-name (plist-get attr :user-name))
        (user-pass (plist-get attr :user-pass))
+       dns-answer
        (cf-token (plist-get (cdr (plstore-get zr-local-pls token-key)) :api-token)))
+
+  (when-let* ((ip (plist-get attr :ip)))
+    (push (format "localhost. IN A %s" ip) dns-answer)
+    (push `((listen . ,ip)
+            (listen_port . 53)
+            (network . "udp")
+            (tag . "dns4-in")
+            (type . "direct"))
+          ibds)
+    (when-let* ((ipv6 (plist-get attr :ipv6)))
+      (push (format "localhost. IN AAAA %s" ipv6) dns-answer)
+      (push `((listen . ,ipv6)
+              (listen_port . 53)
+              (network . "udp")
+              (tag . "dns6-in")
+              (type . "direct"))
+            ibds))
+    (push `((action . "predefined")
+            (answer . ,(vconcat dns-answer))
+            (mode . "and")
+            (rcode . "NOERROR")
+            (rules . [((rule_set . "geoip-cn")
+                       (rule_set_ip_cidr_match_source . t))
+                      ((rule_set . "server-dns-redirect-rules"))
+                      ((protocol . "dns"))])
+            (type . "logical"))
+          dns-rules))
 
   (when-let* ((port (plist-get attr :wg-port))
               (addr (plist-get attr :wg-addr))
@@ -1268,6 +1324,7 @@ SEP defaults to \"/\"."
 #+name: return-bounds
 #+begin_src elisp
 (push ts-ep ep)
+(when dns-rules (push `(dns . (rules ,(vconcat dns-rules))) conf))
 (when ep (push `(endpoints . ,(vconcat ep)) conf))
 (when obds (push `(outbounds . ,(vconcat obds)) conf))
 (when ibds (push `(inbounds . ,(vconcat ibds)) conf))
@@ -1536,3 +1593,19 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
 }
 #+end_src
 
+** server-dns-redirect
+:PROPERTIES:
+:CUSTOM_ID: 87356417-1776-4026-8df3-18f1895c6f23
+:END:
+#+begin_src json :mkdirp t :tangle (zr-org-by-tangle-dir "server-dns-redirect.json")
+{
+  "rules": [
+    {
+      "domain": [
+        "f-droid.org"
+      ]
+    }
+  ],
+  "version": 3
+}
+#+end_src
