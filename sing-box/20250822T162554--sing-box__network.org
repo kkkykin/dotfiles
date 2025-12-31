@@ -865,17 +865,15 @@ SEP defaults to \"/\"."
       },
       {
         "action": "hijack-dns",
-        "mode": "and",
-        "rules": [
-          {
-            "protocol": "dns"
-          },
-          {
-            "rule_set": "geoip-cn",
-            "rule_set_ip_cidr_match_source": true
-          }
-        ],
-        "type": "logical"
+        "protocol": "dns"
+      },
+      {
+        "inbound": "dot-in",
+        "outbound": "direct",
+        "override_address": "127.0.0.1",
+        "override_port": 8853,
+        "rule_set": "geoip-cn",
+        "rule_set_ip_cidr_match_source": true
       },
       {
         "outbound": "direct",
@@ -1198,32 +1196,30 @@ SEP defaults to \"/\"."
        dns-answer
        (cf-token (plist-get (cdr (plstore-get zr-local-pls token-key)) :api-token)))
 
-  ;; (when-let* ((ip (plist-get attr :ip)))
-  ;;   (push (format "localhost. IN A %s" ip) dns-answer)
-  ;;   (push `((listen . ,ip)
-  ;;           (listen_port . 53)
-  ;;           (network . "udp")
-  ;;           (tag . "dns4-in")
-  ;;           (type . "direct"))
-  ;;         ibds)
-  ;;   (when-let* ((ipv6 (plist-get attr :ipv6)))
-  ;;     (push (format "localhost. IN AAAA %s" ipv6) dns-answer)
-  ;;     (push `((listen . ,ipv6)
-  ;;             (listen_port . 53)
-  ;;             (network . "udp")
-  ;;             (tag . "dns6-in")
-  ;;             (type . "direct"))
-  ;;           ibds))
-  ;;   (push `((action . "predefined")
-  ;;           (answer . ,(vconcat dns-answer))
-  ;;           (mode . "and")
-  ;;           (rcode . "NOERROR")
-  ;;           (rules . [((rule_set . "geoip-cn")
-  ;;                      (rule_set_ip_cidr_match_source . t))
-  ;;                     ((rule_set . "server-dns-redirect-rules"))
-  ;;                     ((protocol . "dns"))])
-  ;;           (type . "logical"))
-  ;;         dns-rules))
+  (when-let* ((ip (plist-get attr :ip)))
+    (push (format "localhost. IN A %s" ip) dns-answer)
+    (when-let* ((ipv6 (plist-get attr :ipv6)))
+      (push (format "localhost. IN AAAA %s" ipv6) dns-answer))
+    (push `((action . "predefined")
+            (answer . ,(vconcat dns-answer))
+            (mode . "and")
+            (rcode . "NOERROR")
+            (rules . [((rule_set . "server-dns-redirect-rules"))
+                      ((protocol . "dns"))])
+            (type . "logical"))
+          dns-rules)
+    (push `((listen . "127.0.0.1")
+            (listen_port . 53)
+            (network . "udp")
+            (tag . "dns4-in")
+            (type . "direct"))
+          ibds)
+    (push `((listen . "::")
+            (listen_port . 853)
+            (network . "tcp")
+            (tag . "dot-in")
+            (type . "direct"))
+          ibds))
 
   (when-let* ((port (plist-get attr :wg-port))
               (addr (plist-get attr :wg-addr))
