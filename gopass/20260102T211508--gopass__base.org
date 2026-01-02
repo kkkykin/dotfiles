@@ -1,0 +1,12 @@
+#+title:      gopass
+#+date:       [2026-01-02 Fri 21:15]
+#+filetags:   :base:
+#+identifier: 20260102T211508
+
+* config
+#+begin_src sh
+gopass config core.cliptimeout 10
+gopass config core.notifications false
+gopass config show.safecontent true
+gopass config otp.autoclip true
+#+end_src
