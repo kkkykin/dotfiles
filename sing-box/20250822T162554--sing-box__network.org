@@ -393,6 +393,11 @@
         "type": "local"
       },
       {
+        "path": "$rule_sets_dir/block.srs",
+        "tag": "block-rules",
+        "type": "local"
+      },
+      {
         "path": "$rule_sets_dir/browse.srs",
         "tag": "browse-rules",
         "type": "local"
@@ -525,6 +530,8 @@
                      (rule_set . "mitm-rules"))
                     ((outbound . "ts-ep")
                      (rule_set . "tailscale-rules"))
+                    ((action . "reject")
+                     (rule_set . "block-rules"))
                     ((mode . "or")
                      (outbound . "direct")
                      (rules . [((rule_set . "direct-rules"))
@@ -1382,6 +1389,28 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
                     . ["cfst"
                        "cloudflared"]))))
        (local-file "_direct.eld")
+       (local (and (file-exists-p local-file)
+                   (with-temp-buffer
+                     (insert-file-contents local-file)
+                     (read (current-buffer))))))
+  (json-serialize
+   `((version . 3)
+     (rules . ,(vconcat local default)))))
+#+end_src
+
+** block
+:PROPERTIES:
+:CUSTOM_ID: 07161900-feaf-46fe-af4f-5dde91b3d716
+:END:
+#+begin_src json :tangle (zr-org-by-tangle-dir "block.json") :mkdirp t
+<<gen-block-rule-set()>>
+#+end_src
+
+#+name: gen-block-rule-set
+#+begin_src elisp
+(let* ((default `(((process_path_regex
+                    . ["^D:\\\\Games\\\\.*"]))))
+       (local-file "_block.eld")
        (local (and (file-exists-p local-file)
                    (with-temp-buffer
                      (insert-file-contents local-file)
