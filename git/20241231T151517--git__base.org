@@ -54,6 +54,7 @@
 [core]
 	filemode = false
 	sshCommand = C:/Windows/System32/OpenSSH/ssh.exe
+	symlinks = true
 [gc]
 	auto = 256
 #+end_src
