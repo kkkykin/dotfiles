@@ -12,3 +12,7 @@ winget source add winget https://mirrors.ustc.edu.cn/winget-source
 #+begin_src bat
 winget source reset winget
 #+end_src
+* proxy
+#+begin_src sh
+sudo winget settings set DefaultProxy http://127.0.0.1:10807
+#+end_src
