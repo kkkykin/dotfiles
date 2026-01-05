@@ -1325,19 +1325,26 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
                      (insert-file-contents local-file)
                      (read (current-buffer)))))
        (default [])
-       suffix)
+       domain
+       domain-regex
+       domain-suffix
+       pac)
   (cl-mapc
    (lambda (p h)
-     (push
-      (mapcar (lambda (domain)
-                (format "^(.+\\.)?%s$" (regexp-quote domain)))
-              (cl-remove "local" h :test #'string= :count 1))
-      suffix))
+     (mapc
+      (lambda (d)
+        (if (seq-contains-p d ?*)
+            (push (string-replace "\\*" ".*" (regexp-quote d)) domain-regex)
+          (push d domain)
+          (push (concat "." d) domain-suffix)))
+      (cl-remove "local" h :test #'string= :count 1)))
    proxy hosts)
   (json-serialize
    `((version . 3)
      (rules . ,(vconcat local default
-                        (vector `((domain_regex . ,(apply #'vconcat suffix)))))))))
+                        (vector `((domain . ,(vconcat domain))
+                                  (domain_suffix . ,(vconcat domain-suffix))
+                                  (domain_regex . ,(vconcat domain-regex)))))))))
 #+end_src
 
 ** direct
@@ -1408,8 +1415,9 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
      (rules . [((type . "logical")
                 (mode . "and")
                 (rules
-                 . ,(vconcat [((process_path_regex
-                                . ["[\\\\/]mitmproxy(\\.exe)?$"])
+                 . ,(vconcat [((process_name
+                                . ["mitmproxy"
+                                   "mitmproxy.exe"])
                                (invert . t))]
                              (or local place-holder))))]))))
 #+end_src
