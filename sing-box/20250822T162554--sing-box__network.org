@@ -423,11 +423,6 @@
         "type": "local"
       },
       {
-        "path": "$rule_sets_dir/server-direct.srs",
-        "tag": "server-direct-rules",
-        "type": "local"
-      },
-      {
         "download_detour": "direct",
         "tag": "geoip-microsoft",
         "type": "remote",
@@ -550,20 +545,17 @@
                                              "geosite-category-ai-!cn"
                                              "geosite-google@!cn"
                                              "geosite-microsoft"
-                                             "server-direct-rules"
                                              "proxy-rules"]))
                                ((rule_set . "browse-rules"))])
                      (type . "logical"))
                     ((mode . "and")
                      (outbound . "s[download]")
                      (rules . [((rule_set . ["geosite-category-porn"
-                                             "server-direct-rules"
                                              "proxy-rules"]))
                                ((rule_set . "download-rules"))])
                      (type . "logical"))
                     ((outbound . "s[this-way]")
                      (rule_set . ["geosite-category-porn"
-                                  "server-direct-rules"
                                   "proxy-rules"]))
                     ((action . "resolve"))))
        (post-rules '(((ip_is_private . t)
@@ -853,16 +845,6 @@ SEP defaults to \"/\"."
         "tag": "geoip-cn",
         "type": "remote",
         "url": "https://github.com/SagerNet/sing-geoip/raw/refs/heads/rule-set/geoip-cn.srs"
-      },
-      {
-        "path": "$rule_sets_dir/server-dns-redirect.srs",
-        "tag": "server-dns-redirect-rules",
-        "type": "local"
-      },
-      {
-        "path": "$rule_sets_dir/server-direct.srs",
-        "tag": "server-direct-rules",
-        "type": "local"
       }
     ],
     "rules": [
@@ -881,10 +863,6 @@ SEP defaults to \"/\"."
         "override_port": 8853,
         "rule_set": "geoip-cn",
         "rule_set_ip_cidr_match_source": true
-      },
-      {
-        "outbound": "direct",
-        "rule_set": "server-direct-rules"
       }
     ]
   }
@@ -916,24 +894,6 @@ SEP defaults to \"/\"."
 <<gen-server-bounds(name="vps2",token-key="cf2")>>
 #+end_src
 
-*** warp
-:PROPERTIES:
-:CUSTOM_ID: fd28429a-721b-4fef-80fb-c4cb8848bfd1
-:END:
-#+begin_src json :tangle (zr-org-by-tangle-dir "400-warp.json")
-{
-  "outbounds": [
-    {
-      "type": "socks",
-      "tag": "warp",
-      "server": "127.0.0.1",
-      "server_port": 40000,
-      "version": "5"
-      }
-  ]
-}
-#+end_src
-
 * bounds
 :PROPERTIES:
 :header-args:elisp: :var wg-clients=(cdr (plstore-get zr-local-pls "wg")) ts-ep='((tag . "ts-ep") (type . "tailscale")) obds='(((tag . "direct") (type . "direct"))) ibds='() ep='() conf='() dns-rules='()
@@ -945,6 +905,7 @@ SEP defaults to \"/\"."
       (vps (plstore-find zr-local-pls '(:user-name ("kkky"))))
       (download-tags '("s[this-way]" "direct"))
       (browse-tags '("s[this-way]" "direct"))
+      warp-tags
       wg-rules-group
       s-tags)
   (push `(state_directory . ,tailscale-state-dir) ts-ep)
@@ -976,6 +937,7 @@ SEP defaults to \"/\"."
            (ip (plist-get attr ip-type))
            (u-tag (format "u[%s]" name))
            (s-tag (format "s[%s]" name))
+           (warp-tag (format "warp[%s]" name))
            vps-tags)
       (pcase (plist-get attr :type)
         ("download" (push s-tag download-tags))
@@ -1060,6 +1022,14 @@ SEP defaults to \"/\"."
                 (tag . ,s-tag)
                 (type . "selector"))
               obds)
+        (push `((type . "socks")
+                (tag . ,warp-tag)
+                (server . "127.0.0.1")
+                (server_port . 40000)
+                (version . "5")
+                (detour . ,s-tag))
+              obds)
+        (push warp-tag warp-tags)
         (push s-tag s-tags))
 
       (when-let* ((wg (plist-get wg-clients (intern (concat ":" (system-name)))))
@@ -1150,6 +1120,15 @@ SEP defaults to \"/\"."
             region-obds)
       (write-region (json-serialize `((outbounds . ,(vconcat region-obds))))
                     nil (expand-file-name "_900-region.json" client-tmp-dir)))
+
+    (when warp-tags
+      (let ((w-tag "s[warp]"))
+        (push `(((type . "selector")
+               (tag . ,w-tag)
+               (outbounds . ,(vconcat warp-tags))))
+              pre-obds)
+        (push w-tag s-this-way)))
+    
     (push `(((type . "selector")
              (tag . "s[this-way]")
              (outbounds . ,(vconcat (cons u-this-way s-this-way)))
@@ -1200,21 +1179,9 @@ SEP defaults to \"/\"."
        (attr (cdr info))
        (user-name (plist-get attr :user-name))
        (user-pass (plist-get attr :user-pass))
-       dns-answer
        (cf-token (plist-get (cdr (plstore-get zr-local-pls token-key)) :api-token)))
 
   (when-let* ((ip (plist-get attr :ip)))
-    (push (format "localhost. IN A %s" ip) dns-answer)
-    (when-let* ((ipv6 (plist-get attr :ipv6)))
-      (push (format "localhost. IN AAAA %s" ipv6) dns-answer))
-    (push `((action . "predefined")
-            (answer . ,(vconcat dns-answer))
-            (mode . "and")
-            (rcode . "NOERROR")
-            (rules . [((rule_set . "server-dns-redirect-rules"))
-                      ((protocol . "dns"))])
-            (type . "logical"))
-          dns-rules)
     (push `((listen . "127.0.0.1")
             (listen_port . 53)
             (network . "udp")
@@ -1601,39 +1568,3 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
      (rules . ,(vconcat local default)))))
 #+end_src
 
-** server-direct
-:PROPERTIES:
-:CUSTOM_ID: b85b7b4c-c7d5-47d0-8251-d92ee5072716
-:END:
-#+begin_src json :mkdirp t :tangle (zr-org-by-tangle-dir "server-direct.json")
-{
-  "rules": [
-    {
-      "domain_regex": [
-        "^(.+\\.)?metabrainz\\.org$",
-        "^(.+\\.)?listenbrainz\\.org$",
-        "^(.+\\.)?musicbrainz\\.org$",
-        "^(.+\\.)?e[-x]hentai\\.org$"
-      ]
-    }
-  ],
-  "version": 3
-}
-#+end_src
-
-** server-dns-redirect
-:PROPERTIES:
-:CUSTOM_ID: 87356417-1776-4026-8df3-18f1895c6f23
-:END:
-#+begin_src json :mkdirp t :tangle (zr-org-by-tangle-dir "server-dns-redirect.json")
-{
-  "rules": [
-    {
-      "domain": [
-        "f-droid.org"
-      ]
-    }
-  ],
-  "version": 3
-}
-#+end_src
