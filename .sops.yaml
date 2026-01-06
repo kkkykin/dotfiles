@@ -1,3 +1,7 @@
+keys:
+  - &kkky 3933DFAC58D07052EF3B97F24424F4AD801B5547
 creation_rules:
-    - pgp: >-
-        9DD12CA29B2696B2DFAD8E699E36F76FF2FC840F
+  - path_regex: .*
+    key_groups:
+    - pgp:
+      - *kkky

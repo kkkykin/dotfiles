@@ -22,133 +22,122 @@
 #+header: :var models=models-tbl[] :colnames no
 #+name: gen-config
 #+begin_src elisp
-(cl-letf (((symbol-function 'format-models)
-           (lambda (name params)
-             (let ((models (ensure-list (or (plist-get params :model) name)))
-                   (ant-headers '((anthropic-beta . "claude-code-20250219,interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14")
-                                  (anthropic-dangerous-direct-browser-access . "true")
-                                  (anthropic-version . "2023-06-01")
-                                  (user-agent . "claude-cli/2.0.61 (external, cli)")
-                                  (x-app . "cli")))
-                   (tags (plist-get params :tags))
-                   (k-key :api_key_o)
-                   (k-base :api_base_o)
-                   result)
-               (mapc
-                (lambda (model)
-                  (let ((this-model (copy-sequence params))
-                        (mode (if (seq-contains-p tags "cx")
-                                  "responses"
-                                "chat")))
-                    (pcase model
-                      ("t" (plist-put this-model :model (concat "openai/" name)))
-                      ((rx bos "cx/")
-                       (let ((model (if (string= "cx/t" model)
-                                        (concat "openai/" name)
-                                      (replace-regexp-in-string "^cx/" "openai/" model))))
-                         (plist-put this-model :model model)
-                         (setq k-key :api_key_cx
-                               mode "responses")))
-                      ((rx bos "ant/")
-                       (let ((model (if (string= "ant/t" model)
-                                        (concat "anthropic/" name)
-                                      (replace-regexp-in-string "^ant/" "anthropic/" model))))
-                         (plist-put this-model :extra_headers
-                                    (append (plist-get this-model :extra_headers)
-                                            ant-headers))
-                         (plist-put this-model :model model)
-                         (setq k-key :api_key_a
-                               mode :null
-                               k-base :api_base_a)))
-                      ((rx bos "gmn/")
-                       (let ((model (if (string= "gmn/t" model)
-                                        (concat "gemini/" name)
-                                      (replace-regexp-in-string "^gmn/" "" model))))
-                         (plist-put this-model :model model)
-                         (setq k-key :api_key_g
-                               mode :null
-                               k-base :api_base_g)))
-                      ((rx "embed")
-                       (plist-put this-model :model (concat "openai/" model))
-                       (setq mode "embedding"))
-                      ((rx "image")
-                       (plist-put this-model :model (concat "openai/" model))
-                       (setq mode "image_generation"))
-                      (_ (plist-put this-model :model (concat "openai/" model))))
-                    (mapc
-                     (lambda (base)
-                       (let ((new-base (append `( :api_base ,base)
-                                               this-model)))
-                         (mapc
-                          (lambda (key)
-                            (let ((new (append `( :api_key ,key
-                                                  :api_key_a :null
-                                                  :api_key_o :null
-                                                  :api_key_cx :null
-                                                  :api_base_a :null
-                                                  :api_base_o :null)
-                                               new-base)))
-                              (when (equal k-key :api_key_cx)
-                                (plist-put new :tags (vconcat ["cx"] tags)))
-                              (push `((model_name . ,name)
-                                      (model_info (mode . ,mode))
-                                      (litellm_params . ,new))
-                                    result)))
-                          (ensure-list (or (plist-get params k-key)
-                                           (when (eq k-key :api_key_cx)
-                                             (plist-get params :api_key_o))
-                                           (plist-get params :api_key))))))
-                     (ensure-list (or (plist-get this-model k-base)
-                                      (plist-get this-model :api_base))))))
-                (mapcar (lambda (model) (format model name)) models))
-               result)))
-          ((symbol-function 'all-string-p)
-           (lambda (list) (cl-every #'stringp list))))
-  (let* ((zr-local-pls (plstore-open (expand-file-name "litellm.pls" zr-secrets-dir)))
-         (secret (plstore-find zr-local-pls '(:provider (t))))
-         (public '(("iflow" . ( :api_base "https://apis.iflow.cn/v1"
-                                :weight 5))
-                   ("modelscope" . ( :api_base "https://api-inference.modelscope.cn/v1"
-                                     :weight 2))
-                   ("snow" . ( :extra_headers ((x-snow . "true")
-                                               (user-agent . "node"))
-                               :tags ("snow")))
-                   ("ouyangqiqi" . ( :tags ("tavern")))
-                   ("beizhi" . ( :tags ("tavern")))
-                   ("bohe" . ( :tags ("tavern")
-                               :weight 10))
-                   ("sc0152" . ( :tags ("tavern")))
-                   ("88code" . ( :tags ("cx")))
-                   ;; ("zhongruan" . ( :tags ("cx")))
-                   ("api" . ( :tags ("default")))
-                   ("HenryXiaoYang" . (:tags ("cc")))
-                   ("Sanyela" . ( :weight 8
-                                  :tags ("cc")))
-                   ("anyrouter" . ( :tags ("cc")))
-                   ("jason_wong1" . ( :weight 6
-                                      :tags ("cc")))))
-         (common '( :additional_drop_params ["api_key_a"
-                                             "api_key_o"
-                                             "api_base_a"
-                                             "api_base_o"
-                                             ;; "provider"
-                                             ] ))
+(cl-labels
+    ((drop-keys (alist keys)
+       (seq-remove (lambda (kv) (memq (car kv) keys)) alist))
+     (put* (alist kvs)
+       (append kvs (drop-keys alist (mapcar #'car kvs))))
+     (tags->vec (x)
+       (cond ((vectorp x) x)
+             ((null x) [])
+             (t (vconcat x))))
+     (all-string-p (l) (cl-every #'stringp l))
+     (format-models (name params)
+       (let* ((models (ensure-list (or (alist-get 'model params) name)))
+              (ant-headers '((anthropic-beta . "claude-code-20250219,interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14")
+                             (anthropic-dangerous-direct-browser-access . "true")
+                             (anthropic-version . "2023-06-01")
+                             (user-agent . "claude-cli/2.0.61 (external, cli)")
+                             (x-app . "cli")))
+              (base-tags (tags->vec (alist-get 'tags params)))
+              result)
+         (dolist (m (mapcar (lambda (x) (format x name)) models))
+           (let* ((k-key nil)
+                  (k-base 'api_base_o)
+                  (mode (if (seq-contains-p base-tags "cx") "responses" "chat"))
+                  (model-id nil)
+                  (extra-hdr nil))
+             (pcase m
+               ("t" (setq model-id (concat "openai/" name)))
+               ((rx bos "cx/")
+                (setq model-id (if (string= "cx/t" m)
+                                   (concat "openai/" name)
+                                 (replace-regexp-in-string "^cx/" "openai/" m))
+                      k-key "apikey_cx"
+                      mode "responses"))
+               ((rx bos "ant/")
+                (setq model-id (if (string= "ant/t" m)
+                                   (concat "anthropic/" name)
+                                 (replace-regexp-in-string "^ant/" "anthropic/" m))
+                      k-key "apikey_a"
+                      mode :null
+                      k-base 'api_base_a
+                      extra-hdr (append (alist-get 'extra_headers params) ant-headers)))
+               ((rx bos "gmn/")
+                (setq model-id (if (string= "gmn/t" m)
+                                   (concat "gemini/" name)
+                                 (replace-regexp-in-string "^gmn/" "" m))
+                      k-key "apikey_g"
+                      mode :null
+                      k-base 'api_base_g))
+               ((rx "embed")
+                (setq model-id (concat "openai/" name)
+                      mode "embedding"))
+               ((rx "image")
+                (setq model-id (concat "openai/" name)
+                      mode "image_generation"))
+               (_ (setq model-id (concat "openai/" name))))
+             (let* ((this-model
+                     (put* params
+                           (delq nil
+                                 (list (cons 'model model-id)
+                                       (when extra-hdr (cons 'extra_headers extra-hdr))))))
+                    (bases (ensure-list (or (alist-get k-base this-model)
+                                            (alist-get 'api_base this-model)))))
+               (dolist (base bases)
+                 (let* ((base-model
+                         (put* (drop-keys this-model '(api_base api_base_a api_base_o api_base_g))
+                               (list (cons 'api_base base))))
+                        (keys (ensure-list
+                               (when-let* ((secrets (auth-info-password
+                                                     (car (auth-source-search
+                                                           :max 1 :host base :user
+                                                           (if k-key (list k-key "apikey") "apikey"))))))
+                                 (zr-org-string-maybe-eval secrets)))))
+                   (dolist (key keys)
+                     (let* ((tags0 (tags->vec (alist-get 'tags base-model)))
+                            (tags1 (if (equal k-key "apikey_cx")
+                                       (vconcat ["cx"] tags0)
+                                     tags0))
+                            (final
+                             (put* (drop-keys base-model
+                                              '(api_key api_key_a api_key_o api_key_g api_key_cx tags))
+                                   (list (cons 'api_key key)
+                                         (cons 'tags tags1)))))
+                       (push `((model_name . ,name)
+                               (model_info (mode . ,mode))
+                               (litellm_params . ,final))
+                             result))))))))
+         result)))
+  (let* ((upstream (with-temp-buffer
+                     (call-process "sops" nil t nil "-d" "--extract" "['upstream']" "litellm.json")
+                     (goto-char 1)
+                     (json-parse-buffer :object-type 'alist :array-type 'list)))
+         (public '(("modelscope" . ((api_base . "https://api-inference.modelscope.cn/v1")
+                                    (weight . 2)))
+                   ("snow" . ((extra_headers . ((x-snow . "true")
+                                                (user-agent . "node")))
+                              (tags . ("snow"))))
+                   ("ouyangqiqi" . ((tags . ("tavern"))))
+                   ("beizhi" . ((tags . ("tavern"))))
+                   ("bohe" . ((tags . ("tavern"))
+                              (weight . 10)))
+                   ("sc0152" . ((tags . ("tavern"))))
+                   ("88code" . ((tags . ("cx"))))
+                   ("cpa" . ((tags . ("default"))))
+                   ("HenryXiaoYang" . ((tags . ("cc"))))))
+         (common '())
          (col (car models))
          (model-map (cdr models))
          (providers (cdr col))
-         (litellm (cdr (plstore-get zr-local-pls "litellm")))
          (litellm-settings '((drop_params . t)
                              (num_retries . 3)
                              (default_fallbacks . ["glm-4.7"])
-                             ;; (turn_off_message_logging . t)
                              (redact_user_api_key_info . t)
                              (callbacks . ["langfuse_otel"
-                                           ;; "pre_call.codex_prompt_mod"
                                            "pre_call.header_forward"])))
          (general-settings `((forward_client_headers_to_llm_api . :false)
                              (disable_master_key_return . t)
-                             ;; (master_key . ,(plist-get litellm :master))
-                             ;; (database_url . "")
                              (allow_requests_on_db_unavailable . t)
                              (background_health_checks . :false)))
          (router-settings '((allowed_fails . 3)
@@ -163,24 +152,27 @@
          model-list)
     (seq-do-indexed
      (lambda (provider i)
-       (when-let* ((params (append (alist-get provider secret nil nil #'string=)
+       (when-let* ((params (append (alist-get provider upstream nil nil #'string=)
                                    (alist-get provider public nil nil #'string=)
                                    common)))
          (dolist (model model-map)
-           (let ((name (car model))
-                 (new (copy-sequence params))
-                 (extra (zr-org-string-maybe-eval (nth (1+ i) model))))
-             (if-let* ((tags (plist-get new :tags)))
-                 (plist-put new :tags (vconcat `(,provider) tags))
-               (plist-put new :tags (vector "general" provider)))
-             (plist-put new :provider provider)
+           (let* ((name (car model))
+                  (extra (zr-org-string-maybe-eval (nth (1+ i) model)))
+                  (t0 (alist-get 'tags params))
+                  (tags-new (if t0
+                                (vconcat (list provider) (tags->vec t0))
+                              (vector "general" provider)))
+                  (base-new (put* (drop-keys params '(tags provider))
+                                  (list (cons 'provider provider)
+                                        (cons 'tags tags-new)))))
              (pcase extra
                ("")
-               ((or (pred stringp)
-                    (pred all-string-p))
-                (plist-put new :model extra)
-                (push (format-models name new) model-list))
-               (_ (push (format-models name (append extra new)) model-list)))))))
+               ((or (pred stringp) (pred all-string-p))
+                (push (format-models name (put* base-new (list (cons 'model extra))))
+                      model-list))
+               (_
+                (push (format-models name (append extra base-new))
+                      model-list)))))))
      providers)
     (json-serialize `((model_list . ,(apply #'vconcat model-list))
                       (litellm_settings . ,litellm-settings)
@@ -190,47 +182,47 @@
 
 * models
 #+name: models-tbl
-| name                          | api | modelscope                          | 88code | snow | dabuliu           | jason_wong1 | anyrouter | bohe                  | ouyangqiqi                                                                                              |
-|-------------------------------+-----+-------------------------------------+--------+------+-------------------+-------------+-----------+-----------------------+---------------------------------------------------------------------------------------------------------|
-| glm-4.7                       | t   |                                     |        |      |                   |             |           |                       |                                                                                                         |
-| glm-4.6                       | t   |                                     |        |      |                   |             |           |                       |                                                                                                         |
-| qwen3-235b-a22b-instruct      | t   | Qwen/Qwen3-235B-A22B-Instruct-2507  |        |      |                   |             |           |                       |                                                                                                         |
-| qwen3-235b-a22b-thinking-2507 | t   | Qwen/Qwen3-235B-A22B-Thinking-2507  |        |      |                   |             |           |                       |                                                                                                         |
-| qwen3-coder-plus              | t   | Qwen/Qwen3-Coder-480B-A35B-Instruct |        |      |                   |             |           |                       |                                                                                                         |
-| qwen3-max                     | t   |                                     |        |      |                   |             |           |                       |                                                                                                         |
-| qwen3-vl-plus                 | t   | Qwen/Qwen3-VL-235B-A22B-Instruct    |        |      |                   |             |           |                       |                                                                                                         |
-| kimi-k2                       | t   |                                     |        |      |                   |             |           |                       |                                                                                                         |
-| kimi-k2-0905                  | t   |                                     |        |      |                   |             |           |                       |                                                                                                         |
-| kimi-k2-thinking              | t   |                                     |        |      |                   |             |           |                       |                                                                                                         |
-| deepseek-v3.2                 | t   | deepseek-ai/DeepSeek-V3.2           |        |      |                   |             |           |                       |                                                                                                         |
-| deepseek-v3.2-chat            | t   |                                     |        |      |                   |             |           |                       |                                                                                                         |
-| deepseek-v3.2-reasoner        | t   |                                     |        |      |                   |             |           |                       |                                                                                                         |
-| deepseek-r1                   | t   | deepseek-ai/DeepSeek-R1-0528        |        |      |                   |             |           |                       |                                                                                                         |
-| minimax-m2                    | t   |                                     |        |      |                   |             |           |                       |                                                                                                         |
-| minimax-m2.1                  | t   |                                     |        |      |                   |             |           |                       |                                                                                                         |
-| z-image-turbo                 |     | Tongyi-MAI/Z-Image-Turbo            |        |      |                   |             |           |                       |                                                                                                         |
-| glm-4.6v                      |     | ZhipuAI/GLM-4.6V                    |        |      |                   |             |           |                       |                                                                                                         |
-| claude-3-5-haiku-20241022     |     |                                     |        |      |                   | ant/t       | ant/t     |                       |                                                                                                         |
-| claude-4-sonnet               |     |                                     |        |      | '("t" "%s-think") |             |           |                       | t                                                                                                       |
-| claude-4.5-sonnet             |     |                                     |        |      | '("t" "%s-think") |             |           |                       |                                                                                                         |
-| claude-haiku-4-5-20251001     |     |                                     |        |      |                   | ant/t       | ant/t     |                       |                                                                                                         |
-| claude-opus-4-5               |     |                                     |        |      |                   |             |           | %s-thinking           |                                                                                                         |
-| claude-opus-4-5-20251101      |     |                                     |        |      |                   | ant/t       | ant/t     |                       |                                                                                                         |
-| claude-sonnet-4-20250514      |     |                                     |        |      |                   | ant/t       | ant/t     |                       |                                                                                                         |
-| claude-sonnet-4-5             |     |                                     |        |      |                   |             |           | t                     | t                                                                                                       |
-| claude-sonnet-4-5-20250929    |     |                                     |        |      |                   | ant/t       | ant/t     |                       |                                                                                                         |
-| gpt-5                         |     |                                     |        | t    |                   |             |           |                       |                                                                                                         |
-| gpt-5-codex                   |     |                                     | t      | t    |                   |             |           |                       |                                                                                                         |
-| gpt-5.1                       |     |                                     | t      | t    |                   |             |           |                       |                                                                                                         |
-| gpt-5.1-codex                 |     |                                     | t      | t    |                   |             |           |                       |                                                                                                         |
-| gpt-5.1-codex-max             |     |                                     | t      |      |                   |             |           |                       |                                                                                                         |
-| gpt-5.2                       |     |                                     |        |      |                   |             |           |                       |                                                                                                         |
-| gpt-5.2-codex                 |     |                                     |        |      |                   |             |           |                       |                                                                                                         |
-| gemini-2.5-flash              |     |                                     |        |      |                   |             |           |                       |                                                                                                         |
-| gemini-2.5-pro                |     |                                     |        |      |                   |             |           | %s-1m                 | '("t" "hyb-Optimal/%s" "hyb-Optimal/gemini抗截断系列/%s" "hyb-Optimal/gemini抗截断系列/%s-maxthinking") |
-| gemini-3-flash                |     |                                     |        |      |                   |             |           |                       |                                                                                                         |
-| gemini-3-pro                  |     |                                     |        |      |                   |             |           | '("%s-low" "%s-high") | %s-preview                                                                                              |
-| grok-4.1                      |     |                                     |        |      |                   |             |           |                       | '("t" "%s-thinking")                                                                                    |
+| name                          | cpa | modelscope                          |
+|-------------------------------+-----+-------------------------------------|
+| glm-4.7                       | t   |                                     |
+| glm-4.6                       | t   |                                     |
+| qwen3-235b-a22b-instruct      | t   | Qwen/Qwen3-235B-A22B-Instruct-2507  |
+| qwen3-235b-a22b-thinking-2507 | t   | Qwen/Qwen3-235B-A22B-Thinking-2507  |
+| qwen3-coder-plus              | t   | Qwen/Qwen3-Coder-480B-A35B-Instruct |
+| qwen3-max                     | t   |                                     |
+| qwen3-vl-plus                 | t   | Qwen/Qwen3-VL-235B-A22B-Instruct    |
+| kimi-k2                       | t   |                                     |
+| kimi-k2-0905                  | t   |                                     |
+| kimi-k2-thinking              | t   |                                     |
+| deepseek-v3.2                 | t   | deepseek-ai/DeepSeek-V3.2           |
+| deepseek-v3.2-chat            | t   |                                     |
+| deepseek-v3.2-reasoner        | t   |                                     |
+| deepseek-r1                   | t   | deepseek-ai/DeepSeek-R1-0528        |
+| minimax-m2                    | t   |                                     |
+| minimax-m2.1                  | t   |                                     |
+| z-image-turbo                 |     | Tongyi-MAI/Z-Image-Turbo            |
+| glm-4.6v                      |     | ZhipuAI/GLM-4.6V                    |
+| claude-3-5-haiku-20241022     |     |                                     |
+| claude-4-sonnet               |     |                                     |
+| claude-4.5-sonnet             |     |                                     |
+| claude-haiku-4-5-20251001     |     |                                     |
+| claude-opus-4-5               |     |                                     |
+| claude-opus-4-5-20251101      |     |                                     |
+| claude-sonnet-4-20250514      |     |                                     |
+| claude-sonnet-4-5             |     |                                     |
+| claude-sonnet-4-5-20250929    |     |                                     |
+| gpt-5                         |     |                                     |
+| gpt-5-codex                   |     |                                     |
+| gpt-5.1                       |     |                                     |
+| gpt-5.1-codex                 |     |                                     |
+| gpt-5.1-codex-max             |     |                                     |
+| gpt-5.2                       |     |                                     |
+| gpt-5.2-codex                 |     |                                     |
+| gemini-2.5-flash              |     |                                     |
+| gemini-2.5-pro                |     |                                     |
+| gemini-3-flash                |     |                                     |
+| gemini-3-pro                  |     |                                     |
+| grok-4.1                      |     |                                     |
 
 #+name: models-tbl-bak
 | name                          | beizhi                 | Nyxar | WCyrus | api | Sanyela | zhongruan | pangil            | kkkyyx     | dabuliu           | bohe                  | HenryXiaoYang | bytebender                   | jason_wong1 | anyrouter | huan                 | snow | 88code | ouyangqiqi              | modelscope                          | sc0152                                    | linuxdo |
