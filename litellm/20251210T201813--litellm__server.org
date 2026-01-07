@@ -72,7 +72,7 @@
                ((rx bos "gmn/")
                 (setq model-id (if (string= "gmn/t" m)
                                    (concat "gemini/" name)
-                                 (replace-regexp-in-string "^gmn/" "" m))
+                                 (replace-regexp-in-string "^gmn/" "gemini/" m))
                       k-key "apikey_g"
                       mode :null
                       k-base 'api_base_g))
