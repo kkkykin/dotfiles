@@ -32,6 +32,8 @@
              ((null x) [])
              (t (vconcat x))))
      (all-string-p (l) (cl-every #'stringp l))
+     (string-match-embed-p (s) (string-match-p "embed" s))
+     (string-match-image-p (s) (string-match-p "[iI]mage" s))
      (format-models (name params)
        (let* ((models (ensure-list (or (alist-get 'model params) name)))
               (ant-headers '((anthropic-beta . "claude-code-20250219,interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14")
@@ -48,7 +50,11 @@
                   (model-id nil)
                   (extra-hdr nil))
              (pcase m
-               ("t" (setq model-id (concat "openai/" name)))
+               ("t"
+                (setq model-id (concat "openai/" name)
+                      mode (pcase name
+                             ((pred string-match-embed-p) "embedding")
+                             ((pred string-match-image-p) "image_generation"))))
                ((rx bos "cx/")
                 (setq model-id (if (string= "cx/t" m)
                                    (concat "openai/" name)
@@ -70,13 +76,13 @@
                       k-key "apikey_g"
                       mode :null
                       k-base 'api_base_g))
-               ((rx "embed")
-                (setq model-id (concat "openai/" name)
+               ((pred string-match-embed-p)
+                (setq model-id (concat "openai/" m)
                       mode "embedding"))
-               ((rx "image")
-                (setq model-id (concat "openai/" name)
+               ((pred string-match-image-p)
+                (setq model-id (concat "openai/" m)
                       mode "image_generation"))
-               (_ (setq model-id (concat "openai/" name))))
+               (_ (setq model-id (concat "openai/" m))))
              (let* ((this-model
                      (put* params
                            (delq nil
