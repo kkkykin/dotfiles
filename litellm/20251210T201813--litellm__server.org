@@ -89,10 +89,9 @@
                          (put* (drop-keys this-model '(api_base api_base_a api_base_o api_base_g))
                                (list (cons 'api_base base))))
                         (keys (ensure-list
-                               (when-let* ((secrets (auth-info-password
-                                                     (car (auth-source-search
-                                                           :max 1 :host base :user
-                                                           (if k-key (list k-key "apikey") "apikey"))))))
+                               (when-let* ((secrets (auth-source-pick-first-password
+                                                     :host base :user
+                                                     (if k-key (list k-key "apikey") "apikey"))))
                                  (zr-org-string-maybe-eval secrets)))))
                    (dolist (key keys)
                      (let* ((tags0 (tags->vec (alist-get 'tags base-model)))
@@ -182,47 +181,43 @@
 
 * models
 #+name: models-tbl
-| name                          | cpa | modelscope                          |
-|-------------------------------+-----+-------------------------------------|
-| glm-4.7                       | t   |                                     |
-| glm-4.6                       | t   |                                     |
-| qwen3-235b-a22b-instruct      | t   | Qwen/Qwen3-235B-A22B-Instruct-2507  |
-| qwen3-235b-a22b-thinking-2507 | t   | Qwen/Qwen3-235B-A22B-Thinking-2507  |
-| qwen3-coder-plus              | t   | Qwen/Qwen3-Coder-480B-A35B-Instruct |
-| qwen3-max                     | t   |                                     |
-| qwen3-vl-plus                 | t   | Qwen/Qwen3-VL-235B-A22B-Instruct    |
-| kimi-k2                       | t   |                                     |
-| kimi-k2-0905                  | t   |                                     |
-| kimi-k2-thinking              | t   |                                     |
-| deepseek-v3.2                 | t   | deepseek-ai/DeepSeek-V3.2           |
-| deepseek-v3.2-chat            | t   |                                     |
-| deepseek-v3.2-reasoner        | t   |                                     |
-| deepseek-r1                   | t   | deepseek-ai/DeepSeek-R1-0528        |
-| minimax-m2                    | t   |                                     |
-| minimax-m2.1                  | t   |                                     |
-| z-image-turbo                 |     | Tongyi-MAI/Z-Image-Turbo            |
-| glm-4.6v                      |     | ZhipuAI/GLM-4.6V                    |
-| claude-3-5-haiku-20241022     |     |                                     |
-| claude-4-sonnet               |     |                                     |
-| claude-4.5-sonnet             |     |                                     |
-| claude-haiku-4-5-20251001     |     |                                     |
-| claude-opus-4-5               |     |                                     |
-| claude-opus-4-5-20251101      |     |                                     |
-| claude-sonnet-4-20250514      |     |                                     |
-| claude-sonnet-4-5             |     |                                     |
-| claude-sonnet-4-5-20250929    |     |                                     |
-| gpt-5                         |     |                                     |
-| gpt-5-codex                   |     |                                     |
-| gpt-5.1                       |     |                                     |
-| gpt-5.1-codex                 |     |                                     |
-| gpt-5.1-codex-max             |     |                                     |
-| gpt-5.2                       |     |                                     |
-| gpt-5.2-codex                 |     |                                     |
-| gemini-2.5-flash              |     |                                     |
-| gemini-2.5-pro                |     |                                     |
-| gemini-3-flash                |     |                                     |
-| gemini-3-pro                  |     |                                     |
-| grok-4.1                      |     |                                     |
+| name                          | nvidia                              | cpa   | modelscope                          |
+|-------------------------------+-------------------------------------+-------+-------------------------------------|
+| gemini-3-pro                  |                                     | gmn/t |                                     |
+| qwen3-235b-a22b-instruct      |                                     | t     | Qwen/Qwen3-235B-A22B-Instruct-2507  |
+| qwen3-235b-a22b-thinking-2507 |                                     | t     | Qwen/Qwen3-235B-A22B-Thinking-2507  |
+| qwen3-coder-plus              | qwen/qwen3-coder-480b-a35b-instruct | t     | Qwen/Qwen3-Coder-480B-A35B-Instruct |
+| Qwen/Qwen-Image-2512          |                                     |       | t                                   |
+| qwen3-max                     |                                     | t     |                                     |
+| qwen3-vl-plus                 |                                     | t     | Qwen/Qwen3-VL-235B-A22B-Instruct    |
+| kimi-k2-0905                  |                                     | t     |                                     |
+| kimi-k2-thinking              | moonshotai/%s                       | t     |                                     |
+| deepseek-v3.2                 | deepseek-ai/%s                      | t     | deepseek-ai/DeepSeek-V3.2           |
+| deepseek-v3.2-chat            |                                     | t     |                                     |
+| deepseek-v3.2-reasoner        |                                     | t     |                                     |
+| deepseek-r1                   | deepseek-ai/%s                      | t     | deepseek-ai/DeepSeek-R1-0528        |
+| minimax-m2.1                  | minimaxai/%s                        | ant/t |                                     |
+| z-image-turbo                 |                                     |       | Tongyi-MAI/Z-Image-Turbo            |
+| glm-4.6v                      |                                     |       | ZhipuAI/GLM-4.6V                    |
+| glm-4.7                       | z-ai/%s                             | ant/t |                                     |
+| claude-3-5-haiku-20241022     |                                     |       |                                     |
+| claude-4-sonnet               |                                     |       |                                     |
+| claude-4.5-sonnet             |                                     |       |                                     |
+| claude-haiku-4-5-20251001     |                                     |       |                                     |
+| claude-opus-4-5               |                                     |       |                                     |
+| claude-opus-4-5-20251101      |                                     | t     |                                     |
+| claude-sonnet-4-20250514      |                                     |       |                                     |
+| claude-sonnet-4-5             |                                     |       |                                     |
+| claude-sonnet-4-5-20250929    |                                     | t     |                                     |
+| gpt-5.1                       |                                     | t     |                                     |
+| gpt-5.1-codex                 |                                     | cx/t  |                                     |
+| gpt-5.1-codex-max             |                                     | cx/t  |                                     |
+| gpt-5.2                       |                                     | cx/t  |                                     |
+| gpt-5.2-codex                 |                                     | cx/t  |                                     |
+| gemini-2.5-flash              |                                     | gmn/t |                                     |
+| gemini-2.5-pro                |                                     | gmn/t |                                     |
+| gemini-3-flash                |                                     | gmn/t |                                     |
+| gemini-3-pro-image            |                                     | gmn/t |                                     |
 
 #+name: models-tbl-bak
 | name                          | beizhi                 | Nyxar | WCyrus | api | Sanyela | zhongruan | pangil            | kkkyyx     | dabuliu           | bohe                  | HenryXiaoYang | bytebender                   | jason_wong1 | anyrouter | huan                 | snow | 88code | ouyangqiqi              | modelscope                          | sc0152                                    | linuxdo |
