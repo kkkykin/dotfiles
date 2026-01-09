@@ -66,7 +66,7 @@
                                    (concat "anthropic/" name)
                                  (replace-regexp-in-string "^ant/" "anthropic/" m))
                       k-key "apikey_a"
-                      mode :null
+                      mode nil
                       k-base 'api_base_a
                       extra-hdr (append (alist-get 'extra_headers params) ant-headers)))
                ((rx bos "gmn/")
@@ -74,7 +74,7 @@
                                    (concat "gemini/" name)
                                  (replace-regexp-in-string "^gmn/" "gemini/" m))
                       k-key "apikey_g"
-                      mode :null
+                      mode nil
                       k-base 'api_base_g))
                ((pred string-match-embed-p)
                 (setq model-id (concat "openai/" m)
@@ -108,11 +108,12 @@
                              (put* (drop-keys base-model
                                               '(api_key api_key_a api_key_o api_key_g api_key_cx tags))
                                    (list (cons 'api_key key)
-                                         (cons 'tags tags1)))))
-                       (push `((model_name . ,name)
-                               (model_info (mode . ,mode))
-                               (litellm_params . ,final))
-                             result))))))))
+                                         (cons 'tags tags1))))
+                            (current `((model_name . ,name)
+                                       (litellm_params . ,final))))
+                       (when mode
+                         (push `(model_info (mode . ,mode)) current))
+                       (push current result))))))))
          result)))
   (let* ((upstream (with-temp-buffer
                      (call-process "sops" nil t nil "-d" "--extract" "['upstream']" "litellm.json")
@@ -170,8 +171,7 @@
                                 (vconcat (list provider) (tags->vec t0))
                               (vector "general" provider)))
                   (base-new (put* (drop-keys params '(tags provider))
-                                  (list (cons 'provider provider)
-                                        (cons 'tags tags-new)))))
+                                  (list (cons 'tags tags-new)))))
              (pcase extra
                ("")
                ((or (pred stringp) (pred all-string-p))
