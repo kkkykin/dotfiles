@@ -36,6 +36,7 @@
      (string-match-image-p (s) (string-match-p "[iI]mage" s))
      (format-models (name params)
        (let* ((models (ensure-list (or (alist-get 'model params) name)))
+              (prefix (alist-get 'prefix params))
               (ant-headers '((anthropic-beta . "claude-code-20250219,interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14")
                              (anthropic-dangerous-direct-browser-access . "true")
                              (anthropic-version . "2023-06-01")
@@ -50,6 +51,9 @@
                   (model-id nil)
                   (extra-hdr nil))
              (pcase m
+               ((guard prefix)
+                (setq model-id (format "%s/%s" prefix (if (string= "t" m) name m))
+                      mode nil))
                ("t"
                 (setq model-id (concat "openai/" name)
                       mode (pcase name
@@ -92,7 +96,11 @@
                                             (alist-get 'api_base this-model)))))
                (dolist (base bases)
                  (let* ((base-model
-                         (put* (drop-keys this-model '(api_base api_base_a api_base_o api_base_g))
+                         (put* (drop-keys this-model '( prefix
+                                                        api_base
+                                                        api_base_a
+                                                        api_base_o
+                                                        api_base_g))
                                (list (cons 'api_base base))))
                         (keys (ensure-list
                                (when-let* ((secrets (auth-source-pick-first-password
@@ -120,8 +128,10 @@
                      (goto-char 1)
                      (json-parse-buffer :object-type 'alist :array-type 'list)))
          (public '(("modelscope" . ((api_base . "https://api-inference.modelscope.cn/v1")
+                                    (prefix . "ms")
                                     (weight . 2)))
                    ("nvidia" . ((api_base . "https://integrate.api.nvidia.com/v1")
+                                (prefix . "nvidia_nim")
                                 (weight . 5)))
                    ("snow" . ((extra_headers . ((x-snow . "true")
                                                 (user-agent . "node")))
@@ -145,15 +155,19 @@
                              (cache_params (type . "local"))
                              (default_fallbacks . ["deepseek-v3.2" "glm-4.7"])
                              (redact_user_api_key_info . t)
+                             (custom_provider_map
+                              . [((provider . "ms")
+                                  (custom_handler . "modelscope_handler.modelscope_llm"))])
                              (callbacks . ["pre_call.header_forward"])))
          (general-settings `((forward_client_headers_to_llm_api . :false)
                              (disable_master_key_return . t)
-                             (service_account_settings (enforced_params . ["user"]))
                              (allow_requests_on_db_unavailable . t)
                              (background_health_checks . :false)))
          (router-settings '((allowed_fails . 3)
                             (cooldown_time . 30)
                             (enable_tag_filtering . t)
+                            (model_group_alias . ((gpt-image-1.5 . "z-image-turbo")
+                                                  (dall-e-3 . "gemini-3-pro-image")))
                             (fallbacks . [((gemini-3-pro . ["gemini-2.5-pro"]))
                                           ((claude-opus-4-5-20251101 . ["claude-opus-4-5"]))
                                           ((claude-sonnet-4-5-20250929 . ["claude-sonnet-4-5" "claude-4.5-sonnet"]))
@@ -361,6 +375,516 @@ class CodexPromptMod(CustomLogger):
     return data
 
 codex_prompt_mod = CodexPromptMod()
+#+end_src
+
+* handler
+** modelscope
+:PROPERTIES:
+:CUSTOM_ID: 2ac3f395-16d0-4ce4-9658-92762f3d0d28
+:END:
+#+begin_src py :tangle (zr-org-by-tangle-dir "modelscope_handler.py")
+"""
+ModelScope Custom LLM Handler for LiteLLM
+
+Chat/Completion: delegates to LiteLLM's OpenAI-compatible handler
+Image Generation: custom async polling implementation
+
+Usage in config.yaml:
+    model_list:
+      - model_name: "modelscope-chat"
+        litellm_params:
+          model: "ms/Qwen/Qwen2.5-72B-Instruct"
+          api_key: "your-modelscope-api-key"
+
+      - model_name: "modelscope-image"
+        litellm_params:
+          model: "ms/Tongyi-MAI/Z-Image-Turbo"
+          api_key: "your-modelscope-api-key"
+
+    litellm_settings:
+      custom_provider_map:
+        - {"provider": "ms", "custom_handler": modelscope_handler.modelscope_llm}
+"""
+
+import asyncio
+import time
+from typing import Any, AsyncIterator, Iterator, Optional, Union
+
+import httpx
+
+import litellm
+from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler, HTTPHandler
+from litellm.llms.custom_llm import CustomLLM, CustomLLMError
+from litellm.litellm_core_utils.prompt_templates.image_handling import (
+    async_convert_url_to_base64,
+)
+from litellm.types.utils import (
+    GenericStreamingChunk,
+    ImageObject,
+    ImageResponse,
+    ModelResponse,
+)
+
+
+MODELSCOPE_BASE_URL = "https://api-inference.modelscope.cn"
+MODELSCOPE_POLLING_INTERVAL = 5  # seconds
+MODELSCOPE_POLLING_TIMEOUT = 600  # 10 minutes
+MODELSCOPE_REQUEST_TIMEOUT = 60  # per-request timeout
+
+
+def _extract_timeout_seconds(timeout: Optional[Union[float, httpx.Timeout]]) -> float:
+    if timeout is None:
+        return MODELSCOPE_POLLING_TIMEOUT
+    if isinstance(timeout, (int, float)):
+        return float(timeout)
+    if isinstance(timeout, httpx.Timeout):
+        values = [v for v in [timeout.read, timeout.connect, timeout.write, timeout.pool] if v is not None]
+        return max(values) if values else MODELSCOPE_POLLING_TIMEOUT
+    return MODELSCOPE_POLLING_TIMEOUT
+
+
+def _sanitize_params_for_delegation(optional_params: dict, extra_keys_to_remove: list = None) -> dict:
+    """Remove keys that would conflict with explicit kwargs in litellm.completion()."""
+    params = dict(optional_params or {})
+    keys_to_remove = ["model", "messages", "api_base", "api_key", "timeout", "custom_llm_provider"]
+    if extra_keys_to_remove:
+        keys_to_remove.extend(extra_keys_to_remove)
+    for key in keys_to_remove:
+        params.pop(key, None)
+    return params
+
+
+class ModelScopeLLM(CustomLLM):
+    """
+    ModelScope Custom LLM Handler
+
+    - Chat/Completion: delegates to LiteLLM's OpenAI-compatible handler
+    - Image Generation: custom async polling implementation
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+
+    def _get_openai_model(self, model: str) -> str:
+        """Ensure model has openai/ prefix, avoid double-prefixing."""
+        if model.startswith("openai/"):
+            return model
+        return f"openai/{model}"
+
+    def _merge_headers(self, optional_params: dict, headers: Optional[dict]) -> dict:
+        """Merge headers into optional_params as extra_headers."""
+        if headers:
+            existing = optional_params.get("extra_headers", {}) or {}
+            existing.update(headers)
+            optional_params["extra_headers"] = existing
+        return optional_params
+
+    # =========================================================================
+    # Chat Completion - delegate to LiteLLM's OpenAI handler
+    # =========================================================================
+
+    def completion(
+        self,
+        model: str,
+        messages: list,
+        api_base: str,
+        custom_prompt_dict: dict,
+        model_response: ModelResponse,
+        print_verbose,
+        encoding,
+        api_key: str,
+        logging_obj,
+        optional_params: dict,
+        acompletion=None,
+        litellm_params=None,
+        logger_fn=None,
+        headers: Optional[dict] = None,
+        timeout: Optional[Union[float, httpx.Timeout]] = None,
+        client: Optional[HTTPHandler] = None,
+    ) -> ModelResponse:
+        params = _sanitize_params_for_delegation(optional_params)
+        params = self._merge_headers(params, headers)
+
+        return litellm.completion(
+            model=self._get_openai_model(model),
+            messages=messages,
+            api_base=api_base or f"{MODELSCOPE_BASE_URL}/v1",
+            api_key=api_key,
+            timeout=timeout,
+            ,**params,
+        )
+
+    async def acompletion(
+        self,
+        model: str,
+        messages: list,
+        api_base: str,
+        custom_prompt_dict: dict,
+        model_response: ModelResponse,
+        print_verbose,
+        encoding,
+        api_key: str,
+        logging_obj,
+        optional_params: dict,
+        acompletion=None,
+        litellm_params=None,
+        logger_fn=None,
+        headers: Optional[dict] = None,
+        timeout: Optional[Union[float, httpx.Timeout]] = None,
+        client: Optional[AsyncHTTPHandler] = None,
+    ) -> ModelResponse:
+        params = _sanitize_params_for_delegation(optional_params)
+        params = self._merge_headers(params, headers)
+
+        return await litellm.acompletion(
+            model=self._get_openai_model(model),
+            messages=messages,
+            api_base=api_base or f"{MODELSCOPE_BASE_URL}/v1",
+            api_key=api_key,
+            timeout=timeout,
+            ,**params,
+        )
+
+    def streaming(
+        self,
+        model: str,
+        messages: list,
+        api_base: str,
+        custom_prompt_dict: dict,
+        model_response: ModelResponse,
+        print_verbose,
+        encoding,
+        api_key: str,
+        logging_obj,
+        optional_params: dict,
+        acompletion=None,
+        litellm_params=None,
+        logger_fn=None,
+        headers: Optional[dict] = None,
+        timeout: Optional[Union[float, httpx.Timeout]] = None,
+        client: Optional[HTTPHandler] = None,
+    ) -> Iterator[GenericStreamingChunk]:
+        params = _sanitize_params_for_delegation(optional_params, extra_keys_to_remove=["stream"])
+        params = self._merge_headers(params, headers)
+
+        response = litellm.completion(
+            model=self._get_openai_model(model),
+            messages=messages,
+            api_base=api_base or f"{MODELSCOPE_BASE_URL}/v1",
+            api_key=api_key,
+            timeout=timeout,
+            stream=True,
+            ,**params,
+        )
+        for chunk in response:
+            if not chunk.choices:
+                continue
+            choice = chunk.choices[0]
+            delta = getattr(choice, "delta", None)
+            text = ""
+            tool_use = None
+            if delta:
+                text = getattr(delta, "content", "") or ""
+                tool_use = getattr(delta, "tool_calls", None)
+            elif hasattr(choice, "text"):
+                text = choice.text or ""
+
+            yield GenericStreamingChunk(
+                text=text,
+                is_finished=choice.finish_reason is not None,
+                finish_reason=choice.finish_reason,
+                usage=getattr(chunk, "usage", None),
+                index=getattr(choice, "index", 0),
+                tool_use=tool_use,
+            )
+
+    async def astreaming(
+        self,
+        model: str,
+        messages: list,
+        api_base: str,
+        custom_prompt_dict: dict,
+        model_response: ModelResponse,
+        print_verbose,
+        encoding,
+        api_key: str,
+        logging_obj,
+        optional_params: dict,
+        acompletion=None,
+        litellm_params=None,
+        logger_fn=None,
+        headers: Optional[dict] = None,
+        timeout: Optional[Union[float, httpx.Timeout]] = None,
+        client: Optional[AsyncHTTPHandler] = None,
+    ) -> AsyncIterator[GenericStreamingChunk]:
+        params = _sanitize_params_for_delegation(optional_params, extra_keys_to_remove=["stream"])
+        params = self._merge_headers(params, headers)
+
+        response = await litellm.acompletion(
+            model=self._get_openai_model(model),
+            messages=messages,
+            api_base=api_base or f"{MODELSCOPE_BASE_URL}/v1",
+            api_key=api_key,
+            timeout=timeout,
+            stream=True,
+            ,**params,
+        )
+        async for chunk in response:
+            if not chunk.choices:
+                continue
+            choice = chunk.choices[0]
+            delta = getattr(choice, "delta", None)
+            text = ""
+            tool_use = None
+            if delta:
+                text = getattr(delta, "content", "") or ""
+                tool_use = getattr(delta, "tool_calls", None)
+            elif hasattr(choice, "text"):
+                text = choice.text or ""
+
+            yield GenericStreamingChunk(
+                text=text,
+                is_finished=choice.finish_reason is not None,
+                finish_reason=choice.finish_reason,
+                usage=getattr(chunk, "usage", None),
+                index=getattr(choice, "index", 0),
+                tool_use=tool_use,
+            )
+
+    # =========================================================================
+    # Image Generation - custom async polling implementation
+    # =========================================================================
+
+    def _get_headers(self, api_key: str, async_mode: bool = False) -> dict:
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        }
+        if async_mode:
+            headers["X-ModelScope-Async-Mode"] = "true"
+        return headers
+
+    def _get_poll_headers(self, api_key: str) -> dict:
+        return {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+            "X-ModelScope-Task-Type": "image_generation",
+        }
+
+    def _handle_http_error(self, e: httpx.HTTPStatusError) -> None:
+        try:
+            error_detail = e.response.json()
+            message = error_detail.get("error", {}).get("message", e.response.text)
+        except Exception:
+            message = e.response.text or str(e)
+        raise CustomLLMError(status_code=e.response.status_code, message=message)
+
+    def _handle_request_error(self, e: httpx.RequestError) -> None:
+        raise CustomLLMError(status_code=500, message=f"Request failed: {str(e)}")
+
+    def _poll_image_task(
+        self,
+        task_id: str,
+        api_key: str,
+        timeout: float = MODELSCOPE_POLLING_TIMEOUT,
+    ) -> dict:
+        start_time = time.time()
+        task_url = f"{MODELSCOPE_BASE_URL}/v1/tasks/{task_id}"
+        headers = self._get_poll_headers(api_key)
+
+        with httpx.Client(timeout=MODELSCOPE_REQUEST_TIMEOUT) as client:
+            while True:
+                elapsed = time.time() - start_time
+                if elapsed > timeout:
+                    raise CustomLLMError(
+                        status_code=408,
+                        message=f"Image generation timed out after {timeout}s (task_id={task_id})",
+                    )
+
+                try:
+                    response = client.get(task_url, headers=headers)
+                    response.raise_for_status()
+                except httpx.HTTPStatusError as e:
+                    self._handle_http_error(e)
+                except httpx.RequestError as e:
+                    self._handle_request_error(e)
+
+                data = response.json()
+                task_status = data.get("task_status", "").upper()
+
+                if task_status == "SUCCEED":
+                    return data
+                elif task_status == "FAILED":
+                    raise CustomLLMError(
+                        status_code=500,
+                        message=f"Image generation failed (task_id={task_id}): {data.get('error_message', 'Unknown')}",
+                    )
+
+                time.sleep(MODELSCOPE_POLLING_INTERVAL)
+
+    async def _poll_image_task_async(
+        self,
+        task_id: str,
+        api_key: str,
+        timeout: float = MODELSCOPE_POLLING_TIMEOUT,
+    ) -> dict:
+        start_time = time.time()
+        task_url = f"{MODELSCOPE_BASE_URL}/v1/tasks/{task_id}"
+        headers = self._get_poll_headers(api_key)
+
+        async with httpx.AsyncClient(timeout=MODELSCOPE_REQUEST_TIMEOUT) as client:
+            while True:
+                elapsed = time.time() - start_time
+                if elapsed > timeout:
+                    raise CustomLLMError(
+                        status_code=408,
+                        message=f"Image generation timed out after {timeout}s (task_id={task_id})",
+                    )
+
+                try:
+                    response = await client.get(task_url, headers=headers)
+                    response.raise_for_status()
+                except httpx.HTTPStatusError as e:
+                    self._handle_http_error(e)
+                except httpx.RequestError as e:
+                    self._handle_request_error(e)
+
+                data = response.json()
+                task_status = data.get("task_status", "").upper()
+
+                if task_status == "SUCCEED":
+                    return data
+                elif task_status == "FAILED":
+                    raise CustomLLMError(
+                        status_code=500,
+                        message=f"Image generation failed (task_id={task_id}): {data.get('error_message', 'Unknown')}",
+                    )
+
+                await asyncio.sleep(MODELSCOPE_POLLING_INTERVAL)
+
+    def _get_image_api_base(self, api_base: Optional[str]) -> str:
+        """Normalize api_base for image generation endpoint."""
+        if api_base:
+            base = api_base.rstrip("/")
+            if not base.endswith("/v1/images/generations"):
+                if base.endswith("/v1"):
+                    return f"{base}/images/generations"
+                return f"{base}/v1/images/generations"
+            return base
+        return f"{MODELSCOPE_BASE_URL}/v1/images/generations"
+
+    def image_generation(
+        self,
+        model: str,
+        prompt: str,
+        api_key: Optional[str],
+        api_base: Optional[str],
+        model_response: ImageResponse,
+        optional_params: dict,
+        logging_obj: Any,
+        timeout: Optional[Union[float, httpx.Timeout]] = None,
+        client: Optional[HTTPHandler] = None,
+    ) -> ImageResponse:
+        if not api_key:
+            raise CustomLLMError(status_code=401, message="MODELSCOPE_API_KEY is required")
+
+        image_api_base = self._get_image_api_base(api_base)
+        headers = self._get_headers(api_key, async_mode=True)
+
+        optional_params = dict(optional_params)
+        request_body = {"model": model, "prompt": prompt}
+
+        loras = optional_params.pop("loras", None)
+        if loras is not None:
+            request_body["loras"] = loras
+        request_body.update(optional_params)
+
+        request_timeout = _extract_timeout_seconds(timeout) if timeout else MODELSCOPE_REQUEST_TIMEOUT
+
+        try:
+            with httpx.Client(timeout=request_timeout) as http_client:
+                response = http_client.post(image_api_base, headers=headers, json=request_body)
+                response.raise_for_status()
+                task_data = response.json()
+        except httpx.HTTPStatusError as e:
+            self._handle_http_error(e)
+        except httpx.RequestError as e:
+            self._handle_request_error(e)
+
+        task_id = task_data.get("task_id")
+        if not task_id:
+            raise CustomLLMError(status_code=500, message="No task_id in response")
+
+        poll_timeout = _extract_timeout_seconds(timeout)
+        result = self._poll_image_task(task_id, api_key, poll_timeout)
+        model_response.data = [ImageObject(url=url, b64_json=None) for url in result.get("output_images", [])]
+        return model_response
+
+    async def aimage_generation(
+        self,
+        model: str,
+        prompt: str,
+        api_key: Optional[str],
+        api_base: Optional[str],
+        model_response: ImageResponse,
+        optional_params: dict,
+        logging_obj: Any,
+        timeout: Optional[Union[float, httpx.Timeout]] = None,
+        client: Optional[AsyncHTTPHandler] = None,
+    ) -> ImageResponse:
+        if not api_key:
+            raise CustomLLMError(status_code=401, message="MODELSCOPE_API_KEY is required")
+
+        image_api_base = self._get_image_api_base(api_base)
+        headers = self._get_headers(api_key, async_mode=True)
+
+        optional_params = dict(optional_params)
+        request_body = {"model": model, "prompt": prompt}
+
+        loras = optional_params.pop("loras", None)
+        if loras is not None:
+            request_body["loras"] = loras
+        request_body.update(optional_params)
+
+        request_timeout = _extract_timeout_seconds(timeout) if timeout else MODELSCOPE_REQUEST_TIMEOUT
+
+        try:
+            async with httpx.AsyncClient(timeout=request_timeout) as http_client:
+                response = await http_client.post(image_api_base, headers=headers, json=request_body)
+                response.raise_for_status()
+                task_data = response.json()
+        except httpx.HTTPStatusError as e:
+            self._handle_http_error(e)
+        except httpx.RequestError as e:
+            self._handle_request_error(e)
+
+        task_id = task_data.get("task_id")
+        if not task_id:
+            raise CustomLLMError(status_code=500, message="No task_id in response")
+
+        poll_timeout = _extract_timeout_seconds(timeout)
+        result = await self._poll_image_task_async(task_id, api_key, poll_timeout)
+
+        image_urls = result.get("output_images", []) or []
+
+        async def _url_to_b64(u: str) -> Optional[str]:
+            try:
+                data_uri = await async_convert_url_to_base64(u)
+                if data_uri and ";base64," in data_uri:
+                    return data_uri.split(";base64,", 1)[1]
+                return data_uri
+            except Exception:
+                return None
+
+        b64_list = await asyncio.gather(*(_url_to_b64(u) for u in image_urls))
+
+        model_response.data = [
+            ImageObject(url=u, b64_json=b64) for u, b64 in zip(image_urls, b64_list)
+        ]
+        return model_response
+
+# Singleton instance
+modelscope_llm = ModelScopeLLM()
 #+end_src
 
 * knock knock
