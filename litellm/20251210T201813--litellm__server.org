@@ -133,17 +133,14 @@
                    ("nvidia" . ((api_base . "https://integrate.api.nvidia.com/v1")
                                 (prefix . "nvidia_nim")
                                 (weight . 5)))
-                   ("snow" . ((extra_headers . ((x-snow . "true")
-                                                (user-agent . "node")))
-                              (tags . ("snow"))))
+                   ("poll" . ((api_base . "https://gen.pollinations.ai")
+                              (prefix . "poll")))
                    ("ouyangqiqi" . ((tags . ("tavern"))))
                    ("beizhi" . ((tags . ("tavern"))))
                    ("bohe" . ((tags . ("tavern"))
                               (weight . 10)))
                    ("sc0152" . ((tags . ("tavern"))))
-                   ("88code" . ((weight . 2)))
-                   ("jason_wong1" . ((weight . 10)))
-                   ("HenryXiaoYang" . ((weight . 2)))))
+                   ("88code" . ((weight . 5)))))
          (common '())
          (col (car models))
          (model-map (cdr models))
@@ -157,7 +154,9 @@
                              (redact_user_api_key_info . t)
                              (custom_provider_map
                               . [((provider . "ms")
-                                  (custom_handler . "modelscope_handler.modelscope_llm"))])
+                                  (custom_handler . "modelscope_handler.modelscope_llm"))
+                                 ((provider . "poll")
+                                  (custom_handler . "pollinations_handler.pollinations_llm"))])
                              (callbacks . ["pre_call.header_forward"])))
          (general-settings `((forward_client_headers_to_llm_api . :false)
                              (disable_master_key_return . t)
@@ -206,33 +205,27 @@
 
 * models
 #+name: models-tbl
-| name                          | nvidia                              | cpa                                         | modelscope                          | 88code | HenryXiaoYang        | jason_wong1 |
-|-------------------------------+-------------------------------------+---------------------------------------------+-------------------------------------+--------+----------------------+-------------|
-| deepseek-v3.2                 | deepseek-ai/%s                      | t                                           | deepseek-ai/DeepSeek-V3.2           |        |                      |             |
-| qwen3-235b-a22b-instruct      |                                     | t                                           | Qwen/Qwen3-235B-A22B-Instruct-2507  |        |                      |             |
-| qwen3-235b-a22b-thinking-2507 |                                     | t                                           | Qwen/Qwen3-235B-A22B-Thinking-2507  |        |                      |             |
-| qwen3-coder-plus              | qwen/qwen3-coder-480b-a35b-instruct | t                                           | Qwen/Qwen3-Coder-480B-A35B-Instruct |        |                      |             |
-| Qwen/Qwen-Image-2512          |                                     |                                             | t                                   |        |                      |             |
-| qwen3-max                     |                                     | t                                           |                                     |        |                      |             |
-| qwen3-vl-plus                 |                                     | t                                           | Qwen/Qwen3-VL-235B-A22B-Instruct    |        |                      |             |
-| kimi-k2-0905                  |                                     | t                                           |                                     |        |                      |             |
-| kimi-k2-thinking              | moonshotai/%s                       | t                                           |                                     |        |                      |             |
-| deepseek-v3.2-chat            |                                     | t                                           |                                     |        |                      |             |
-| deepseek-v3.2-reasoner        |                                     | t                                           |                                     |        |                      |             |
-| deepseek-r1                   | deepseek-ai/%s                      | t                                           | deepseek-ai/DeepSeek-R1-0528        |        |                      |             |
-| minimax-m2.1                  | minimaxai/%s                        | ant/t                                       |                                     |        |                      |             |
-| z-image-turbo                 |                                     |                                             | Tongyi-MAI/Z-Image-Turbo            |        |                      |             |
-| glm-4.6v                      |                                     |                                             | ZhipuAI/GLM-4.6V                    |        |                      |             |
-| glm-4.7                       | z-ai/%s                             | ant/t                                       |                                     |        |                      |             |
-| claude-3-5-haiku-20241022     |                                     |                                             |                                     |        |                      |             |
-| claude-haiku-4-5-20251001     |                                     |                                             |                                     |        | '("t" "%s-thinking") | ant/t       |
-| claude-opus-4-5               |                                     | ant/gemini-%s-thinking                      |                                     |        |                      | ant/t       |
-| claude-opus-4-5-20251101      |                                     |                                             |                                     |        | '("t" "%s-thinking") | ant/t       |
-| claude-sonnet-4-20250514      |                                     |                                             |                                     |        | '("t" "%s-thinking") | ant/t       |
-| claude-sonnet-4-5             |                                     | '("ant/gemini-%s" "ant/gemini-%s-thinking") |                                     |        |                      | ant/t       |
-| claude-sonnet-4-5-20250929    |                                     |                                             |                                     |        | '("t" "%s-thinking") | ant/t       |
-| gpt-5.2                       |                                     | cx/t                                        |                                     | t      |                      |             |
-| gpt-5.2-codex                 |                                     | cx/t                                        |                                     | t      |                      |             |
+| name                          | poll   | nvidia                              | cpa   | modelscope                          | 88code |
+|-------------------------------+--------+-------------------------------------+-------+-------------------------------------+--------|
+| deepseek-v3.2                 |        | deepseek-ai/%s                      | t     | deepseek-ai/DeepSeek-V3.2           |        |
+| qwen3-235b-a22b-instruct      |        |                                     | t     | Qwen/Qwen3-235B-A22B-Instruct-2507  |        |
+| qwen3-235b-a22b-thinking-2507 |        |                                     | t     | Qwen/Qwen3-235B-A22B-Thinking-2507  |        |
+| qwen3-coder-plus              |        | qwen/qwen3-coder-480b-a35b-instruct | t     | Qwen/Qwen3-Coder-480B-A35B-Instruct |        |
+| Qwen/Qwen-Image-2512          |        |                                     |       | t                                   |        |
+| qwen3-max                     |        |                                     | t     |                                     |        |
+| qwen3-vl-plus                 |        |                                     | t     | Qwen/Qwen3-VL-235B-A22B-Instruct    |        |
+| kimi-k2-0905                  |        |                                     | t     |                                     |        |
+| kimi-k2-thinking              |        | moonshotai/%s                       | t     |                                     |        |
+| deepseek-v3.2-chat            |        |                                     | t     |                                     |        |
+| deepseek-v3.2-reasoner        |        |                                     | t     |                                     |        |
+| deepseek-r1                   |        | deepseek-ai/%s                      | t     | deepseek-ai/DeepSeek-R1-0528        |        |
+| minimax-m2.1                  |        | minimaxai/%s                        | ant/t |                                     |        |
+| z-image-turbo                 | zimage |                                     |       | Tongyi-MAI/Z-Image-Turbo            |        |
+| glm-4.6v                      |        |                                     |       | ZhipuAI/GLM-4.6V                    |        |
+| glm-4.7                       |        | z-ai/%s                             | ant/t |                                     |        |
+| gpt-5.1-codex-max             |        |                                     |       |                                     |        |
+| gpt-5.2                       |        |                                     |       |                                     |        |
+| gpt-5.2-codex                 |        |                                     |       |                                     |        |
 
 #+name: models-tbl-bak
 | name                          | beizhi                 | Nyxar | WCyrus | api | Sanyela | zhongruan | pangil            | kkkyyx     | dabuliu           | bohe                  | HenryXiaoYang | bytebender                   | jason_wong1 | anyrouter | huan                 | snow | 88code | ouyangqiqi              | modelscope                          | sc0152                                    | linuxdo |
@@ -387,72 +380,28 @@ codex_prompt_mod = CodexPromptMod()
 #+end_src
 
 * handler
-** modelscope
-:PROPERTIES:
-:CUSTOM_ID: 2ac3f395-16d0-4ce4-9658-92762f3d0d28
-:END:
-#+begin_src py :tangle (zr-org-by-tangle-dir "modelscope_handler.py")
+** openai
+
+#+name: base_openai
+#+begin_src py
 """
-ModelScope Custom LLM Handler for LiteLLM
+Base OpenAI Delegate Handler for LiteLLM Custom Providers
 
-Chat/Completion: delegates to LiteLLM's OpenAI-compatible handler
-Image Generation: custom async polling implementation
-
-Usage in config.yaml:
-    model_list:
-      - model_name: "modelscope-chat"
-        litellm_params:
-          model: "ms/Qwen/Qwen2.5-72B-Instruct"
-          api_key: "your-modelscope-api-key"
-
-      - model_name: "modelscope-image"
-        litellm_params:
-          model: "ms/Tongyi-MAI/Z-Image-Turbo"
-          api_key: "your-modelscope-api-key"
-
-    litellm_settings:
-      custom_provider_map:
-        - {"provider": "ms", "custom_handler": modelscope_handler.modelscope_llm}
+Provides shared Chat/Completion logic that delegates to LiteLLM's OpenAI-compatible handler.
+Subclasses only need to implement provider-specific features (e.g., image generation).
 """
 
-import asyncio
-import time
-from typing import Any, AsyncIterator, Iterator, Optional, Union
+from typing import AsyncIterator, Iterator, Optional, Union
 
 import httpx
 
 import litellm
 from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler, HTTPHandler
 from litellm.llms.custom_llm import CustomLLM, CustomLLMError
-from litellm.litellm_core_utils.prompt_templates.image_handling import (
-    async_convert_url_to_base64,
-)
-from litellm.types.utils import (
-    GenericStreamingChunk,
-    ImageObject,
-    ImageResponse,
-    ModelResponse,
-)
+from litellm.types.utils import GenericStreamingChunk, ModelResponse
 
 
-MODELSCOPE_BASE_URL = "https://api-inference.modelscope.cn"
-MODELSCOPE_POLLING_INTERVAL = 5  # seconds
-MODELSCOPE_POLLING_TIMEOUT = 600  # 10 minutes
-MODELSCOPE_REQUEST_TIMEOUT = 60  # per-request timeout
-
-
-def _extract_timeout_seconds(timeout: Optional[Union[float, httpx.Timeout]]) -> float:
-    if timeout is None:
-        return MODELSCOPE_POLLING_TIMEOUT
-    if isinstance(timeout, (int, float)):
-        return float(timeout)
-    if isinstance(timeout, httpx.Timeout):
-        values = [v for v in [timeout.read, timeout.connect, timeout.write, timeout.pool] if v is not None]
-        return max(values) if values else MODELSCOPE_POLLING_TIMEOUT
-    return MODELSCOPE_POLLING_TIMEOUT
-
-
-def _sanitize_params_for_delegation(optional_params: dict, extra_keys_to_remove: list = None) -> dict:
+def _sanitize_params_for_delegation(optional_params: Optional[dict], extra_keys_to_remove: list = None) -> dict:
     """Remove keys that would conflict with explicit kwargs in litellm.completion()."""
     params = dict(optional_params or {})
     keys_to_remove = ["model", "messages", "api_base", "api_key", "timeout", "custom_llm_provider"]
@@ -463,13 +412,32 @@ def _sanitize_params_for_delegation(optional_params: dict, extra_keys_to_remove:
     return params
 
 
-class ModelScopeLLM(CustomLLM):
-    """
-    ModelScope Custom LLM Handler
+def _extract_timeout_seconds(timeout: Optional[Union[float, httpx.Timeout]], default: float) -> float:
+    """Extract timeout value in seconds from various timeout formats."""
+    if timeout is None:
+        return default
+    if isinstance(timeout, (int, float)):
+        return float(timeout)
+    if isinstance(timeout, httpx.Timeout):
+        values = [v for v in [timeout.read, timeout.connect, timeout.write, timeout.pool] if v is not None]
+        return max(values) if values else default
+    return default
 
-    - Chat/Completion: delegates to LiteLLM's OpenAI-compatible handler
-    - Image Generation: custom async polling implementation
+
+class OpenAIDelegateHandler(CustomLLM):
     """
+    Base handler that delegates Chat/Completion to LiteLLM's OpenAI handler.
+
+    Subclasses should set:
+        - base_url: str - The provider's base URL
+        - default_timeout: float - Default timeout for requests
+
+    Subclasses can override:
+        - image_generation / aimage_generation for custom image generation logic
+    """
+
+    base_url: str = ""
+    default_timeout: float = 60.0
 
     def __init__(self) -> None:
         super().__init__()
@@ -487,6 +455,31 @@ class ModelScopeLLM(CustomLLM):
             existing.update(headers)
             optional_params["extra_headers"] = existing
         return optional_params
+
+    def _get_api_base(self, api_base: Optional[str]) -> str:
+        """Get the API base URL, defaulting to provider's base_url/v1."""
+        if api_base:
+            return api_base.rstrip("/")
+        return f"{self.base_url.rstrip('/')}/v1"
+
+    def _get_effective_timeout(self, timeout: Optional[Union[float, httpx.Timeout]]) -> Optional[Union[float, httpx.Timeout]]:
+        """Return timeout if provided, otherwise use default_timeout."""
+        if timeout is not None:
+            return timeout
+        return self.default_timeout
+
+    def _handle_http_error(self, e: httpx.HTTPStatusError) -> None:
+        """Handle HTTP errors from provider API."""
+        try:
+            error_detail = e.response.json()
+            message = error_detail.get("error", {}).get("message", e.response.text)
+        except Exception:
+            message = e.response.text or str(e)
+        raise CustomLLMError(status_code=e.response.status_code, message=message)
+
+    def _handle_request_error(self, e: httpx.RequestError) -> None:
+        """Handle request errors."""
+        raise CustomLLMError(status_code=500, message=f"Request failed: {str(e)}")
 
     # =========================================================================
     # Chat Completion - delegate to LiteLLM's OpenAI handler
@@ -517,10 +510,10 @@ class ModelScopeLLM(CustomLLM):
         return litellm.completion(
             model=self._get_openai_model(model),
             messages=messages,
-            api_base=api_base or f"{MODELSCOPE_BASE_URL}/v1",
+            api_base=self._get_api_base(api_base),
             api_key=api_key,
-            timeout=timeout,
-            ,**params,
+            timeout=self._get_effective_timeout(timeout),
+            **params,
         )
 
     async def acompletion(
@@ -548,10 +541,10 @@ class ModelScopeLLM(CustomLLM):
         return await litellm.acompletion(
             model=self._get_openai_model(model),
             messages=messages,
-            api_base=api_base or f"{MODELSCOPE_BASE_URL}/v1",
+            api_base=self._get_api_base(api_base),
             api_key=api_key,
-            timeout=timeout,
-            ,**params,
+            timeout=self._get_effective_timeout(timeout),
+            **params,
         )
 
     def streaming(
@@ -579,15 +572,27 @@ class ModelScopeLLM(CustomLLM):
         response = litellm.completion(
             model=self._get_openai_model(model),
             messages=messages,
-            api_base=api_base or f"{MODELSCOPE_BASE_URL}/v1",
+            api_base=self._get_api_base(api_base),
             api_key=api_key,
-            timeout=timeout,
+            timeout=self._get_effective_timeout(timeout),
             stream=True,
-            ,**params,
+            **params,
         )
         for chunk in response:
+            usage = getattr(chunk, "usage", None)
+
             if not chunk.choices:
+                if usage:
+                    yield GenericStreamingChunk(
+                        text="",
+                        is_finished=True,
+                        finish_reason=None,
+                        usage=usage,
+                        index=0,
+                        tool_use=None,
+                    )
                 continue
+
             choice = chunk.choices[0]
             delta = getattr(choice, "delta", None)
             text = ""
@@ -602,7 +607,7 @@ class ModelScopeLLM(CustomLLM):
                 text=text,
                 is_finished=choice.finish_reason is not None,
                 finish_reason=choice.finish_reason,
-                usage=getattr(chunk, "usage", None),
+                usage=usage,
                 index=getattr(choice, "index", 0),
                 tool_use=tool_use,
             )
@@ -632,15 +637,27 @@ class ModelScopeLLM(CustomLLM):
         response = await litellm.acompletion(
             model=self._get_openai_model(model),
             messages=messages,
-            api_base=api_base or f"{MODELSCOPE_BASE_URL}/v1",
+            api_base=self._get_api_base(api_base),
             api_key=api_key,
-            timeout=timeout,
+            timeout=self._get_effective_timeout(timeout),
             stream=True,
-            ,**params,
+            **params,
         )
         async for chunk in response:
+            usage = getattr(chunk, "usage", None)
+
             if not chunk.choices:
+                if usage:
+                    yield GenericStreamingChunk(
+                        text="",
+                        is_finished=True,
+                        finish_reason=None,
+                        usage=usage,
+                        index=0,
+                        tool_use=None,
+                    )
                 continue
+
             choice = chunk.choices[0]
             delta = getattr(choice, "delta", None)
             text = ""
@@ -655,16 +672,81 @@ class ModelScopeLLM(CustomLLM):
                 text=text,
                 is_finished=choice.finish_reason is not None,
                 finish_reason=choice.finish_reason,
-                usage=getattr(chunk, "usage", None),
+                usage=usage,
                 index=getattr(choice, "index", 0),
                 tool_use=tool_use,
             )
+#+end_src
+
+** modelscope
+:PROPERTIES:
+:CUSTOM_ID: 2ac3f395-16d0-4ce4-9658-92762f3d0d28
+:END:
+#+begin_src py :tangle (zr-org-by-tangle-dir "modelscope_handler.py")
+"""
+ModelScope Custom LLM Handler for LiteLLM
+
+Chat/Completion: delegates to LiteLLM's OpenAI-compatible handler (via base class)
+Image Generation: custom async polling implementation
+
+Usage in config.yaml:
+    model_list:
+      - model_name: "modelscope-chat"
+        litellm_params:
+          model: "ms/Qwen/Qwen2.5-72B-Instruct"
+          api_key: "your-modelscope-api-key"
+
+      - model_name: "modelscope-image"
+        litellm_params:
+          model: "ms/Tongyi-MAI/Z-Image-Turbo"
+          api_key: "your-modelscope-api-key"
+
+    litellm_settings:
+      custom_provider_map:
+        - {"provider": "ms", "custom_handler": modelscope_handler.modelscope_llm}
+"""
+
+import asyncio
+import time
+from typing import Any, Optional, Union
+
+import httpx
+
+from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler, HTTPHandler
+from litellm.llms.custom_llm import CustomLLMError
+from litellm.litellm_core_utils.prompt_templates.image_handling import (
+    async_convert_url_to_base64,
+)
+from litellm.types.utils import ImageObject, ImageResponse
+
+<<base_openai>>
+
+
+MODELSCOPE_BASE_URL = "https://api-inference.modelscope.cn"
+MODELSCOPE_POLLING_INTERVAL = 5  # seconds
+MODELSCOPE_POLLING_TIMEOUT = 600  # 10 minutes
+MODELSCOPE_REQUEST_TIMEOUT = 60  # per-request timeout
+
+
+class ModelScopeLLM(OpenAIDelegateHandler):
+    """
+    ModelScope Custom LLM Handler
+
+    - Chat/Completion: inherited from OpenAIDelegateHandler
+    - Image Generation: custom async polling implementation
+    """
+
+    base_url = MODELSCOPE_BASE_URL
+    default_timeout = MODELSCOPE_REQUEST_TIMEOUT
+
+    def __init__(self) -> None:
+        super().__init__()
 
     # =========================================================================
     # Image Generation - custom async polling implementation
     # =========================================================================
 
-    def _get_headers(self, api_key: str, async_mode: bool = False) -> dict:
+    def _get_image_headers(self, api_key: str, async_mode: bool = False) -> dict:
         headers = {
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
@@ -680,16 +762,9 @@ class ModelScopeLLM(CustomLLM):
             "X-ModelScope-Task-Type": "image_generation",
         }
 
-    def _handle_http_error(self, e: httpx.HTTPStatusError) -> None:
-        try:
-            error_detail = e.response.json()
-            message = error_detail.get("error", {}).get("message", e.response.text)
-        except Exception:
-            message = e.response.text or str(e)
-        raise CustomLLMError(status_code=e.response.status_code, message=message)
-
-    def _handle_request_error(self, e: httpx.RequestError) -> None:
-        raise CustomLLMError(status_code=500, message=f"Request failed: {str(e)}")
+    def _get_task_url(self, task_id: str) -> str:
+        """Build task polling URL using instance base_url."""
+        return f"{self.base_url.rstrip('/')}/v1/tasks/{task_id}"
 
     def _poll_image_task(
         self,
@@ -698,7 +773,7 @@ class ModelScopeLLM(CustomLLM):
         timeout: float = MODELSCOPE_POLLING_TIMEOUT,
     ) -> dict:
         start_time = time.time()
-        task_url = f"{MODELSCOPE_BASE_URL}/v1/tasks/{task_id}"
+        task_url = self._get_task_url(task_id)
         headers = self._get_poll_headers(api_key)
 
         with httpx.Client(timeout=MODELSCOPE_REQUEST_TIMEOUT) as client:
@@ -738,7 +813,7 @@ class ModelScopeLLM(CustomLLM):
         timeout: float = MODELSCOPE_POLLING_TIMEOUT,
     ) -> dict:
         start_time = time.time()
-        task_url = f"{MODELSCOPE_BASE_URL}/v1/tasks/{task_id}"
+        task_url = self._get_task_url(task_id)
         headers = self._get_poll_headers(api_key)
 
         async with httpx.AsyncClient(timeout=MODELSCOPE_REQUEST_TIMEOUT) as client:
@@ -780,7 +855,7 @@ class ModelScopeLLM(CustomLLM):
                     return f"{base}/images/generations"
                 return f"{base}/v1/images/generations"
             return base
-        return f"{MODELSCOPE_BASE_URL}/v1/images/generations"
+        return f"{self.base_url.rstrip('/')}/v1/images/generations"
 
     def image_generation(
         self,
@@ -789,7 +864,7 @@ class ModelScopeLLM(CustomLLM):
         api_key: Optional[str],
         api_base: Optional[str],
         model_response: ImageResponse,
-        optional_params: dict,
+        optional_params: Optional[dict],
         logging_obj: Any,
         timeout: Optional[Union[float, httpx.Timeout]] = None,
         client: Optional[HTTPHandler] = None,
@@ -798,9 +873,9 @@ class ModelScopeLLM(CustomLLM):
             raise CustomLLMError(status_code=401, message="MODELSCOPE_API_KEY is required")
 
         image_api_base = self._get_image_api_base(api_base)
-        headers = self._get_headers(api_key, async_mode=True)
+        headers = self._get_image_headers(api_key, async_mode=True)
 
-        optional_params = dict(optional_params)
+        optional_params = dict(optional_params or {})
         request_body = {"model": model, "prompt": prompt}
 
         loras = optional_params.pop("loras", None)
@@ -808,7 +883,7 @@ class ModelScopeLLM(CustomLLM):
             request_body["loras"] = loras
         request_body.update(optional_params)
 
-        request_timeout = _extract_timeout_seconds(timeout) if timeout else MODELSCOPE_REQUEST_TIMEOUT
+        request_timeout = _extract_timeout_seconds(timeout, MODELSCOPE_REQUEST_TIMEOUT)
 
         try:
             with httpx.Client(timeout=request_timeout) as http_client:
@@ -824,9 +899,14 @@ class ModelScopeLLM(CustomLLM):
         if not task_id:
             raise CustomLLMError(status_code=500, message="No task_id in response")
 
-        poll_timeout = _extract_timeout_seconds(timeout)
+        poll_timeout = _extract_timeout_seconds(timeout, MODELSCOPE_POLLING_TIMEOUT)
         result = self._poll_image_task(task_id, api_key, poll_timeout)
-        model_response.data = [ImageObject(url=url, b64_json=None) for url in result.get("output_images", [])]
+
+        output_images = result.get("output_images", []) or []
+        model_response.data = [
+            ImageObject(url=img if isinstance(img, str) else img.get("url"), b64_json=None)
+            for img in output_images
+        ]
         return model_response
 
     async def aimage_generation(
@@ -836,7 +916,7 @@ class ModelScopeLLM(CustomLLM):
         api_key: Optional[str],
         api_base: Optional[str],
         model_response: ImageResponse,
-        optional_params: dict,
+        optional_params: Optional[dict],
         logging_obj: Any,
         timeout: Optional[Union[float, httpx.Timeout]] = None,
         client: Optional[AsyncHTTPHandler] = None,
@@ -845,9 +925,9 @@ class ModelScopeLLM(CustomLLM):
             raise CustomLLMError(status_code=401, message="MODELSCOPE_API_KEY is required")
 
         image_api_base = self._get_image_api_base(api_base)
-        headers = self._get_headers(api_key, async_mode=True)
+        headers = self._get_image_headers(api_key, async_mode=True)
 
-        optional_params = dict(optional_params)
+        optional_params = dict(optional_params or {})
         request_body = {"model": model, "prompt": prompt}
 
         loras = optional_params.pop("loras", None)
@@ -855,7 +935,7 @@ class ModelScopeLLM(CustomLLM):
             request_body["loras"] = loras
         request_body.update(optional_params)
 
-        request_timeout = _extract_timeout_seconds(timeout) if timeout else MODELSCOPE_REQUEST_TIMEOUT
+        request_timeout = _extract_timeout_seconds(timeout, MODELSCOPE_REQUEST_TIMEOUT)
 
         try:
             async with httpx.AsyncClient(timeout=request_timeout) as http_client:
@@ -871,12 +951,15 @@ class ModelScopeLLM(CustomLLM):
         if not task_id:
             raise CustomLLMError(status_code=500, message="No task_id in response")
 
-        poll_timeout = _extract_timeout_seconds(timeout)
+        poll_timeout = _extract_timeout_seconds(timeout, MODELSCOPE_POLLING_TIMEOUT)
         result = await self._poll_image_task_async(task_id, api_key, poll_timeout)
 
-        image_urls = result.get("output_images", []) or []
+        output_images = result.get("output_images", []) or []
+        image_urls = [img if isinstance(img, str) else img.get("url") for img in output_images]
 
         async def _url_to_b64(u: str) -> Optional[str]:
+            if not u:
+                return None
             try:
                 data_uri = await async_convert_url_to_base64(u)
                 if data_uri and ";base64," in data_uri:
@@ -892,10 +975,234 @@ class ModelScopeLLM(CustomLLM):
         ]
         return model_response
 
+
 # Singleton instance
 modelscope_llm = ModelScopeLLM()
 #+end_src
+** pollinations
+:PROPERTIES:
+:CUSTOM_ID: 9ad028c5-db07-4cc5-aa06-b403ab6472a2
+:END:
+#+begin_src py :tangle (zr-org-by-tangle-dir "pollinations_handler.py")
+"""
+Pollinations Custom LLM Handler for LiteLLM
 
+Chat/Completion: delegates to LiteLLM's OpenAI-compatible handler (via base class)
+Image Generation: GET request to Pollinations API with direct binary response
+
+Usage in config.yaml:
+    model_list:
+      - model_name: "pollinations-chat"
+        litellm_params:
+          model: "pk/openai/gpt-4"
+          api_key: "your-pollinations-api-key"
+
+      - model_name: "pollinations-image"
+        litellm_params:
+          model: "pk/flux"
+          api_key: "your-pollinations-api-key"
+
+    litellm_settings:
+      custom_provider_map:
+        - {"provider": "pk", "custom_handler": pollinations_handler.pollinations_llm}
+"""
+
+import base64
+from typing import Any, Optional, Union
+from urllib.parse import quote
+
+import httpx
+
+from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler, HTTPHandler
+from litellm.types.utils import ImageObject, ImageResponse
+
+<<base_openai>>
+
+
+POLLINATIONS_BASE_URL = "https://gen.pollinations.ai"
+POLLINATIONS_IMAGE_ENDPOINT = "/image"
+POLLINATIONS_REQUEST_TIMEOUT = 120  # 2 minutes for image generation
+
+
+class PollinationsLLM(OpenAIDelegateHandler):
+    """
+    Pollinations Custom LLM Handler
+
+    - Chat/Completion: inherited from OpenAIDelegateHandler
+    - Image Generation: GET request to Pollinations API
+    """
+
+    base_url = POLLINATIONS_BASE_URL
+    default_timeout = POLLINATIONS_REQUEST_TIMEOUT
+
+    def __init__(self) -> None:
+        super().__init__()
+
+    # =========================================================================
+    # Image Generation - GET request to Pollinations API
+    # =========================================================================
+
+    def _get_image_headers(self, api_key: Optional[str]) -> dict:
+        """Get headers for Pollinations API requests."""
+        headers = {}
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+        return headers
+
+    def _get_image_base_url(self, api_base: Optional[str]) -> str:
+        """Get image generation base URL, respecting api_base override."""
+        if api_base:
+            return api_base.rstrip("/")
+        return self.base_url.rstrip("/")
+
+    def _build_image_url(
+        self,
+        prompt: str,
+        model: str,
+        optional_params: dict,
+        api_base: Optional[str] = None,
+    ) -> str:
+        """
+        Build Pollinations image generation URL.
+
+        Format: GET /image/{prompt}?model=...&width=...&height=...&other_params
+        """
+        base_url = self._get_image_base_url(api_base)
+        encoded_prompt = quote(prompt, safe='')
+        url = f"{base_url}{POLLINATIONS_IMAGE_ENDPOINT}/{encoded_prompt}"
+
+        params = []
+
+        if model:
+            params.append(f"model={quote(str(model), safe='')}")
+
+        size = optional_params.get("size", "1024x1024")
+        if isinstance(size, str) and "x" in size:
+            width, height = size.split("x")
+            params.append(f"width={quote(str(width), safe='')}")
+            params.append(f"height={quote(str(height), safe='')}")
+
+        if "seed" in optional_params and optional_params["seed"] is not None:
+            params.append(f"seed={quote(str(optional_params['seed']), safe='')}")
+
+        if "quality" in optional_params and optional_params["quality"] is not None:
+            params.append(f"quality={quote(str(optional_params['quality']), safe='')}")
+
+        if optional_params.get("transparent"):
+            params.append("transparent=true")
+
+        if "guidance_scale" in optional_params and optional_params["guidance_scale"] is not None:
+            params.append(f"guidance_scale={quote(str(optional_params['guidance_scale']), safe='')}")
+
+        if optional_params.get("nologo"):
+            params.append("nologo=true")
+
+        if optional_params.get("enhance"):
+            params.append("enhance=true")
+
+        if "negative_prompt" in optional_params and optional_params["negative_prompt"]:
+            params.append(f"negative_prompt={quote(str(optional_params['negative_prompt']), safe='')}")
+
+        if optional_params.get("private"):
+            params.append("private=true")
+
+        if optional_params.get("nofeed"):
+            params.append("nofeed=true")
+
+        if optional_params.get("safe"):
+            params.append("safe=true")
+
+        if "image" in optional_params and optional_params["image"]:
+            image_param = optional_params["image"]
+            if isinstance(image_param, list):
+                image_param = "|".join(image_param)
+            params.append(f"image={quote(str(image_param), safe='')}")
+
+        if params:
+            url = f"{url}?{'&'.join(params)}"
+
+        return url
+
+    def image_generation(
+        self,
+        model: str,
+        prompt: str,
+        api_key: Optional[str],
+        api_base: Optional[str],
+        model_response: ImageResponse,
+        optional_params: Optional[dict],
+        logging_obj: Any,
+        timeout: Optional[Union[float, httpx.Timeout]] = None,
+        client: Optional[HTTPHandler] = None,
+    ) -> ImageResponse:
+        """
+        Synchronous image generation using Pollinations API.
+
+        Makes a GET request to /image/{prompt} and returns the binary image as Base64.
+        """
+        optional_params = dict(optional_params or {})
+        url = self._build_image_url(prompt, model, optional_params, api_base)
+        headers = self._get_image_headers(api_key)
+        request_timeout = _extract_timeout_seconds(timeout, POLLINATIONS_REQUEST_TIMEOUT)
+
+        try:
+            with httpx.Client(timeout=request_timeout) as http_client:
+                response = http_client.get(url, headers=headers)
+                response.raise_for_status()
+
+                image_data = response.content
+                b64_data = base64.b64encode(image_data).decode('utf-8')
+
+        except httpx.HTTPStatusError as e:
+            self._handle_http_error(e)
+        except httpx.RequestError as e:
+            self._handle_request_error(e)
+
+        model_response.data = [ImageObject(url=None, b64_json=b64_data)]
+        return model_response
+
+    async def aimage_generation(
+        self,
+        model: str,
+        prompt: str,
+        api_key: Optional[str],
+        api_base: Optional[str],
+        model_response: ImageResponse,
+        optional_params: Optional[dict],
+        logging_obj: Any,
+        timeout: Optional[Union[float, httpx.Timeout]] = None,
+        client: Optional[AsyncHTTPHandler] = None,
+    ) -> ImageResponse:
+        """
+        Asynchronous image generation using Pollinations API.
+
+        Makes a GET request to /image/{prompt} and returns the binary image as Base64.
+        """
+        optional_params = dict(optional_params or {})
+        url = self._build_image_url(prompt, model, optional_params, api_base)
+        headers = self._get_image_headers(api_key)
+        request_timeout = _extract_timeout_seconds(timeout, POLLINATIONS_REQUEST_TIMEOUT)
+
+        try:
+            async with httpx.AsyncClient(timeout=request_timeout) as http_client:
+                response = await http_client.get(url, headers=headers)
+                response.raise_for_status()
+
+                image_data = response.content
+                b64_data = base64.b64encode(image_data).decode('utf-8')
+
+        except httpx.HTTPStatusError as e:
+            self._handle_http_error(e)
+        except httpx.RequestError as e:
+            self._handle_request_error(e)
+
+        model_response.data = [ImageObject(url=None, b64_json=b64_data)]
+        return model_response
+
+
+# Singleton instance
+pollinations_llm = PollinationsLLM()
+#+end_src
 * knock knock
 #+begin_src elisp
 (let* ((zr-local-pls (plstore-open (expand-file-name "litellm.pls" zr-secrets-dir)))
