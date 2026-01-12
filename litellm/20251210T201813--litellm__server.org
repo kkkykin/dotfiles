@@ -156,7 +156,6 @@
                              (cache . t)
                              (check_provider_endpoint . t)
                              (cache_params (type . "local"))
-                             (default_fallbacks . ["deepseek-v3.2" "glm-4.7"])
                              (redact_user_api_key_info . t)
                              (custom_provider_map
                               . [((provider . "ms")
