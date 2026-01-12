@@ -181,6 +181,7 @@
                                           ((claude-sonnet-4-20250514 . ["claude-4-sonnet"]))
                                           ((gpt-5.1-codex-max . ["gpt-5.1-codex" "gpt-5.1"]))
                                           ((claude-3-5-haiku-20241022 . ["claude-haiku-4-5-20251001"]))])))
+         (include-config (directory-files zr-org-tangle-default-dir nil "\\.yaml" t))
          (model-list
           `((((model_name . "z-image-turbo")
               (litellm_params
@@ -214,6 +215,7 @@
                       model-list)))))))
      providers)
     (json-serialize `((model_list . ,(apply #'vconcat model-list))
+                      (include . ,(vconcat include-config))
                       (litellm_settings . ,litellm-settings)
                       (general_settings . ,general-settings)
                       (router_settings . ,router-settings)))))
