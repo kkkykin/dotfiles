@@ -10,9 +10,7 @@
                    (_ (expand-file-name "~/.codex/"))))
        (zr-local-pls (plstore-open "../.global.pls"))
        (host (concat "litellm." (plist-get (cdr (plstore-get zr-local-pls "host")) :main)))
-       (zr-local-pls (plstore-open (expand-file-name "litellm.pls" zr-secrets-dir)))
-       (keys (cdr (plstore-get zr-local-pls "litellm")))
-       (key (plist-get keys :cx)))
+       (key (auth-source-pick-first-password :host host :user "codex")))
   (mkdir conf-dir t)
   (dolist (f (org-babel-tangle))
     (make-symbolic-link f conf-dir t)))
@@ -26,30 +24,41 @@
 :PROPERTIES:
 :CUSTOM_ID: 2726e3c5-3391-4dc0-af41-b0df5a024f78
 :END:
-#+header: :var host=(concat host)
+#+header: :var host=(concat host) user=(user-full-name)
 #+begin_src toml :tangle (zr-org-by-tangle-dir "config.toml") :mkdirp t
-model_provider = "main"
-model = "gpt-5.2-codex"
-model_reasoning_effort = "xhigh"
 disable_response_storage = true
-sandbox_mode = "workspace-write" 
+model = "gpt-5.2"
+model_reasoning_effort = "xhigh"
+model_provider = "main"
+sandbox_mode="danger-full-access"
+windows_wsl_setup_acknowledged = true
+base_instructions = "Always prefer built-in tools (read_file, list_dir, grep_files) over shell commands for file operations."
+[experimental]
+use_freeform_apply_patch = true
+use_unified_exec_tool = true
 
 [features]
-plan_tool = true
 apply_patch_freeform = true
+ghost_commit = true
+plan_tool = true
+rmcp_client = true
+streamable_shell = false
+unified_exec = false
 view_image_tool = true
 web_search_request = true
-streamable_shell = false
-rmcp_client = true
+experimental_windows_sandbox = true
+experimental_sandbox_command_assessment = true
+parallel = true
 
 [model_providers.main]
-name = "main"
 base_url = "https://$host/v1"
-wire_api = "responses"
+name = "main"
 requires_openai_auth = true
+wire_api = "responses"
 
 [sandbox_workspace_write]
 network_access = true
+writable_roots = ["/home/$user/.cache", "/home/$user/.local"]
 #+end_src
 ** auth
 :PROPERTIES:
