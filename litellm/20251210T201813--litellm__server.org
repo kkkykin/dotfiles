@@ -1677,12 +1677,11 @@ pollinations_llm = PollinationsLLM()
 #+end_src
 * knock knock
 #+begin_src elisp
-(let* ((zr-local-pls (plstore-open (expand-file-name "litellm.pls" zr-secrets-dir)))
-       (urls (plist-get (cdr (plstore-get zr-local-pls "knock")) :urls)))
-  (dolist (url (append '(;; "https://platform.iflow.cn/profile?tab=apiKey"
-                         )
-                       urls))
-    (browse-url url)))
+(let ((urls (with-temp-buffer
+              (call-process "sops" nil t nil "-d" "--extract" "['knock']" "litellm.json")
+              (goto-char 1)
+              (json-parse-buffer))))
+  (mapc #'browse-url urls))
 #+end_src
 
 * local variables
