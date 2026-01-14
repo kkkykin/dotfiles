@@ -146,7 +146,8 @@
                    ("bohe" . ((tags . ("tavern"))
                               (weight . 10)))
                    ("sc0152" . ((tags . ("tavern"))))
-                   ("88code" . ((weight . 5)))))
+                   ("cpa" . ((order . 50)))
+                   ("88code" . ((order . 10)))))
          (common '())
          (col (car models))
          (model-map (cdr models))
@@ -172,6 +173,7 @@
          (router-settings '((allowed_fails . 3)
                             (cooldown_time . 30)
                             (enable_tag_filtering . t)
+                            (enable_pre_call_checks . t)
                             (model_group_alias . ((gpt-image-1.5 . "z-image-turbo")
                                                   (dall-e-3 . "gemini-3-pro-image")))
                             (fallbacks . [((gemini-3-pro . ["gemini-2.5-pro"]))
@@ -240,6 +242,7 @@
 | z-image-turbo                 |             | zimage |                                     |       | Tongyi-MAI/Z-Image-Turbo            |
 | glm-4.6v                      |             |        |                                     |       | ZhipuAI/GLM-4.6V                    |
 | glm-4.7                       | ant/%s-free |        | z-ai/%s                             | ant/t |                                     |
+| gpt-5.2                       |             |        |                                     | cx/t  |                                     |
 
 #+name: models-tbl-bak
 | name                          | beizhi                 | Nyxar | WCyrus | api | Sanyela | zhongruan | pangil            | kkkyyx     | dabuliu           | bohe                  | HenryXiaoYang | bytebender                   | jason_wong1 | anyrouter | huan                 | snow | 88code | ouyangqiqi              | modelscope                          | sc0152                                    | linuxdo |
