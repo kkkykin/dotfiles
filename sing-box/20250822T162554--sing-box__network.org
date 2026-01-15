@@ -9,7 +9,10 @@
              "server-config"
              "android-tun"))
   (zr-org-babel-json-format c))
-(let* ((zr-local-pls (plstore-open (expand-file-name "sing-box.pls" zr-secrets-dir)))
+(let* ((box-secrets (with-temp-buffer
+                      (call-process "sops" nil t nil "-d" "sing-box.json")
+                      (goto-char 1)
+                      (json-parse-buffer)))
        (client-tmp-dir "_tangle/tmp/")
        (tun-dir (expand-file-name "tun/" client-tmp-dir))
        (client-dir "_tangle/client/")
@@ -19,9 +22,9 @@
                      ("local" . ,(expand-file-name "_hosts"))))
        hosts-files
 
-       (clash-pls (cdr (plstore-get zr-local-pls "clash")))
-       (clash-subscribes (plist-get clash-pls :sub))
-       (sublink-domain (or (plist-get clash-pls :sublink)
+       (clash-secrets (gethash "clash" box-secrets))
+       (clash-subscribes (gethash "subs" clash-secrets))
+       (sublink-domain (or (gethash "sublink" clash-secrets)
                            "linuxdo.icmpmiao.cc"))
        (sub-dir "_tangle/sub/")
        (disabled-sub-file "_disabled-sub.eld")
@@ -59,89 +62,70 @@
   (mkdir client-tmp-dir t)
   (mkdir sub-dir t)
 
-  (dolist (sub clash-subscribes)
-    (when-let* ((name (car sub))
-                ((not (member name disabled-sub)))
-                ((not (string-prefix-p "disable-" name))))
-      (condition-case nil
-          (let* ((uri (cdr sub))
-                 (content
-                  (org-file-contents
-                   (cond
-                    ((string-prefix-p "store://" uri)
-                     (with-temp-buffer
-                       (insert (org-file-contents (substring uri 8) t))
-                       (goto-char (point-min))
-                       (re-search-forward "^ \\{4\\}url: \"" nil t)
-                       (if-let* ((begin (point))
-                                 ((replace-regexp-in-region
-                                   "\\([?&]target=\\)[^&\"]+" "\\1singbox"
-                                   begin (pos-eol))))
-                           (buffer-substring (point) (1- (pos-eol)))
-                         (signal 'wrong-type-argument (list 'stringp nil)))))
-                    ((string-prefix-p "sb://" uri)
-                     (substring uri 5))
-                    ((or (string-prefix-p "file://" uri)
-                         (file-exists-p uri))
-                     uri)
-                    (t (format "https://%s/singbox?config=%s&ua=&selectedRules=%%5B%%5D&customRules=%%5B%%5D"
-                               ;; https only: "https://clash2sfa.xmdhs.com/sub?disableUrlTest=true&sub=%s"
-                               sublink-domain
-                               (url-hexify-string uri))))
-                   t))
-                 (obj (json-parse-string content :object-type 'alist))
-                 (outbounds (alist-get "outbounds" obj nil nil #'string=))
-                 (name (car sub))
-                 (selector (format "s[%s]" name))
-                 (urltest (format "u[%s]" name))
-                 tags
-                 obds)
-            (write-region content nil
-                          (expand-file-name
-                           (file-name-with-extension name "json")
-                           sub-dir))
-            (mapc
-             (lambda (obd)
-               (when-let* ((type (alist-get 'type obd))
-                           ((not (or (member type
-                                             '("direct" "selector" "urltest"
-                                               "block" "dns"))
-                                     (member (alist-get 'method obd)
-                                             '("chacha20-poly1305"))
-                                     (member (alist-get 'type (alist-get 'transport obd))
-                                             '("xhttp"))
-                                     (and (string= type "tuic")
-                                          (not (assoc 'tls obd)))
-                                     (assoc 'utls obd)
-                                     (assoc 'plugin obd))))
-                           (tag (format "%s[%s]" (alist-get 'tag obd) name)))
-                 ;; (cond
-                 ;;  ((string-match-p "美国" tag)
-                 ;;   (push tag us-outbounds))
-                 ;;  ((string-match-p "日本" tag)
-                 ;;   (push tag ja-outbounds)))
-                 (push tag tags)
-                 (push (push `(tag . ,tag) obd) obds)))
-             outbounds)
-            (if tags
-                (let* ((extra `(((type . "selector")
-                                 (tag . ,selector)
-                                 (outbounds . ,(vconcat (cons urltest tags)))
-                                 (default . ,urltest)
-                                 (interrupt_exist_connections . :false))
-                                ((type . "urltest")
-                                 (tag . ,urltest)
-                                 (outbounds . ,(vconcat tags)))))
-                       (merged (vconcat extra obds))
-                       (json `((outbounds . ,merged))))
-                  (push (format "s[%s]" name) sub-outbounds)
-                  (write-region (json-serialize json) nil
-                                (expand-file-name (format "_600-%s.json" name)
-                                                  client-tmp-dir)))
-              (message "Sub: %s not work." name)))
-        (wrong-type-argument (message "Sub: %s not work." name))
-        (json-parse-error (message "Sub: %s json not valid." name))
-        (json-end-of-file (message "Sub: %s json not valid." name)))))
+  (mapc
+   (lambda (sub)
+     (when-let* ((name (gethash "id" sub))
+                 ((not (member name disabled-sub)))
+                 ((gethash "enable" sub)))
+       (condition-case nil
+           (let* ((sb (gethash "sb" sub))
+                  (link (gethash "link" sub))
+                  (content
+                   (org-file-contents
+                    (cond
+                     (sb sb)
+                     (link (format "https://%s/singbox?config=%s&ua=&selectedRules=%%5B%%5D&customRules=%%5B%%5D"
+                                   sublink-domain
+                                   (url-hexify-string link))))
+                    t))
+                  (obj (json-parse-string content :object-type 'alist))
+                  (outbounds (alist-get "outbounds" obj nil nil #'string=))
+                  (selector (format "s[%s]" name))
+                  (urltest (format "u[%s]" name))
+                  tags
+                  obds)
+             (write-region content nil
+                           (expand-file-name
+                            (file-name-with-extension name "json")
+                            sub-dir))
+             (mapc
+              (lambda (obd)
+                (when-let* ((type (alist-get 'type obd))
+                            ((not (or (member type
+                                              '("direct" "selector" "urltest"
+                                                "block" "dns"))
+                                      (member (alist-get 'method obd)
+                                              '("chacha20-poly1305"))
+                                      (member (alist-get 'type (alist-get 'transport obd))
+                                              '("xhttp"))
+                                      (and (string= type "tuic")
+                                           (not (assoc 'tls obd)))
+                                      (assoc 'utls obd)
+                                      (assoc 'plugin obd))))
+                            (tag (format "%s[%s]" (alist-get 'tag obd) name)))
+                  (push tag tags)
+                  (push (push `(tag . ,tag) obd) obds)))
+              outbounds)
+             (if tags
+                 (let* ((extra `(((type . "selector")
+                                  (tag . ,selector)
+                                  (outbounds . ,(vconcat (cons urltest tags)))
+                                  (default . ,urltest)
+                                  (interrupt_exist_connections . :false))
+                                 ((type . "urltest")
+                                  (tag . ,urltest)
+                                  (outbounds . ,(vconcat tags)))))
+                        (merged (vconcat extra obds))
+                        (json `((outbounds . ,merged))))
+                   (push (format "s[%s]" name) sub-outbounds)
+                   (write-region (json-serialize json) nil
+                                 (expand-file-name (format "_600-%s.json" name)
+                                                   client-tmp-dir)))
+               (message "Sub: %s not work." name)))
+         (wrong-type-argument (message "Sub: %s not work." name))
+         (json-parse-error (message "Sub: %s json not valid." name))
+         (json-end-of-file (message "Sub: %s json not valid." name)))))
+   clash-subscribes)
 
   (cl-letf
       (((symbol-function 'extract-ip)
@@ -204,8 +188,7 @@
             (format "mv -f %s/* %s"
                     (shell-quote-argument android-dir)
                     (shell-quote-argument android-target-dir)))
-      " && ")))
-  (plstore-close zr-local-pls))
+      " && "))))
 #+end_src
 
 * config
@@ -228,7 +211,7 @@
 #+header: :var jsdelivr="https://fastly.jsdelivr.net"
 #+header: :var dns_default="ld-neo"
 #+header: :var dns_remote_answer=(format "localhost. IN %s %s" (if dns-remote-ipv6-p "AAAA" "A") dns-remote-server)
-#+header: :var clash_secret=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "clash")) :secret)) 1 -1)
+#+header: :var clash_secret=(substring (json-serialize (auth-source-pick-first-password :host "clash" :user "secret")) 1 -1)
 #+name: client-config
 #+begin_src json :tangle (zr-org-by-tangle-dir "_500-main.json") :mkdirp t
 {
@@ -874,7 +857,7 @@ SEP defaults to \"/\"."
 :CUSTOM_ID: bc0f24ed-8894-45b6-9008-4a5f1879b0f1
 :END:
 #+begin_src json :tangle (zr-org-by-tangle-dir "500-s0.json")
-<<gen-server-bounds(name="vps0",token-key="cf0")>>
+<<gen-server-bounds(name="vps0")>>
 #+end_src
 
 *** server1
@@ -883,7 +866,7 @@ SEP defaults to \"/\"."
 :END:
 
 #+begin_src json :tangle (zr-org-by-tangle-dir "500-s1.json")
-<<gen-server-bounds(name="vps1",token-key="cf1")>>
+<<gen-server-bounds(name="vps1")>>
 #+end_src
 
 *** server2
@@ -891,18 +874,17 @@ SEP defaults to \"/\"."
 :CUSTOM_ID: dafd128d-c905-49be-a432-42aff4d2159d
 :END:
 #+begin_src json :tangle (zr-org-by-tangle-dir "500-s2.json")
-<<gen-server-bounds(name="vps2",token-key="cf2")>>
+<<gen-server-bounds(name="vps2")>>
 #+end_src
 
 * bounds
 :PROPERTIES:
-:header-args:elisp: :var wg-clients=(cdr (plstore-get zr-local-pls "wg")) ts-ep='((tag . "ts-ep") (type . "tailscale")) obds='(((tag . "direct") (type . "direct"))) ibds='() ep='() conf='() dns-rules='()
+:header-args:elisp: :var vps-secrets=(gethash "vps" box-secrets) wg-clients=(gethash "wg" box-secrets) ts-ep='((tag . "ts-ep") (type . "tailscale")) obds='(((tag . "direct") (type . "direct"))) ibds='() ep='() conf='() dns-rules='()
 :END:
 ** client
 #+name: gen-client-bounds
 #+begin_src elisp
 (let ((tailscale-state-dir (expand-file-name "tailscale_state" "_tangle"))
-      (vps (plstore-find zr-local-pls '(:user-name ("kkky"))))
       (download-tags '("s[this-way]" "direct"))
       (browse-tags '("s[this-way]" "direct"))
       warp-tags
@@ -925,139 +907,141 @@ SEP defaults to \"/\"."
         obds)
 
   ;; vps outbounds
-  (dolist (info vps)
-    (let* ((name (car info))
-           (attr (cdr info))
-           (user-name (plist-get attr :user-name))
-           (user-pass (plist-get attr :user-pass))
-           (ip-type (if (and (zr-net-has-public-ipv6-addr-p)
-                             (plist-get attr :ipv6))
-                        :ipv6
-                      :ip))
-           (ip (plist-get attr ip-type))
-           (u-tag (format "u[%s]" name))
-           (s-tag (format "s[%s]" name))
-           (warp-tag (format "warp[%s]" name))
-           vps-tags)
-      (pcase (plist-get attr :type)
-        ("download" (push s-tag download-tags))
-        ("browse" (push s-tag browse-tags)))
+  (maphash
+   (lambda (name attr)
+     (let* ((user-name (gethash "user-name" attr))
+            (user-pass (gethash "user-pass" attr))
+            (ip-type (if (and (zr-net-has-public-ipv6-addr-p)
+                              (gethash "ipv6" attr))
+                         "ipv6"
+                       "ip"))
+            (ip (gethash ip-type attr))
+            (u-tag (format "u[%s]" name))
+            (s-tag (format "s[%s]" name))
+            (warp-tag (format "warp[%s]" name))
+            vps-tags)
+       (pcase (gethash "type" attr)
+         ("download" (push s-tag download-tags))
+         ("browse" (push s-tag browse-tags)))
 
-      (when-let* ((port (plist-get attr :nv-port))
-                  (host (plist-get attr :nv-host))
-                  (local-port (plist-get attr :nv-local-port))
-                  (tag (format "nv[%s]" name))
-                  (listen (format "http://127.0.0.1:%d" local-port))
-                  (proxy (format "quic://%s:%s@%s" user-name user-pass host))
-                  (naive-dir "_tangle/naive/")
-                  (host-resolver-rules (format "MAP %s %s" host
-                                               (if (eq ip-type :ipv6)
-                                                   (format "[%s]" ip)
-                                                 ip))))
-        (push tag vps-tags)
-        (mkdir naive-dir t)
-        (write-region (json-serialize `((listen . ,listen)
-                                        (proxy . ,proxy)
-                                        (host-resolver-rules . ,host-resolver-rules)))
-                      nil (expand-file-name name naive-dir))
-        (push `((server . "127.0.0.1")
-                (server_port . ,local-port)
-                (tag . ,tag)
-                (type . "http"))
-              obds))
+       (when-let* ((port (gethash "nv-port" attr))
+                   (host (gethash "nv-host" attr))
+                   (local-port (gethash "nv-local-port" attr))
+                   (tag (format "nv[%s]" name))
+                   (listen (format "http://127.0.0.1:%d" local-port))
+                   (proxy (format "quic://%s:%s@%s" user-name user-pass host))
+                   (naive-dir "_tangle/naive/")
+                   (host-resolver-rules (format "MAP %s %s" host
+                                                (if (eq ip-type :ipv6)
+                                                    (format "[%s]" ip)
+                                                  ip))))
+         (push tag vps-tags)
+         (mkdir naive-dir t)
+         (write-region (json-serialize `((listen . ,listen)
+                                         (proxy . ,proxy)
+                                         (host-resolver-rules . ,host-resolver-rules)))
+                       nil (expand-file-name name naive-dir))
+         (push `((server . "127.0.0.1")
+                 (server_port . ,local-port)
+                 (tag . ,tag)
+                 (type . "http"))
+               obds))
 
-      (when-let* ((port (plist-get attr :vl-port))
-                  (tag (format "vl[%s]" name)))
-        (push tag vps-tags)
-        (push `((flow . "xtls-rprx-vision")
-                (server . ,ip)
-                (server_port . ,port)
-                (tag . ,tag)
-                (tls . ((enabled . t)
-                        (reality . ((enabled . t)
-                                    (public_key . ,(plist-get attr :pub-key))
-                                    (short_id . ,(plist-get attr :short-id))))
-                        (server_name . ,(plist-get attr :vl-host))
-                        (utls . ((enabled . t)))))
-                (uuid . ,(plist-get attr :user-uuid))
-                (type . "vless"))
-              obds))
+       (when-let* ((port (gethash "vl-port" attr))
+                   (tag (format "vl[%s]" name)))
+         (push tag vps-tags)
+         (push `((flow . "xtls-rprx-vision")
+                 (server . ,ip)
+                 (server_port . ,port)
+                 (tag . ,tag)
+                 (tls . ((enabled . t)
+                         (reality . ((enabled . t)
+                                     (public_key . ,(gethash "pub-key" attr))
+                                     (short_id . ,(gethash "short-id" attr))))
+                         (server_name . ,(gethash "vl-host" attr))
+                         (utls . ((enabled . t)))))
+                 (uuid . ,(gethash "user-uuid" attr))
+                 (type . "vless"))
+               obds))
 
-      (when-let* ((port (plist-get attr :any-port))
-                  (tag (format "any[%s]" name)))
-        (push tag vps-tags)
-        (push `((password . ,user-pass)
-                (server . ,ip)
-                (server_port . ,port)
-                (tag . ,tag)
-                (tls . ((enabled . t)
-                        (server_name . ,(plist-get attr :any-host))))
-                (type . "anytls"))
-              obds))
+       (when-let* ((port (gethash "any-port" attr))
+                   (tag (format "any[%s]" name)))
+         (push tag vps-tags)
+         (push `((password . ,user-pass)
+                 (server . ,ip)
+                 (server_port . ,port)
+                 (tag . ,tag)
+                 (tls . ((enabled . t)
+                         (server_name . ,(gethash "any-host" attr))))
+                 (type . "anytls"))
+               obds))
 
-      (when-let* ((port (plist-get attr :hy-port))
-                  (tag (format "hy[%s]" name)))
-        (push tag vps-tags)
-        (push `((obfs . ((password . ,(plist-get attr :obfs-pass))
-                         (type . "salamander")))
-                (password . ,user-pass)
-                (server . ,ip)
-                (server_port . ,port)
-                (tag . ,tag)
-                (tls . ((alpn . ["h3"])
-                        (enabled . t)
-                        (server_name . ,(plist-get attr :hy-host))))
-                (type . "hysteria2"))
-              obds))
+       (when-let* ((port (gethash "hy-port" attr))
+                   (tag (format "hy[%s]" name)))
+         (push tag vps-tags)
+         (push `((obfs . ((password . ,(gethash "obfs-pass" attr))
+                          (type . "salamander")))
+                 (password . ,user-pass)
+                 (server . ,ip)
+                 (server_port . ,port)
+                 (tag . ,tag)
+                 (tls . ((alpn . ["h3"])
+                         (enabled . t)
+                         (server_name . ,(gethash "hy-host" attr))))
+                 (type . "hysteria2"))
+               obds))
 
-      (when vps-tags
-        (push `((interrupt_exist_connections . :false)
-                (outbounds . ,(vconcat vps-tags))
-                (tag . ,u-tag)
-                (type . "urltest"))
-              obds)
-        (push `((default . ,u-tag)
-                (interrupt_exist_connections . :false)
-                (outbounds . ,(vconcat (cons u-tag vps-tags)))
-                (tag . ,s-tag)
-                (type . "selector"))
-              obds)
-        (push `((type . "socks")
-                (tag . ,warp-tag)
-                (server . "127.0.0.1")
-                (server_port . 40000)
-                (version . "5")
-                (detour . ,s-tag))
-              obds)
-        (push warp-tag warp-tags)
-        (push s-tag s-tags))
+       (when vps-tags
+         (push `((interrupt_exist_connections . :false)
+                 (outbounds . ,(vconcat vps-tags))
+                 (tag . ,u-tag)
+                 (type . "urltest"))
+               obds)
+         (push `((default . ,u-tag)
+                 (interrupt_exist_connections . :false)
+                 (outbounds . ,(vconcat (cons u-tag vps-tags)))
+                 (tag . ,s-tag)
+                 (type . "selector"))
+               obds)
+         (push `((type . "socks")
+                 (tag . ,warp-tag)
+                 (server . "127.0.0.1")
+                 (server_port . 40000)
+                 (version . "5")
+                 (detour . ,s-tag))
+               obds)
+         (push warp-tag warp-tags)
+         (push s-tag s-tags))
 
-      (when-let* ((wg (plist-get wg-clients (intern (concat ":" (system-name)))))
-                  (port (plist-get attr :wg-port))
-                  (addr (plist-get attr :wg-addr))
-                  (pub (plist-get attr :wg-pub-key))
-                  (proto (if (and (eq ip-type :ipv6)
-                                  (not zr-sys-android-p))
-                             :ipv6
-                           :ip))
-                  (peers `( :address ,(plist-get attr proto)
-                            :port ,port
-                            :persistent_keepalive_interval 30
-                            :public_key ,pub
-                            :allowed_ips ,addr))
-                  (tag (format "wg-ep[%s]" name)))
-        (push `((clash_mode . ,tag)
-                (outbound . ,tag)
-                (rule_set . "wireguard-rules"))
-              wg-rules-group)
-        (push `( (tag . ,tag)
-                 (name . ,tag)
-                 (type . "wireguard")
-                 (system . ,(if zr-sys-linux-p t :false))
-                 (address . ,(concat (plist-get wg :addr) "/24"))
-                 (private_key . ,(plist-get wg :priv))
-                 (peers . ,(vector peers)))
-              ep))))
+       (when-let* ((sys-name (system-name))
+                   (wg (gethash sys-name wg-clients))
+                   (port (gethash "wg-port" attr))
+                   (addr (gethash "wg-addr" attr))
+                   (pub (gethash "wg-pub-key" attr))
+                   (proto (if (and (eq ip-type :ipv6)
+                                   (not zr-sys-android-p))
+                              "ipv6"
+                            "ip"))
+                   (peers `( :address ,(gethash proto attr)
+                             :port ,port
+                             :persistent_keepalive_interval 30
+                             :public_key ,pub
+                             :allowed_ips ,addr))
+                   (tag (format "wg-ep[%s]" name)))
+         (push `((clash_mode . ,tag)
+                 (outbound . ,tag)
+                 (rule_set . "wireguard-rules"))
+               wg-rules-group)
+         (push `( (tag . ,tag)
+                  (name . ,tag)
+                  (type . "wireguard")
+                  (system . ,(if zr-sys-linux-p t :false))
+                  (address . ,(concat (gethash "addr" wg) "/24"))
+                  (private_key . ,(auth-source-pick-first-password
+                                   :host "wireguard" :user sys-name))
+                  (peers . ,(vector peers)))
+               ep))))
+   vps-secrets)
 
   (when wg-rules-group
     (push wg-rules-group mode-rules-group))
@@ -1124,8 +1108,8 @@ SEP defaults to \"/\"."
     (when warp-tags
       (let ((w-tag "s[warp]"))
         (push `(((type . "selector")
-               (tag . ,w-tag)
-               (outbounds . ,(vconcat warp-tags))))
+                 (tag . ,w-tag)
+                 (outbounds . ,(vconcat warp-tags))))
               pre-obds)
         (push w-tag s-this-way)))
     
@@ -1175,13 +1159,15 @@ SEP defaults to \"/\"."
 #+name: gen-server-bounds
 #+begin_src elisp
 (push '(advertise_exit_node . t) ts-ep)
-(let* ((info (plstore-get zr-local-pls name))
-       (attr (cdr info))
-       (user-name (plist-get attr :user-name))
-       (user-pass (plist-get attr :user-pass))
-       (cf-token (plist-get (cdr (plstore-get zr-local-pls token-key)) :api-token)))
+(let* ((attr (gethash name vps-secrets))
+       (user-name (gethash "user-name" attr))
+       (user-pass (gethash "user-pass" attr))
+       (email (gethash "email" attr))
+       (cf-token (auth-source-pick-first-password :host "dash.cloudflare.com"
+                                                  :user (concat "token-" name)))
+       wg-peers)
 
-  (when-let* ((ip (plist-get attr :ip)))
+  (when-let* ((ip (gethash "ip" attr)))
     (push `((listen . "127.0.0.1")
             (listen_port . 53)
             (network . "udp")
@@ -1195,26 +1181,26 @@ SEP defaults to \"/\"."
             (type . "direct"))
           ibds))
 
-  (when-let* ((port (plist-get attr :wg-port))
-              (addr (plist-get attr :wg-addr))
-              (priv-key (plist-get attr :wg-priv-key))
-              (peers (cl-loop for p in wg-clients
-                              for i from 0
-                              when (cl-oddp i)
-                              collect
-                              `( :public_key ,(plist-get p :pub)
-                                 :allowed_ips ,(concat (plist-get p :addr) "/32")))))
+  (maphash
+   (lambda (k v)
+     (push `( :public_key ,(gethash "pub" v)
+              :allowed_ips ,(concat (gethash "addr" v) "/32"))
+           wg-peers))
+   wg-clients)
+  (when-let* ((port (gethash "wg-port" attr))
+              (addr (gethash "wg-addr" attr))
+              (priv-key (auth-source-pick-first-password :host "wireguard" :user name)))
     (push `((tag . "wg-ep")
             (type . "wireguard")
             (system . t)
             (address . ,addr)
             (listen_port . ,port)
             (private_key . ,priv-key)
-            (peers . ,(vconcat peers)))
+            (peers . ,(vconcat wg-peers)))
           ep))
 
-  (when-let* ((port (plist-get attr :vl-port))
-              (host (plist-get attr :vl-host))
+  (when-let* ((port (gethash "vl-port" attr))
+              (host (gethash "vl-host" attr))
               (tag (format "vl[%s]" name)))
     (push `((listen . "::")
             (listen_port . ,port)
@@ -1223,24 +1209,24 @@ SEP defaults to \"/\"."
                     (reality . ((enabled . t)
                                 (handshake . ((server . ,host)
                                               (server_port . 443)))
-                                (private_key . ,(plist-get attr :priv-key))
-                                (short_id . [,(plist-get attr :short-id)])))
+                                (private_key . ,(gethash "priv-key" attr))
+                                (short_id . [,(gethash "short-id" attr)])))
                     (server_name . ,host)))
             (type . "vless")
             (users . [((flow . "xtls-rprx-vision")
                        (name . ,user-name)
-                       (uuid . ,(plist-get attr :user-uuid)))]))
+                       (uuid . ,(gethash "user-uuid" attr)))]))
           ibds))
 
-  (when-let* ((port (plist-get attr :any-port))
-              (host (plist-get attr :any-host))
+  (when-let* ((port (gethash "any-port" attr))
+              (host (gethash "any-host" attr))
               (tag (format "any[%s]" name)))
     (push `((listen . "::")
             (listen_port . ,port)
             (tls . ((acme . ((dns01_challenge . ((api_token . ,cf-token)
                                                  (provider . "cloudflare")))
                              (domain . ,host)
-                             (email . ,(plist-get attr :email))))
+                             (email . ,email)))
                     (alpn . ["h3"])
                     (enabled . t)
                     (server_name . ,host)))
@@ -1249,20 +1235,20 @@ SEP defaults to \"/\"."
             (users . [((password . ,user-pass))]))
           ibds))
 
-  (when-let* ((port (plist-get attr :hy-port))
-              (host (plist-get attr :hy-host))
+  (when-let* ((port (gethash "hy-port" attr))
+              (host (gethash "hy-host" attr))
               (tag (format "hy[%s]" name)))
     (push `((down_mbps . 500)
             (listen . "::")
             (listen_port . ,port)
             (masquerade . ((type . "string")
                            (status_code . 403)))
-            (obfs . ((password . ,(plist-get attr :obfs-pass))
+            (obfs . ((password . ,(gethash "obfs-pass" attr))
                      (type . "salamander")))
             (tls . ((acme . ((dns01_challenge . ((api_token . ,cf-token)
                                                  (provider . "cloudflare")))
                              (domain . ,host)
-                             (email . ,(plist-get attr :email))))
+                             (email . ,email)))
                     (alpn . ["h3"])
                     (enabled . t)
                     (server_name . ,host)))
@@ -1273,14 +1259,14 @@ SEP defaults to \"/\"."
                        (name . ,user-name))]))
           ibds))
 
-  (when-let* ((port (plist-get attr :nv-port))
+  (when-let* ((port (gethash "nv-port" attr))
               (tag (format "nv[%s]" name)))
     (push `((listen . "::")
             (listen_port . ,port)
             (tls . ((acme . ((dns01_challenge . ((api_token . ,cf-token)
                                                  (provider . "cloudflare")))
-                             (domain . ,(plist-get attr :nv-host))
-                             (email . ,(plist-get attr :email))))
+                             (domain . ,(gethash "nv-host" attr))
+                             (email . ,email)))
                     (enabled . t)))
             (tag . ,tag)
             (type . "naive")
