@@ -1,5 +1,6 @@
 {
 	"knock": [
+		"ENC[AES256_GCM,data:D4WiXJuuNPVbjOw0Z/diotK8DQtNzt28OI3pF94wCKg8TKdL/PM=,iv:XN5kmzThoX+CBF2XGENk/XiBwFuT65WxKUZbnd9jW78=,tag:vkPQcxGFbR69V3Fz8l1XeQ==,type:str]",
 		"ENC[AES256_GCM,data:yTE2VqweGejWXcrJJKYo0yUHgZDdWJ1SfodaZj4o1hjB5/cSk638S5dq1pyL/U8=,iv:tGo6YB7FGY0iDvWxY1C65OTqyn7b2irtgEP9ium9rj4=,tag:rp808VWb3KlGr0IJC7E9sw==,type:str]",
 		"ENC[AES256_GCM,data:sKb9yFiQUvTEQE2jkIXlRcgI64I/JEU/0zvMwntxEDuHLxvjNN2VJg==,iv:FltDgVHdTZWOOyp0DKxgw2nRhd2oudmhKgTodNB7q34=,tag:ruQ83WwqFMo44QFX6HTl5g==,type:str]",
 		"ENC[AES256_GCM,data:EHZ9cecLA/LTwCfO1RhbCRso6VLKxp4sW5+4BSVnAssdgcZhBOJjJDWA,iv:L3DUX6VL4YrL5B8mkFqWxpJV4U4O+eXipyvABJVC4hc=,tag:FbDRE9l7MYlN3YAzPjDMuw==,type:str]",
@@ -35,8 +36,8 @@
 		}
 	},
 	"sops": {
-		"lastmodified": "2026-01-14T07:21:28Z",
-		"mac": "ENC[AES256_GCM,data:zGWOeHuaqaw0Q4h22Rw7tPS5jdlBhR45lm8nbic18K9pkCYUapBzOUEG9YqyQqe2T9SIGIgyOMywuIQUULAuATUm+DNhDmy2o2Pjd3pJA5W3ZrJTXXOsa4akwJ92FFt7KiePUD84m5eOywkSM7ZzPc3ECvXS6gNUpxAmEJe0vhI=,iv:WKqU7AQQKfhXTzsfKIZxjrSsy76AUyLvUQcWvbX3GOE=,tag:MlV+S4YKVi5Wyt22/UhulQ==,type:str]",
+		"lastmodified": "2026-01-15T05:33:25Z",
+		"mac": "ENC[AES256_GCM,data:YCw4uyQB75q7RjcsaPqkdRZAXuFgpSVPeL9BER0tqbRFuMXHafSL1UVv9fPwSP8wE8ZSEEyX4Guk6SXHLLTedoUREsedZQcRXWjKw8BktTqd6nquMha1s5ENutBto7PFN7V6xB96Ruh9nKboP/efKpk674yPM/K+hP/YtssjO/w=,iv:IdZXdxcR8o5qrIlwcUTZTt1ymZHJukaJEGT8fKBnz9U=,tag:uP5fXKisrL9cinlBWAj6SQ==,type:str]",
 		"pgp": [
 			{
 				"created_at": "2026-01-06T01:25:16Z",
