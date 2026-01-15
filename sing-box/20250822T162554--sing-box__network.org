@@ -32,6 +32,7 @@
                           (with-temp-buffer
                             (insert-file-contents disabled-sub-file)
                             (read (current-buffer)))))
+       nodes
        sub-outbounds
        us-outbounds
        ja-outbounds
@@ -82,6 +83,8 @@
                   (outbounds (alist-get "outbounds" obj nil nil #'string=))
                   (selector (format "s[%s]" name))
                   (urltest (format "u[%s]" name))
+                  (out-path (expand-file-name (format "_600-%s.json" name)
+                                              client-tmp-dir))
                   tags
                   obds)
              (write-region content nil
@@ -107,20 +110,22 @@
                   (push (push `(tag . ,tag) obd) obds)))
               outbounds)
              (if tags
-                 (let* ((extra `(((type . "selector")
-                                  (tag . ,selector)
-                                  (outbounds . ,(vconcat (cons urltest tags)))
-                                  (default . ,urltest)
-                                  (interrupt_exist_connections . :false))
-                                 ((type . "urltest")
-                                  (tag . ,urltest)
-                                  (outbounds . ,(vconcat tags)))))
-                        (merged (vconcat extra obds))
-                        (json `((outbounds . ,merged))))
-                   (push (format "s[%s]" name) sub-outbounds)
-                   (write-region (json-serialize json) nil
-                                 (expand-file-name (format "_600-%s.json" name)
-                                                   client-tmp-dir)))
+                 (if (gethash "node" sub)
+                     (let ((json `((outbounds . ,(vconcat obds)))))
+                       (push tags nodes)
+                       (write-region (json-serialize json) nil out-path))
+                   (let* ((extra `(((type . "selector")
+                                    (tag . ,selector)
+                                    (outbounds . ,(vconcat (cons urltest tags)))
+                                    (default . ,urltest)
+                                    (interrupt_exist_connections . :false))
+                                   ((type . "urltest")
+                                    (tag . ,urltest)
+                                    (outbounds . ,(vconcat tags)))))
+                          (merged (vconcat extra obds))
+                          (json `((outbounds . ,merged))))
+                     (push (format "s[%s]" name) sub-outbounds)
+                     (write-region (json-serialize json) nil out-path)))
                (message "Sub: %s not work." name)))
          (wrong-type-argument (message "Sub: %s not work." name))
          (json-parse-error (message "Sub: %s json not valid." name))
@@ -1115,7 +1120,8 @@ SEP defaults to \"/\"."
     
     (push `(((type . "selector")
              (tag . "s[this-way]")
-             (outbounds . ,(vconcat (cons u-this-way s-this-way)))
+             (outbounds . ,(vconcat (cons u-this-way s-this-way)
+                                    (apply #'append nodes)))
              (default . ,u-this-way))
             ((type . "urltest")
              (tag . ,u-this-way)
