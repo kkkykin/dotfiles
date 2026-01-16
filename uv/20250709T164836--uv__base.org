@@ -26,7 +26,7 @@ default = true
 * scripts
 :PROPERTIES:
 :tangle-dir: _tangle/scripts
-:header-args:py: :shebang "#!/usr/bin/env -S uv run"
+:header-args:py: :shebang "#!/usr/bin/env -S uv run --no-project -s"
 :END:
 
 ** browser
@@ -91,4 +91,560 @@ def main():
 
 if __name__ == "__main__":
   main()
+#+end_src
+
+** wallpaper
+:PROPERTIES:
+:CUSTOM_ID: eb675a6c-e3fc-445e-a6ab-992ec7e5a7fd
+:END:
+#+begin_src py :mkdirp t :tangle (zr-org-by-tangle-dir "wallpaper.py")
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import platform
+import re
+import shutil
+import subprocess
+import sys
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Optional
+
+DEFAULT_API_BASE = "https://api.mossia.top/duckMo"
+DEFAULT_PROXY = "i.pixiv.re"
+DEFAULT_SIZE = "original"
+USER_AGENT = "mossia-wallpaper/0.1 (+https://api.mossia.top)"
+
+
+@dataclass(frozen=True)
+class PixivImage:
+    pid: int
+    title: str
+    author: str
+    width: int
+    height: int
+    ext: str
+    urls: dict[str, str]
+
+
+def is_termux() -> bool:
+    # 用户需求：TERMUX__HOME 可用于判定 Termux(Android)
+    return bool(os.environ.get("TERMUX__HOME"))
+
+
+def detect_default_orientation() -> str:
+    # 需求：自动检测操作系统决定横/竖屏
+    # 用户补充：Android/Termux 只需要竖屏
+    if is_termux():
+        return "portrait"
+
+    # 其他 OS 默认横屏（桌面环境通常是横向显示器）
+    return "landscape"
+
+
+def orientation_to_image_size_type(orientation: str) -> int:
+    mapping = {
+        "landscape": 1,
+        "portrait": 2,
+        "square": 3,
+    }
+    try:
+        return mapping[orientation]
+    except KeyError as exc:
+        raise ValueError(f"Unsupported orientation: {orientation}") from exc
+
+
+def http_post_json(url: str, payload: dict[str, Any], timeout_sec: int) -> dict[str, Any]:
+    body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    req = urllib.request.Request(url, data=body, method="POST")
+    req.add_header("Content-Type", "application/json")
+    req.add_header("Accept", "application/json")
+    req.add_header("User-Agent", USER_AGENT)
+
+    try:
+        with urllib.request.urlopen(req, timeout=timeout_sec) as resp:
+            raw = resp.read()
+            charset = resp.headers.get_content_charset() or "utf-8"
+            text = raw.decode(charset, errors="replace")
+    except urllib.error.HTTPError as e:
+        raw = e.read() or b""
+        charset = (getattr(e, "headers", None) and e.headers.get_content_charset()) or "utf-8"
+        text = raw.decode(charset, errors="replace")
+        raise RuntimeError(f"API HTTP {e.code}: {text[:400]}") from e
+    except urllib.error.URLError as e:
+        raise RuntimeError(f"API request failed: {e}") from e
+
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError as e:
+        raise RuntimeError(f"API returned invalid JSON: {text[:400]}") from e
+
+
+def parse_pixiv_image(payload: dict[str, Any]) -> PixivImage:
+    if not payload.get("success"):
+        raise RuntimeError(
+            f"API error: errCode={payload.get('errCode')} message={payload.get('message')}"
+        )
+
+    data = payload.get("data")
+    if not isinstance(data, list) or not data:
+        raise RuntimeError("API returned empty data")
+
+    item = data[0]
+    if not isinstance(item, dict):
+        raise RuntimeError("API returned unexpected data item")
+
+    urls: dict[str, str] = {}
+    urls_list = item.get("urlsList")
+    if isinstance(urls_list, list):
+        for u in urls_list:
+            if not isinstance(u, dict):
+                continue
+            size = u.get("urlSize")
+            url = u.get("url")
+            if isinstance(size, str) and isinstance(url, str):
+                urls[size] = url
+
+    def as_int(x: Any) -> int:
+        try:
+            return int(x)
+        except Exception:
+            return 0
+
+    def as_str(x: Any) -> str:
+        return x if isinstance(x, str) else ""
+
+    return PixivImage(
+        pid=as_int(item.get("pid")),
+        title=as_str(item.get("title")),
+        author=as_str(item.get("author")),
+        width=as_int(item.get("width")),
+        height=as_int(item.get("height")),
+        ext=as_str(item.get("ext")),
+        urls=urls,
+    )
+
+
+def choose_url(image: PixivImage, preferred_size: str) -> str:
+    if preferred_size in image.urls:
+        return image.urls[preferred_size]
+
+    for fallback in ("original", "regular", "small", "thumb", "mini"):
+        if fallback in image.urls:
+            return image.urls[fallback]
+
+    if image.urls:
+        return next(iter(image.urls.values()))
+
+    raise RuntimeError("No image URLs returned by API")
+
+
+def infer_suffix(url: str, fallback_ext: str) -> str:
+    parsed = urllib.parse.urlparse(url)
+    suffix = Path(parsed.path).suffix
+    if suffix:
+        return suffix
+
+    if fallback_ext:
+        ext = fallback_ext if fallback_ext.startswith(".") else f".{fallback_ext}"
+        if len(ext) <= 10:
+            return ext
+
+    return ".jpg"
+
+
+def download_file(url: str, dest_path: Path, timeout_sec: int) -> None:
+    dest_path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = dest_path.with_suffix(dest_path.suffix + ".part")
+
+    req = urllib.request.Request(url, method="GET")
+    req.add_header("User-Agent", USER_AGENT)
+
+    try:
+        with urllib.request.urlopen(req, timeout=timeout_sec) as resp, tmp_path.open("wb") as f:
+            while True:
+                chunk = resp.read(1024 * 128)
+                if not chunk:
+                    break
+                f.write(chunk)
+    except Exception:
+        try:
+            if tmp_path.exists():
+                tmp_path.unlink()
+        finally:
+            raise
+
+    tmp_path.replace(dest_path)
+
+
+def termux_set_wallpaper(image_path: Path, *, lockscreen: bool, both: bool) -> None:
+    if not shutil.which("termux-wallpaper"):
+        raise RuntimeError(
+            "termux-wallpaper not found. Install Termux:API app and run: pkg install termux-api"
+        )
+
+    if both:
+        subprocess.run(["termux-wallpaper", "-f", str(image_path)], check=True)
+        subprocess.run(["termux-wallpaper", "-l", "-f", str(image_path)], check=True)
+        return
+
+    cmd = ["termux-wallpaper", "-f", str(image_path)]
+    if lockscreen:
+        cmd.insert(1, "-l")
+    subprocess.run(cmd, check=True)
+
+
+def windows_set_wallpaper(image_path: Path) -> None:
+    import ctypes
+    from ctypes import wintypes
+
+    abs_path = str(image_path.expanduser().resolve())
+    if not Path(abs_path).is_file():
+        raise RuntimeError(f"Image file not found: {abs_path}")
+
+    SPI_SETDESKWALLPAPER = 0x0014
+    SPIF_UPDATEINIFILE = 0x01
+    SPIF_SENDCHANGE = 0x02
+
+    user32 = ctypes.WinDLL("user32", use_last_error=True)
+    SystemParametersInfoW = user32.SystemParametersInfoW
+    SystemParametersInfoW.argtypes = (
+        wintypes.UINT,
+        wintypes.UINT,
+        wintypes.LPWSTR,
+        wintypes.UINT,
+    )
+    SystemParametersInfoW.restype = wintypes.BOOL
+
+    buf = ctypes.create_unicode_buffer(abs_path)
+    ok = SystemParametersInfoW(
+        SPI_SETDESKWALLPAPER,
+        0,
+        buf,
+        SPIF_UPDATEINIFILE | SPIF_SENDCHANGE,
+    )
+    if not ok:
+        raise ctypes.WinError(ctypes.get_last_error())
+
+
+def set_wallpaper(image_path: Path, *, lockscreen: bool, both: bool) -> None:
+    if is_termux():
+        termux_set_wallpaper(image_path, lockscreen=lockscreen, both=both)
+        return
+
+    system = platform.system()
+    if system == "Windows":
+        if lockscreen or both:
+            raise RuntimeError(
+                "Windows lockscreen wallpaper is not implemented. "
+                "Please omit --lockscreen/--both (desktop wallpaper only)."
+            )
+        windows_set_wallpaper(image_path)
+        return
+
+    raise RuntimeError(
+        f"Wallpaper setting not implemented for {system}. Use --download-only to just fetch the image."
+    )
+
+
+def default_download_dir() -> Path:
+    xdg_cache = os.environ.get("XDG_CACHE_HOME")
+    if xdg_cache:
+        return Path(xdg_cache) / "mossia-wallpaper"
+    return Path.home() / ".cache" / "mossia-wallpaper"
+
+
+_CACHE_IMAGE_NAME_RE = re.compile(
+    r"^\d{8}_\d{6}_pid\d+_(landscape|portrait|square)_(original|regular|small|thumb|mini)\.[^./\\]+$"
+)
+
+
+def _is_generated_image_file(path: Path) -> bool:
+    return bool(_CACHE_IMAGE_NAME_RE.match(path.name))
+
+
+def cleanup_download_dir(download_dir: Path, *, keep: int, protect_paths: set[Path]) -> int:
+    if keep < 0:
+        raise ValueError("keep must be >= 0")
+
+    download_dir = download_dir.expanduser()
+    if not download_dir.is_dir():
+        return 0
+
+    protect_resolved: set[Path] = set()
+    for p in protect_paths:
+        try:
+            protect_resolved.add(p.expanduser().resolve())
+        except Exception:
+            protect_resolved.add(p)
+
+    deleted = 0
+    now = time.time()
+    stale_part_sec = 60 * 60
+
+    cache_files: list[Path] = []
+    stale_part_files: list[Path] = []
+
+    for child in download_dir.iterdir():
+        if not child.is_file():
+            continue
+
+        if child.name.endswith(".part"):
+            base = child.with_suffix("")
+            if _is_generated_image_file(base):
+                stale_part_files.append(child)
+            continue
+
+        if keep != 0 and _is_generated_image_file(child):
+            cache_files.append(child)
+
+    for p in stale_part_files:
+        try:
+            mtime = p.stat().st_mtime
+        except OSError:
+            continue
+        if now - mtime < stale_part_sec:
+            continue
+        try:
+            p.unlink()
+            deleted += 1
+        except OSError:
+            pass
+
+    if keep == 0:
+        return deleted
+
+    sortable: list[tuple[float, str, Path]] = []
+    for p in cache_files:
+        try:
+            sortable.append((p.stat().st_mtime, p.name, p))
+        except OSError:
+            continue
+    sortable.sort(key=lambda item: (item[0], item[1]), reverse=True)
+    sorted_files = [p for _, _, p in sortable]
+
+    keep_set: set[Path] = set()
+    for p in sorted_files[:keep]:
+        try:
+            keep_set.add(p.expanduser().resolve())
+        except Exception:
+            keep_set.add(p)
+
+    for p in sorted_files[keep:]:
+        try:
+            resolved = p.expanduser().resolve()
+        except Exception:
+            resolved = p
+        if resolved in keep_set or resolved in protect_resolved:
+            continue
+        try:
+            p.unlink()
+            deleted += 1
+        except OSError:
+            pass
+
+    return deleted
+
+
+_BACKUP_DIR_NAME = "backups"
+
+
+def _latest_generated_image(download_dir: Path) -> Optional[Path]:
+    download_dir = download_dir.expanduser()
+    if not download_dir.is_dir():
+        return None
+
+    best: Optional[tuple[float, str, Path]] = None
+    try:
+        for child in download_dir.iterdir():
+            if not child.is_file():
+                continue
+            if not _is_generated_image_file(child):
+                continue
+            try:
+                st = child.stat()
+            except OSError:
+                continue
+            candidate = (st.st_mtime, child.name, child)
+            if best is None or candidate > best:
+                best = candidate
+    except OSError:
+        return None
+
+    return best[2] if best is not None else None
+
+
+def _backup_file(src: Path, backup_dir: Path) -> Optional[Path]:
+    src = src.expanduser()
+    if not src.is_file():
+        return None
+
+    backup_dir = backup_dir.expanduser()
+    backup_dir.mkdir(parents=True, exist_ok=True)
+
+    ts = time.strftime("%Y%m%d_%H%M%S")
+    dest = backup_dir / f"{ts}_{src.name}"
+
+    if dest.exists():
+        for i in range(1, 1000):
+            candidate = backup_dir / f"{ts}_{i}_{src.name}"
+            if not candidate.exists():
+                dest = candidate
+                break
+
+    shutil.copy2(src, dest)
+    return dest
+
+
+def build_arg_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(description="Fetch image from mossia API and set as wallpaper")
+    p.add_argument("--api", default=os.environ.get("MOSSIA_API_BASE", DEFAULT_API_BASE))
+    p.add_argument("--proxy", default=DEFAULT_PROXY)
+    p.add_argument(
+        "--size",
+        default=DEFAULT_SIZE,
+        choices=["original", "regular", "small", "thumb", "mini"],
+        help="Desired image size from urlsList",
+    )
+    p.add_argument(
+        "--orientation",
+        default="auto",
+        choices=["auto", "portrait", "landscape", "square"],
+        help="auto: decide by OS (Termux=portrait, others=landscape)",
+    )
+    p.add_argument(
+        "--r18-type",
+        type=int,
+        default=0,
+        choices=[0, 1],
+        help="0: non-r18 (default), 1: r18",
+    )
+    p.add_argument("--timeout", type=int, default=25)
+    p.add_argument("--download-dir", type=Path, default=default_download_dir())
+    p.add_argument(
+        "--cache-keep",
+        type=int,
+        default=10,
+        help="Keep at most N generated images in download dir (0 = keep all)",
+    )
+    p.add_argument(
+        "--backup-current",
+        action="store_true",
+        help="Backup previous wallpaper image before setting a new one",
+    )
+    p.add_argument(
+        "--backup-dir",
+        type=Path,
+        default=None,
+        help="Directory to store backups (default: <download-dir>/backups)",
+    )
+    p.add_argument("--output", type=Path, default=None, help="Write to exact file path")
+    p.add_argument("--download-only", action="store_true", help="Do not set wallpaper")
+    p.add_argument("--dry-run", action="store_true", help="Print selected URL and exit")
+
+    lock_group = p.add_mutually_exclusive_group()
+    lock_group.add_argument("--lockscreen", action="store_true", help="Set lockscreen wallpaper")
+    lock_group.add_argument("--both", action="store_true", help="Set both home+lockscreen")
+
+    return p
+
+
+def main(argv: list[str]) -> int:
+    args = build_arg_parser().parse_args(argv)
+
+    if args.orientation == "auto":
+        orientation = detect_default_orientation()
+    else:
+        orientation = args.orientation
+
+    image_size_type = orientation_to_image_size_type(orientation)
+
+    request_payload: dict[str, Any] = {
+        "num": 1,
+        "proxy": args.proxy,
+        "sizeList": [args.size],
+        "imageSizeType": image_size_type,
+        "r18Type": args.r18_type,
+    }
+
+    resp = http_post_json(args.api, request_payload, timeout_sec=args.timeout)
+    image = parse_pixiv_image(resp)
+    url = choose_url(image, args.size)
+
+    if args.dry_run:
+        print(f"orientation={orientation} imageSizeType={image_size_type}")
+        print(f"pid={image.pid} author={image.author} title={image.title}")
+        print(url)
+        return 0
+
+    if args.output is not None:
+        out_path = args.output
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+    else:
+        suffix = infer_suffix(url, image.ext)
+        ts = time.strftime("%Y%m%d_%H%M%S")
+        out_path = args.download_dir / f"{ts}_pid{image.pid}_{orientation}_{args.size}{suffix}"
+
+    if args.backup_current and not args.download_only:
+        backup_dir = args.backup_dir
+        if backup_dir is None:
+            backup_dir = args.download_dir / _BACKUP_DIR_NAME
+
+        if args.output is not None and out_path.exists():
+            previous_path = out_path
+        else:
+            previous_path = _latest_generated_image(args.download_dir)
+
+        if previous_path is not None:
+            try:
+                backup_path = _backup_file(previous_path, backup_dir)
+            except OSError as e:
+                print(f"Backup failed: {e}", file=sys.stderr)
+            else:
+                if backup_path is not None:
+                    print(f"Backed up: {backup_path}", file=sys.stderr)
+
+    download_file(url, out_path, timeout_sec=args.timeout)
+
+    print(f"Saved: {out_path}")
+    print(f"pid={image.pid} author={image.author} title={image.title}")
+
+    if args.download_only:
+        if args.output is None:
+            deleted = cleanup_download_dir(
+                args.download_dir,
+                keep=args.cache_keep,
+                protect_paths={out_path},
+            )
+            if deleted:
+                print(f"Cleaned {deleted} old files in {args.download_dir}", file=sys.stderr)
+        return 0
+
+    set_wallpaper(out_path, lockscreen=args.lockscreen, both=args.both)
+
+
+    if args.output is None:
+        deleted = cleanup_download_dir(
+            args.download_dir,
+            keep=args.cache_keep,
+            protect_paths={out_path},
+        )
+        if deleted:
+            print(f"Cleaned {deleted} old files in {args.download_dir}", file=sys.stderr)
+
+    print("Wallpaper updated")
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main(sys.argv[1:]))
+    except KeyboardInterrupt:
+        raise SystemExit(130)
 #+end_src
