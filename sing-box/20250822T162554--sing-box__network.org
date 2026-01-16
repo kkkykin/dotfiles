@@ -1018,7 +1018,8 @@ SEP defaults to \"/\"."
          (push warp-tag warp-tags)
          (push s-tag s-tags))
 
-       (when-let* ((sys-name (system-name))
+       (when-let* ((sys-name (or (string-trim (org-file-contents "_system-name.txt" t t))
+                                 (system-name)))
                    (wg (gethash sys-name wg-clients))
                    (port (gethash "wg-port" attr))
                    (addr (gethash "wg-addr" attr))
