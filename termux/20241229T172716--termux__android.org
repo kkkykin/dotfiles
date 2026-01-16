@@ -22,6 +22,8 @@
   (let ((termux-path (expand-file-name "usr/bin" zr-termux-root-directory))
         (intents-path (expand-file-name "home/bin" zr-termux-root-directory)))
     (mkdir intents-path t)
+    (dolist (bin (directory-files "_tangle/bin" t "\\.py$" t))
+      (call-process "termux-fix-shebang" nil 0 nil bin))
     (dolist (bin (directory-files "_tangle/intents" t "^[^.]" t))
       (let ((name (file-name-nondirectory bin)))
         (make-symbolic-link bin (expand-file-name name intents-path) t)))
