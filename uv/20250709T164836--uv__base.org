@@ -102,6 +102,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import os
 import platform
 import re
@@ -112,6 +113,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional
@@ -120,6 +122,8 @@ DEFAULT_API_BASE = "https://api.mossia.top/duckMo"
 DEFAULT_PROXY = "i.pixiv.re"
 DEFAULT_SIZE = "original"
 USER_AGENT = "mossia-wallpaper/0.1 (+https://api.mossia.top)"
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -132,19 +136,23 @@ class PixivImage:
     ext: str
     urls: dict[str, str]
 
-
 def is_termux() -> bool:
     # 用户需求：TERMUX__HOME 可用于判定 Termux(Android)
-    return bool(os.environ.get("TERMUX__HOME"))
+    is_termux_env = bool(os.environ.get("TERMUX__HOME"))
+    logger.debug("is_termux=%s", is_termux_env)
+    return is_termux_env
+
 
 
 def detect_default_orientation() -> str:
     # 需求：自动检测操作系统决定横/竖屏
     # 用户补充：Android/Termux 只需要竖屏
     if is_termux():
+        logger.debug("detect_default_orientation: termux -> portrait")
         return "portrait"
 
     # 其他 OS 默认横屏（桌面环境通常是横向显示器）
+    logger.debug("detect_default_orientation: non-termux -> landscape")
     return "landscape"
 
 
@@ -155,12 +163,22 @@ def orientation_to_image_size_type(orientation: str) -> int:
         "square": 3,
     }
     try:
-        return mapping[orientation]
+        image_size_type = mapping[orientation]
     except KeyError as exc:
+        logger.debug("orientation_to_image_size_type: unsupported orientation=%s", orientation)
         raise ValueError(f"Unsupported orientation: {orientation}") from exc
+
+    logger.debug(
+        "orientation_to_image_size_type: orientation=%s imageSizeType=%s",
+        orientation,
+        image_size_type,
+    )
+    return image_size_type
 
 
 def http_post_json(url: str, payload: dict[str, Any], timeout_sec: int) -> dict[str, Any]:
+    logger.debug("http_post_json: url=%s timeout=%ss payload=%s", url, timeout_sec, payload)
+
     body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
     req = urllib.request.Request(url, data=body, method="POST")
     req.add_header("Content-Type", "application/json")
@@ -172,21 +190,38 @@ def http_post_json(url: str, payload: dict[str, Any], timeout_sec: int) -> dict[
             raw = resp.read()
             charset = resp.headers.get_content_charset() or "utf-8"
             text = raw.decode(charset, errors="replace")
+            logger.debug(
+                "http_post_json: status=%s bytes=%s charset=%s",
+                getattr(resp, "status", None),
+                len(raw),
+                charset,
+            )
     except urllib.error.HTTPError as e:
         raw = e.read() or b""
         charset = (getattr(e, "headers", None) and e.headers.get_content_charset()) or "utf-8"
         text = raw.decode(charset, errors="replace")
+        logger.debug("http_post_json: HTTPError code=%s body=%s", e.code, text[:400])
         raise RuntimeError(f"API HTTP {e.code}: {text[:400]}") from e
     except urllib.error.URLError as e:
+        logger.debug("http_post_json: URLError=%s", e)
         raise RuntimeError(f"API request failed: {e}") from e
 
     try:
-        return json.loads(text)
+        data = json.loads(text)
     except json.JSONDecodeError as e:
+        logger.debug("http_post_json: invalid_json=%s", text[:400])
         raise RuntimeError(f"API returned invalid JSON: {text[:400]}") from e
+
+    return data
 
 
 def parse_pixiv_image(payload: dict[str, Any]) -> PixivImage:
+    logger.debug(
+        "parse_pixiv_image: success=%s errCode=%s message=%s",
+        payload.get("success"),
+        payload.get("errCode"),
+        payload.get("message"),
+    )
     if not payload.get("success"):
         raise RuntimeError(
             f"API error: errCode={payload.get('errCode')} message={payload.get('message')}"
@@ -220,7 +255,7 @@ def parse_pixiv_image(payload: dict[str, Any]) -> PixivImage:
     def as_str(x: Any) -> str:
         return x if isinstance(x, str) else ""
 
-    return PixivImage(
+    image = PixivImage(
         pid=as_int(item.get("pid")),
         title=as_str(item.get("title")),
         author=as_str(item.get("author")),
@@ -229,18 +264,47 @@ def parse_pixiv_image(payload: dict[str, Any]) -> PixivImage:
         ext=as_str(item.get("ext")),
         urls=urls,
     )
+    logger.debug(
+        "parse_pixiv_image: pid=%s author=%s title=%s size=%sx%s ext=%s urls=%s",
+        image.pid,
+        image.author,
+        image.title,
+        image.width,
+        image.height,
+        image.ext,
+        sorted(image.urls.keys()),
+    )
+    return image
 
 
 def choose_url(image: PixivImage, preferred_size: str) -> str:
+    available_sizes = sorted(image.urls.keys())
     if preferred_size in image.urls:
+        logger.debug(
+            "choose_url: preferred=%s chosen (available=%s)",
+            preferred_size,
+            available_sizes,
+        )
         return image.urls[preferred_size]
 
     for fallback in ("original", "regular", "small", "thumb", "mini"):
         if fallback in image.urls:
+            logger.debug(
+                "choose_url: preferred=%s fallback=%s (available=%s)",
+                preferred_size,
+                fallback,
+                available_sizes,
+            )
             return image.urls[fallback]
 
     if image.urls:
-        return next(iter(image.urls.values()))
+        chosen = next(iter(image.urls.values()))
+        logger.debug(
+            "choose_url: preferred=%s fallback=first (available=%s)",
+            preferred_size,
+            available_sizes,
+        )
+        return chosen
 
     raise RuntimeError("No image URLs returned by API")
 
@@ -249,13 +313,16 @@ def infer_suffix(url: str, fallback_ext: str) -> str:
     parsed = urllib.parse.urlparse(url)
     suffix = Path(parsed.path).suffix
     if suffix:
+        logger.debug("infer_suffix: from_url=%s", suffix)
         return suffix
 
     if fallback_ext:
         ext = fallback_ext if fallback_ext.startswith(".") else f".{fallback_ext}"
         if len(ext) <= 10:
+            logger.debug("infer_suffix: from_ext=%s", ext)
             return ext
 
+    logger.debug("infer_suffix: fallback=.jpg")
     return ".jpg"
 
 
@@ -263,9 +330,19 @@ def download_file(url: str, dest_path: Path, timeout_sec: int) -> None:
     dest_path.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = dest_path.with_suffix(dest_path.suffix + ".part")
 
+    logger.debug(
+        "download_file: url=%s dest=%s tmp=%s timeout=%ss",
+        url,
+        dest_path,
+        tmp_path,
+        timeout_sec,
+    )
+
     req = urllib.request.Request(url, method="GET")
     req.add_header("User-Agent", USER_AGENT)
 
+    started = time.time()
+    total_bytes = 0
     try:
         with urllib.request.urlopen(req, timeout=timeout_sec) as resp, tmp_path.open("wb") as f:
             while True:
@@ -273,7 +350,9 @@ def download_file(url: str, dest_path: Path, timeout_sec: int) -> None:
                 if not chunk:
                     break
                 f.write(chunk)
-    except Exception:
+                total_bytes += len(chunk)
+    except Exception as e:
+        logger.debug("download_file failed: %s", e)
         try:
             if tmp_path.exists():
                 tmp_path.unlink()
@@ -281,22 +360,41 @@ def download_file(url: str, dest_path: Path, timeout_sec: int) -> None:
             raise
 
     tmp_path.replace(dest_path)
+    elapsed = time.time() - started
+    logger.debug(
+        "download_file: done bytes=%s elapsed=%.2fs dest=%s",
+        total_bytes,
+        elapsed,
+        dest_path,
+    )
 
 
 def termux_set_wallpaper(image_path: Path, *, lockscreen: bool, both: bool) -> None:
+    logger.debug(
+        "termux_set_wallpaper: image_path=%s lockscreen=%s both=%s",
+        image_path,
+        lockscreen,
+        both,
+    )
+
     if not shutil.which("termux-wallpaper"):
         raise RuntimeError(
             "termux-wallpaper not found. Install Termux:API app and run: pkg install termux-api"
         )
 
     if both:
-        subprocess.run(["termux-wallpaper", "-f", str(image_path)], check=True)
-        subprocess.run(["termux-wallpaper", "-l", "-f", str(image_path)], check=True)
+        cmd1 = ["termux-wallpaper", "-f", str(image_path)]
+        cmd2 = ["termux-wallpaper", "-l", "-f", str(image_path)]
+        logger.debug("termux_set_wallpaper: run %s", cmd1)
+        subprocess.run(cmd1, check=True)
+        logger.debug("termux_set_wallpaper: run %s", cmd2)
+        subprocess.run(cmd2, check=True)
         return
 
     cmd = ["termux-wallpaper", "-f", str(image_path)]
     if lockscreen:
         cmd.insert(1, "-l")
+    logger.debug("termux_set_wallpaper: run %s", cmd)
     subprocess.run(cmd, check=True)
 
 
@@ -334,11 +432,20 @@ def windows_set_wallpaper(image_path: Path) -> None:
 
 
 def set_wallpaper(image_path: Path, *, lockscreen: bool, both: bool) -> None:
+    logger.debug(
+        "set_wallpaper: image_path=%s lockscreen=%s both=%s",
+        image_path,
+        lockscreen,
+        both,
+    )
+
     if is_termux():
+        logger.debug("set_wallpaper: using termux-wallpaper")
         termux_set_wallpaper(image_path, lockscreen=lockscreen, both=both)
         return
 
     system = platform.system()
+    logger.debug("set_wallpaper: platform.system()=%s", system)
     if system == "Windows":
         if lockscreen or both:
             raise RuntimeError(
@@ -370,11 +477,19 @@ def _is_generated_image_file(path: Path) -> bool:
 
 
 def cleanup_download_dir(download_dir: Path, *, keep: int, protect_paths: set[Path]) -> int:
+    logger.debug(
+        "cleanup_download_dir: dir=%s keep=%s protect_paths=%s",
+        download_dir,
+        keep,
+        sorted(str(p) for p in protect_paths),
+    )
+
     if keep < 0:
         raise ValueError("keep must be >= 0")
 
     download_dir = download_dir.expanduser()
     if not download_dir.is_dir():
+        logger.debug("cleanup_download_dir: dir not found -> skip")
         return 0
 
     protect_resolved: set[Path] = set()
@@ -418,6 +533,7 @@ def cleanup_download_dir(download_dir: Path, *, keep: int, protect_paths: set[Pa
             pass
 
     if keep == 0:
+        logger.debug("cleanup_download_dir: deleted=%s (keep=0)", deleted)
         return deleted
 
     sortable: list[tuple[float, str, Path]] = []
@@ -449,6 +565,7 @@ def cleanup_download_dir(download_dir: Path, *, keep: int, protect_paths: set[Pa
         except OSError:
             pass
 
+    logger.debug("cleanup_download_dir: deleted=%s", deleted)
     return deleted
 
 
@@ -526,6 +643,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help="0: non-r18 (default), 1: r18",
     )
     p.add_argument("--timeout", type=int, default=25)
+    p.add_argument("--debug", action="store_true", help="Enable debug logging to stderr")
     p.add_argument("--download-dir", type=Path, default=default_download_dir())
     p.add_argument(
         "--cache-keep",
@@ -558,12 +676,20 @@ def build_arg_parser() -> argparse.ArgumentParser:
 def main(argv: list[str]) -> int:
     args = build_arg_parser().parse_args(argv)
 
+    logging.basicConfig(
+        level=logging.DEBUG if args.debug else logging.WARNING,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+        datefmt="%H:%M:%S",
+    )
+    logger.debug("args=%s", args)
+
     if args.orientation == "auto":
         orientation = detect_default_orientation()
     else:
         orientation = args.orientation
 
     image_size_type = orientation_to_image_size_type(orientation)
+    logger.debug("selected orientation=%s imageSizeType=%s", orientation, image_size_type)
 
     request_payload: dict[str, Any] = {
         "num": 1,
@@ -572,10 +698,17 @@ def main(argv: list[str]) -> int:
         "imageSizeType": image_size_type,
         "r18Type": args.r18_type,
     }
+    logger.debug(
+        "API request: api=%s payload=%s timeout=%ss",
+        args.api,
+        request_payload,
+        args.timeout,
+    )
 
     resp = http_post_json(args.api, request_payload, timeout_sec=args.timeout)
     image = parse_pixiv_image(resp)
     url = choose_url(image, args.size)
+    logger.debug("selected url=%s", url)
 
     if args.dry_run:
         print(f"orientation={orientation} imageSizeType={image_size_type}")
@@ -586,20 +719,24 @@ def main(argv: list[str]) -> int:
     if args.output is not None:
         out_path = args.output
         out_path.parent.mkdir(parents=True, exist_ok=True)
+        logger.debug("output path (explicit)=%s", out_path)
     else:
         suffix = infer_suffix(url, image.ext)
         ts = time.strftime("%Y%m%d_%H%M%S")
         out_path = args.download_dir / f"{ts}_pid{image.pid}_{orientation}_{args.size}{suffix}"
+        logger.debug("output path (generated)=%s", out_path)
 
     if args.backup_current and not args.download_only:
         backup_dir = args.backup_dir
         if backup_dir is None:
             backup_dir = args.download_dir / _BACKUP_DIR_NAME
+        logger.debug("backup_current enabled: backup_dir=%s", backup_dir)
 
         if args.output is not None and out_path.exists():
             previous_path = out_path
         else:
             previous_path = _latest_generated_image(args.download_dir)
+        logger.debug("backup_current: previous_path=%s", previous_path)
 
         if previous_path is not None:
             try:
@@ -609,8 +746,9 @@ def main(argv: list[str]) -> int:
             else:
                 if backup_path is not None:
                     print(f"Backed up: {backup_path}", file=sys.stderr)
-
+    logger.debug("download start")
     download_file(url, out_path, timeout_sec=args.timeout)
+
 
     print(f"Saved: {out_path}")
     print(f"pid={image.pid} author={image.author} title={image.title}")
@@ -625,8 +763,9 @@ def main(argv: list[str]) -> int:
             if deleted:
                 print(f"Cleaned {deleted} old files in {args.download_dir}", file=sys.stderr)
         return 0
-
+    logger.debug("set wallpaper")
     set_wallpaper(out_path, lockscreen=args.lockscreen, both=args.both)
+
 
 
     if args.output is None:
