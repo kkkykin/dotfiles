@@ -850,6 +850,321 @@ return {
   end,
 }
 #+end_src
+**** wallpaper-shot
+:PROPERTIES:
+:CUSTOM_ID: 4be41171-20b2-4c4b-bf0b-7229702cee90
+:END:
+#+begin_src lua :tangle (zr-org-by-tangle-dir "wallpaper-shot.lua")
+-- wallpaper-shot.lua
+-- 功能：
+-- 1) 若当前播放的是本地图片：直接把原图路径传给外部程序
+-- 2) 否则：用 mpv 内置 screenshot-to-file 保存当前帧，再把截图路径传给外部程序
+--
+-- 外部程序与参数可在 script-opts/wallpaper-shot.conf 配置。
+-- 路径会把 '\' 转为 '/'。
+
+local mp = require("mp")
+local utils = require("mp.utils")
+local msg = require("mp.msg")
+local opt = require("mp.options")
+
+local o = {
+  key = "Ctrl+w",
+
+  -- 截图类型：video / subtitles / window
+  screenshot_flags = "video",
+
+  -- 截图输出目录；留空则使用 mpv 的 screenshot-directory；仍为空则用 cwd
+  out_dir = "",
+  prefix = "mpv-wallpaper-",
+  ext = "",
+
+  -- 外部程序：不再强制 emacsclient
+  -- 例：external_program=python3
+  external_program = "python3",
+  -- 例：external_args=~/bin/wallpaper_set.py {path}
+  -- 支持 {path} 占位符；若没写 {path}，则会自动把 path 追加到最后
+  external_args = "",
+
+  -- 当前播放为“本地图片”时：是否直接传原图路径（true）或也截图再传（false）
+  prefer_original_image = true,
+
+  -- 认为是图片的扩展名（小写）
+  image_exts = "png,jpg,jpeg,webp,bmp,gif,tif,tiff,avif,heic,heif",
+
+  -- 等待截图文件落盘
+  wait_timeout = 2.0,
+  wait_interval = 0.05,
+}
+
+opt.read_options(o, "wallpaper-shot")
+
+local function trim(s) return (s:gsub("^%s+", ""):gsub("%s+$", "")) end
+
+local function to_forward_slashes(path)
+  return (path:gsub("\\", "/"))
+end
+
+local function strip_file_scheme(p)
+  -- mpv 有时可能给 file://...，这里简单处理一下
+  return (p:gsub("^file://+", "/"))
+end
+
+local function expand_path(p)
+  local ok, res = pcall(mp.command_native, { "expand-path", p })
+  if ok and type(res) == "string" then return res end
+  return p
+end
+
+local function normalize_path(p)
+  local ok, res = pcall(mp.command_native, { "normalize-path", p })
+  if ok and type(res) == "string" then return res end
+  return p
+end
+
+local function file_ext_lower(path)
+  local p = path:match("([^?#]+)") or path
+  local ext = p:match("%.([^.]+)$")
+  if not ext then return "" end
+  return ext:lower()
+end
+
+local function build_image_ext_set()
+  local set = {}
+  for ext in string.gmatch(o.image_exts:lower(), "([^,%s]+)") do
+    set[ext] = true
+  end
+  return set
+end
+
+local IMAGE_EXTS = build_image_ext_set()
+
+-- 简易参数分割：支持空格分隔、单/双引号包裹、双引号内支持 \" \\ \n \t
+local function split_args(s)
+  s = trim(s or "")
+  if s == "" then return {} end
+
+  local args = {}
+  local i, n = 1, #s
+
+  local function peek() return s:sub(i, i) end
+  local function nextc() local c = s:sub(i, i); i = i + 1; return c end
+  local function skip_spaces()
+    while i <= n and s:sub(i, i):match("%s") do i = i + 1 end
+  end
+
+  while i <= n do
+    skip_spaces()
+    if i > n then break end
+
+    local c = peek()
+    local buf = {}
+
+    if c == '"' or c == "'" then
+      local quote = nextc()
+      while i <= n do
+        local ch = nextc()
+        if ch == quote then break end
+        if quote == '"' and ch == "\\" and i <= n then
+          local esc = nextc()
+          if esc == "n" then table.insert(buf, "\n")
+          elseif esc == "t" then table.insert(buf, "\t")
+          elseif esc == "\\" then table.insert(buf, "\\")
+          elseif esc == '"' then table.insert(buf, '"')
+          else
+            -- 其他转义：原样保留
+            table.insert(buf, esc)
+          end
+        else
+          table.insert(buf, ch)
+        end
+      end
+      table.insert(args, table.concat(buf))
+    else
+      while i <= n and not s:sub(i, i):match("%s") do
+        table.insert(buf, nextc())
+      end
+      table.insert(args, table.concat(buf))
+    end
+  end
+
+  return args
+end
+
+local function ensure_dir_exists(dir)
+  if not dir or dir == "" then return true end
+  local info = utils.file_info(dir)
+  if info and info.is_dir then return true end
+
+  local plat = mp.get_property_native("platform") or ""
+  local cmd
+  if plat == "windows" then
+    cmd = { "cmd.exe", "/C", "mkdir", dir }
+  else
+    cmd = { "mkdir", "-p", dir }
+  end
+
+  local r = utils.subprocess({ args = cmd, playback_only = false })
+  return r and r.status == 0
+end
+
+local function choose_out_dir()
+  local dir = o.out_dir
+  if dir == "" then dir = mp.get_property("screenshot-directory", "") end
+  if dir == "" then dir = utils.getcwd() or "." end
+  dir = normalize_path(expand_path(dir))
+  return dir
+end
+
+local function choose_ext()
+  if o.ext ~= "" then return o.ext end
+  local e = mp.get_property("screenshot-format", "jpg")
+  if not e or e == "" then e = "jpg" end
+  return e
+end
+
+local function wait_for_file(native_path, timeout, interval, cb)
+  local start = mp.get_time()
+  local last_size, stable_hits = nil, 0
+  local timer
+  timer = mp.add_periodic_timer(interval, function()
+    local info = utils.file_info(native_path)
+    if info and info.is_file and info.size and info.size > 0 then
+      if last_size == info.size then
+        stable_hits = stable_hits + 1
+      else
+        stable_hits = 0
+        last_size = info.size
+      end
+      if stable_hits >= 1 then
+        timer:kill()
+        cb(true)
+        return
+      end
+    end
+    if (mp.get_time() - start) >= timeout then
+      timer:kill()
+      cb(false)
+    end
+  end)
+end
+
+local function run_external(pass_path)
+  local prog = trim(o.external_program or "")
+  if prog == "" then
+    mp.osd_message("wallpaper-shot: external_program is empty", 3)
+    return
+  end
+
+  local args = split_args(o.external_args)
+  local has_placeholder = false
+
+  for idx, a in ipairs(args) do
+    if a:find("{path}", 1, true) then
+      has_placeholder = true
+      args[idx] = a:gsub("{path}", pass_path)
+    end
+  end
+
+  if not has_placeholder then
+    table.insert(args, pass_path)
+  end
+
+  local full = { prog }
+  for _, a in ipairs(args) do table.insert(full, a) end
+
+  msg.info("Running external: " .. table.concat(full, " "))
+
+  if mp.command_native_async then
+    mp.command_native_async(
+      { name = "subprocess", playback_only = false, capture_stdout = true, capture_stderr = true, args = full },
+      function(success, res, err)
+        if success then
+          mp.osd_message("Wallpaper set: " .. pass_path, 2)
+        else
+          mp.osd_message("External failed (see console)", 3)
+          msg.error("External failed: " .. tostring(err))
+          if res and res.stderr and res.stderr ~= "" then msg.error("stderr: " .. res.stderr) end
+        end
+      end
+    )
+  else
+    local r = utils.subprocess({ args = full, playback_only = false })
+    if r and r.status == 0 then
+      mp.osd_message("Wallpaper set: " .. pass_path, 2)
+    else
+      mp.osd_message("External failed (see console)", 3)
+      msg.error("External failed: status=" .. tostring(r and r.status))
+      if r and r.stderr and r.stderr ~= "" then msg.error("stderr: " .. r.stderr) end
+    end
+  end
+end
+
+local function get_current_local_path_native()
+  -- stream-open-filename 往往更接近“实际打开的路径”
+  local p = mp.get_property("stream-open-filename", "") -- 可能是 URL 或真实路径
+  if p == "" then p = mp.get_property("path", "") end
+  if p == "" then return nil end
+
+  -- 尝试判断本地：优先用 file-local（如果 mpv 提供）
+  local file_local = mp.get_property_native("file-local", nil)
+  if file_local == false then return nil end
+
+  -- 兜底：粗略判断 URL scheme（避免把 http(s) 当本地）
+  -- 注意：Windows 盘符 "C:\..." 不应被识别为 scheme，所以只在 "://" 出现时认为是 URL
+  if p:find("://", 1, true) then
+    return nil
+  end
+
+  p = strip_file_scheme(p)
+  p = normalize_path(expand_path(p))
+  return p
+end
+
+local function is_local_image(native_path)
+  if not native_path then return false end
+  local ext = file_ext_lower(native_path)
+  return IMAGE_EXTS[ext] == true
+end
+
+local function set_wallpaper()
+  local local_native = get_current_local_path_native()
+
+  if o.prefer_original_image and local_native and is_local_image(local_native) then
+    local pass_path = to_forward_slashes(local_native)
+    run_external(pass_path)
+    return
+  end
+
+  -- 否则走“截图到文件”
+  local dir = choose_out_dir()
+  ensure_dir_exists(dir)
+
+  local ext = choose_ext()
+  local ts = os.date("%Y%m%d-%H%M%S")
+  local filename = o.prefix .. ts .. "." .. ext
+  local out_native = normalize_path(utils.join_path(dir, filename))
+  local out_pass = to_forward_slashes(out_native)
+
+  local ok, err = pcall(mp.command_native, { "screenshot-to-file", out_native, o.screenshot_flags })
+  if not ok then
+    mp.osd_message("wallpaper-shot: screenshot failed", 2)
+    msg.error("screenshot-to-file failed: " .. tostring(err))
+    return
+  end
+
+  wait_for_file(out_native, o.wait_timeout, o.wait_interval, function(ready)
+    if not ready then
+      msg.warn("Screenshot not confirmed ready within timeout; continuing anyway: " .. out_native)
+    end
+    run_external(out_pass)
+  end)
+end
+
+if o.key and o.key ~= "" then
+  mp.add_key_binding(o.key, "set_wallpaper", set_wallpaper)
+end
+#+end_src
 ** opts
 :PROPERTIES:
 :tangle-dir: _tangle/script-opts
@@ -903,6 +1218,26 @@ direct_io=yes
 
 # Custom path to the mpv executable
 mpv_path=mpv
+#+end_src
+*** wallpaper-shot
+:PROPERTIES:
+:CUSTOM_ID: 76c405a7-4c8e-4e75-b91b-a554cd975448
+:END:
+#+header: :var script=(expand-file-name "../uv/_tangle/scripts/wallpaper_set.py")
+#+begin_src conf-unix :tangle (zr-org-by-tangle-dir "wallpaper-shot.conf")
+# 不想脚本自己绑键就留空，然后用 input.conf 绑定
+key=Alt+w
+
+# 外部程序与参数
+external_program=uv
+external_args=run $script {path}
+
+# 本地图片直接传原图路径（不截图）
+prefer_original_image=yes
+
+# 截图输出目录（可选）
+# out_dir=~~desktop/
+ext=png
 #+end_src
 * input
 :PROPERTIES:
