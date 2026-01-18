@@ -215,26 +215,7 @@ def http_post_json(url: str, payload: dict[str, Any], timeout_sec: int) -> dict[
     return data
 
 
-def parse_pixiv_image(payload: dict[str, Any]) -> PixivImage:
-    logger.debug(
-        "parse_pixiv_image: success=%s errCode=%s message=%s",
-        payload.get("success"),
-        payload.get("errCode"),
-        payload.get("message"),
-    )
-    if not payload.get("success"):
-        raise RuntimeError(
-            f"API error: errCode={payload.get('errCode')} message={payload.get('message')}"
-        )
-
-    data = payload.get("data")
-    if not isinstance(data, list) or not data:
-        raise RuntimeError("API returned empty data")
-
-    item = data[0]
-    if not isinstance(item, dict):
-        raise RuntimeError("API returned unexpected data item")
-
+def _parse_pixiv_item(item: dict[str, Any]) -> PixivImage:
     urls: dict[str, str] = {}
     urls_list = item.get("urlsList")
     if isinstance(urls_list, list):
@@ -255,7 +236,7 @@ def parse_pixiv_image(payload: dict[str, Any]) -> PixivImage:
     def as_str(x: Any) -> str:
         return x if isinstance(x, str) else ""
 
-    image = PixivImage(
+    return PixivImage(
         pid=as_int(item.get("pid")),
         title=as_str(item.get("title")),
         author=as_str(item.get("author")),
@@ -264,6 +245,40 @@ def parse_pixiv_image(payload: dict[str, Any]) -> PixivImage:
         ext=as_str(item.get("ext")),
         urls=urls,
     )
+
+
+def parse_pixiv_images(payload: dict[str, Any]) -> list[PixivImage]:
+    logger.debug(
+        "parse_pixiv_images: success=%s errCode=%s message=%s",
+        payload.get("success"),
+        payload.get("errCode"),
+        payload.get("message"),
+    )
+    if not payload.get("success"):
+        raise RuntimeError(
+            f"API error: errCode={payload.get('errCode')} message={payload.get('message')}"
+        )
+
+    data = payload.get("data")
+    if not isinstance(data, list):
+        raise RuntimeError("API returned unexpected data")
+
+    images: list[PixivImage] = []
+    for item in data:
+        if not isinstance(item, dict):
+            raise RuntimeError("API returned unexpected data item")
+        images.append(_parse_pixiv_item(item))
+
+    logger.debug("parse_pixiv_images: parsed %s items", len(images))
+    return images
+
+
+def parse_pixiv_image(payload: dict[str, Any]) -> PixivImage:
+    images = parse_pixiv_images(payload)
+    if not images:
+        raise RuntimeError("API returned empty data")
+
+    image = images[0]
     logger.debug(
         "parse_pixiv_image: pid=%s author=%s title=%s size=%sx%s ext=%s urls=%s",
         image.pid,
@@ -620,7 +635,18 @@ def _backup_file(src: Path, backup_dir: Path) -> Optional[Path]:
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(description="Fetch image from mossia API and set as wallpaper")
+    p = argparse.ArgumentParser(
+        description="Fetch image from mossia API and set as wallpaper",
+        epilog=(
+            "Examples:\n"
+            "  python wallpaper.py --exec mpv --loop --keep-open=yes\n"
+            "  python wallpaper.py --dry-run --exec mpv\n"
+            "  python wallpaper.py --timeout 25 --dry-run --exec python -c \"import sys; print(len(sys.argv)-1)\"\n"
+            "\n"
+            "Note: all script options must appear before --exec."
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     p.add_argument("--api", default=os.environ.get("MOSSIA_API_BASE", DEFAULT_API_BASE))
     p.add_argument("--proxy", default=DEFAULT_PROXY)
     p.add_argument(
@@ -664,7 +690,21 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
     p.add_argument("--output", type=Path, default=None, help="Write to exact file path")
     p.add_argument("--download-only", action="store_true", help="Do not set wallpaper")
-    p.add_argument("--dry-run", action="store_true", help="Print selected URL and exit")
+    p.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print selected URL(s) and exit (exec mode prints URLs + exec list)",
+    )
+    p.add_argument(
+        "--exec",
+        dest="exec_cmd",
+        nargs=argparse.REMAINDER,
+        default=None,
+        help=(
+            "Preview mode: do not download/set wallpaper; run an external command with the selected URL appended. "
+            "All arguments after --exec are treated as the external command and its args, so all script options must appear before --exec."
+        ),
+    )
 
     lock_group = p.add_mutually_exclusive_group()
     lock_group.add_argument("--lockscreen", action="store_true", help="Set lockscreen wallpaper")
@@ -683,6 +723,32 @@ def main(argv: list[str]) -> int:
     )
     logger.debug("args=%s", args)
 
+    exec_mode = args.exec_cmd is not None
+    if exec_mode:
+        if not args.exec_cmd:
+            print("Error: --exec requires an external command (e.g. --exec mpv --loop)", file=sys.stderr)
+            return 2
+
+        conflicts: list[str] = []
+        if args.download_only:
+            conflicts.append("--download-only")
+        if args.output is not None:
+            conflicts.append("--output")
+        if args.backup_current:
+            conflicts.append("--backup-current")
+        if args.backup_dir is not None:
+            conflicts.append("--backup-dir")
+        if args.lockscreen:
+            conflicts.append("--lockscreen")
+        if args.both:
+            conflicts.append("--both")
+        if conflicts:
+            print(
+                "Error: --exec cannot be combined with " + ", ".join(conflicts),
+                file=sys.stderr,
+            )
+            return 2
+
     if args.orientation == "auto":
         orientation = detect_default_orientation()
     else:
@@ -692,7 +758,7 @@ def main(argv: list[str]) -> int:
     logger.debug("selected orientation=%s imageSizeType=%s", orientation, image_size_type)
 
     request_payload: dict[str, Any] = {
-        "num": 1,
+        "num": 20 if exec_mode else 1,
         "proxy": args.proxy,
         "sizeList": [args.size],
         "imageSizeType": image_size_type,
@@ -706,6 +772,41 @@ def main(argv: list[str]) -> int:
     )
 
     resp = http_post_json(args.api, request_payload, timeout_sec=args.timeout)
+
+    if exec_mode:
+        images = parse_pixiv_images(resp)
+        urls: list[str] = []
+        seen: set[str] = set()
+        for image in images:
+            try:
+                url = choose_url(image, args.size)
+            except RuntimeError:
+                continue
+            if not url or url in seen:
+                continue
+            urls.append(url)
+            seen.add(url)
+
+        if not urls:
+            print("Error: no usable image URLs returned by API", file=sys.stderr)
+            return 1
+
+        cmd = [*args.exec_cmd, *urls]
+        if args.dry_run:
+            print(f"orientation={orientation} imageSizeType={image_size_type}")
+            for url in urls:
+                print(url)
+            print(f"exec={cmd}")
+            return 0
+
+        logger.debug("exec mode: run %s", cmd)
+        try:
+            proc = subprocess.run(cmd, check=False)
+        except OSError as e:
+            print(f"Failed to run external command: {e}", file=sys.stderr)
+            return 127
+        return proc.returncode
+
     image = parse_pixiv_image(resp)
     url = choose_url(image, args.size)
     logger.debug("selected url=%s", url)
@@ -786,4 +887,194 @@ if __name__ == "__main__":
         raise SystemExit(main(sys.argv[1:]))
     except KeyboardInterrupt:
         raise SystemExit(130)
+#+end_src
+
+** set-wallpaper
+:PROPERTIES:
+:CUSTOM_ID: 549c9be7-d1d1-4ba3-b2dd-8d9c92349e6f
+:END:
+#+begin_src py :tangle (zr-org-by-tangle-dir "wallpaper_set.py")
+import argparse
+import json
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+def which(cmd: str) -> bool:
+    return shutil.which(cmd) is not None
+
+def run(cmd, check=True):
+    # cmd: list[str]
+    return subprocess.run(cmd, check=check, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+def as_file_uri(p: Path) -> str:
+    # Path.as_uri() 会做 percent-encoding（空格等），对 gsettings 友好
+    return p.resolve().as_uri()
+
+def set_windows(p: Path) -> None:
+    import ctypes  # noqa
+    SPI_SETDESKWALLPAPER = 20
+    SPIF_UPDATEINIFILE = 0x01
+    SPIF_SENDCHANGE = 0x02
+    # Windows 通常要求绝对路径
+    path_str = str(p.resolve())
+    r = ctypes.windll.user32.SystemParametersInfoW(
+        SPI_SETDESKWALLPAPER, 0, path_str, SPIF_UPDATEINIFILE | SPIF_SENDCHANGE
+    )
+    if not r:
+        raise RuntimeError("SystemParametersInfoW failed")
+
+def set_macos(p: Path) -> None:
+    # 设置所有桌面
+    # 这里用 POSIX file 路径，osascript 自己处理空格等
+    script = f'''
+tell application "System Events"
+  set theDesktops to every desktop
+  repeat with d in theDesktops
+    set picture of d to "{str(p.resolve()).replace('"', '\\"')}"
+  end repeat
+end tell
+'''.strip()
+    run(["osascript", "-e", script])
+
+def gsettings_set(schema: str, key: str, value: str) -> bool:
+    if not which("gsettings"):
+        return False
+    try:
+        run(["gsettings", "set", schema, key, value])
+        return True
+    except subprocess.CalledProcessError:
+        return False
+
+def set_gnome_like(p: Path) -> bool:
+    uri = as_file_uri(p)
+    ok = False
+
+    # GNOME
+    ok = gsettings_set("org.gnome.desktop.background", "picture-uri", uri) or ok
+    # GNOME (dark)
+    ok = gsettings_set("org.gnome.desktop.background", "picture-uri-dark", uri) or ok
+
+    # Cinnamon
+    ok = gsettings_set("org.cinnamon.desktop.background", "picture-uri", uri) or ok
+
+    # MATE（常见是 picture-filename，用普通路径）
+    ok = gsettings_set("org.mate.background", "picture-filename", str(p.resolve())) or ok
+
+    return ok
+
+def set_kde_plasma(p: Path) -> bool:
+    # 需要 qdbus 或 qdbus6
+    qdbus = "qdbus6" if which("qdbus6") else ("qdbus" if which("qdbus") else None)
+    if not qdbus:
+        return False
+
+    # 用 PlasmaShell.evaluateScript 设置所有 desktop
+    # 使用 JSON 字符串字面量来安全转义路径
+    img = str(p.resolve())
+    img_js = json.dumps("file://" + img)  # 变成 JS 字符串常量
+
+    script = f"""
+var allDesktops = desktops();
+for (i=0; i<allDesktops.length; i++) {{
+  d = allDesktops[i];
+  d.wallpaperPlugin = "org.kde.image";
+  d.currentConfigGroup = ["Wallpaper", "org.kde.image", "General"];
+  d.writeConfig("Image", {img_js});
+}}
+""".strip()
+
+    try:
+        run([qdbus, "org.kde.plasmashell", "/PlasmaShell", "org.kde.PlasmaShell.evaluateScript", script])
+        return True
+    except subprocess.CalledProcessError:
+        return False
+
+def set_sway(p: Path) -> bool:
+    if not which("swaymsg"):
+        return False
+    try:
+        run(["swaymsg", "output", "*", "bg", str(p.resolve()), "fill"])
+        return True
+    except subprocess.CalledProcessError:
+        return False
+
+def set_feh(p: Path) -> bool:
+    if not which("feh"):
+        return False
+    try:
+        run(["feh", "--bg-fill", str(p.resolve())])
+        return True
+    except subprocess.CalledProcessError:
+        return False
+
+def set_linux_auto(p: Path) -> None:
+    # 优先尝试：sway -> GNOME系 gsettings -> KDE -> feh
+    if os.environ.get("SWAYSOCK") and set_sway(p):
+        return
+    if set_gnome_like(p):
+        return
+    if set_kde_plasma(p):
+        return
+    if set_feh(p):
+        return
+
+    raise RuntimeError(
+        "No supported wallpaper setter found. "
+        "Try installing gsettings (GNOME), qdbus (KDE), feh (X11), or use swaymsg (sway)."
+    )
+
+def main():
+    ap = argparse.ArgumentParser(description="Set desktop wallpaper (best-effort auto-detect).")
+    ap.add_argument("path", help="Path to image file")
+    ap.add_argument("--mode", default="auto",
+                    choices=["auto", "windows", "macos", "gnome", "kde", "sway", "feh"],
+                    help="Force a specific backend")
+    args = ap.parse_args()
+
+    # 接收来自 mpv 的路径可能是把 '\' 换成 '/' 过的，Path 依然能处理
+    p = Path(args.path).expanduser()
+    if not p.exists():
+        # 有些情况下传的是 file:///...，做一次兼容
+        if args.path.startswith("file://"):
+            p = Path(args.path[7:]).expanduser()
+    if not p.exists():
+        print(f"[wallpaper_set] file not found: {p}", file=sys.stderr)
+        return 2
+
+    try:
+        if args.mode == "windows":
+            set_windows(p)
+        elif args.mode == "macos":
+            set_macos(p)
+        elif args.mode == "gnome":
+            if not set_gnome_like(p):
+                raise RuntimeError("gsettings method failed or not available")
+        elif args.mode == "kde":
+            if not set_kde_plasma(p):
+                raise RuntimeError("KDE qdbus method failed or not available")
+        elif args.mode == "sway":
+            if not set_sway(p):
+                raise RuntimeError("swaymsg method failed or not available")
+        elif args.mode == "feh":
+            if not set_feh(p):
+                raise RuntimeError("feh method failed or not available")
+        else:
+            # auto
+            if sys.platform.startswith("win"):
+                set_windows(p)
+            elif sys.platform == "darwin":
+                set_macos(p)
+            else:
+                set_linux_auto(p)
+
+        return 0
+    except Exception as e:
+        print(f"[wallpaper_set] failed: {e}", file=sys.stderr)
+        return 1
+
+if __name__ == "__main__":
+    raise SystemExit(main())
 #+end_src
