@@ -93,19 +93,19 @@ if __name__ == "__main__":
   main()
 #+end_src
 
-** wallpaper
+** mossia-wallpaper
 :PROPERTIES:
 :CUSTOM_ID: eb675a6c-e3fc-445e-a6ab-992ec7e5a7fd
 :END:
-#+begin_src py :mkdirp t :tangle (zr-org-by-tangle-dir "wallpaper.py")
+#+begin_src py :mkdirp t :tangle (zr-org-by-tangle-dir "mossia_wallpaper.py")
 from __future__ import annotations
-
 import argparse
 import json
 import logging
+
 import os
-import platform
 import re
+
 import shutil
 import subprocess
 import sys
@@ -118,7 +118,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional
 
+import wallpaper_set
+
 DEFAULT_API_BASE = "https://api.mossia.top/duckMo"
+
 DEFAULT_PROXY = "i.pixiv.re"
 DEFAULT_SIZE = "original"
 USER_AGENT = "mossia-wallpaper/0.1 (+https://api.mossia.top)"
@@ -384,95 +387,8 @@ def download_file(url: str, dest_path: Path, timeout_sec: int) -> None:
     )
 
 
-def termux_set_wallpaper(image_path: Path, *, lockscreen: bool, both: bool) -> None:
-    logger.debug(
-        "termux_set_wallpaper: image_path=%s lockscreen=%s both=%s",
-        image_path,
-        lockscreen,
-        both,
-    )
-
-    if not shutil.which("termux-wallpaper"):
-        raise RuntimeError(
-            "termux-wallpaper not found. Install Termux:API app and run: pkg install termux-api"
-        )
-
-    if both:
-        cmd1 = ["termux-wallpaper", "-f", str(image_path)]
-        cmd2 = ["termux-wallpaper", "-l", "-f", str(image_path)]
-        logger.debug("termux_set_wallpaper: run %s", cmd1)
-        subprocess.run(cmd1, check=True)
-        logger.debug("termux_set_wallpaper: run %s", cmd2)
-        subprocess.run(cmd2, check=True)
-        return
-
-    cmd = ["termux-wallpaper", "-f", str(image_path)]
-    if lockscreen:
-        cmd.insert(1, "-l")
-    logger.debug("termux_set_wallpaper: run %s", cmd)
-    subprocess.run(cmd, check=True)
-
-
-def windows_set_wallpaper(image_path: Path) -> None:
-    import ctypes
-    from ctypes import wintypes
-
-    abs_path = str(image_path.expanduser().resolve())
-    if not Path(abs_path).is_file():
-        raise RuntimeError(f"Image file not found: {abs_path}")
-
-    SPI_SETDESKWALLPAPER = 0x0014
-    SPIF_UPDATEINIFILE = 0x01
-    SPIF_SENDCHANGE = 0x02
-
-    user32 = ctypes.WinDLL("user32", use_last_error=True)
-    SystemParametersInfoW = user32.SystemParametersInfoW
-    SystemParametersInfoW.argtypes = (
-        wintypes.UINT,
-        wintypes.UINT,
-        wintypes.LPWSTR,
-        wintypes.UINT,
-    )
-    SystemParametersInfoW.restype = wintypes.BOOL
-
-    buf = ctypes.create_unicode_buffer(abs_path)
-    ok = SystemParametersInfoW(
-        SPI_SETDESKWALLPAPER,
-        0,
-        buf,
-        SPIF_UPDATEINIFILE | SPIF_SENDCHANGE,
-    )
-    if not ok:
-        raise ctypes.WinError(ctypes.get_last_error())
-
-
 def set_wallpaper(image_path: Path, *, lockscreen: bool, both: bool) -> None:
-    logger.debug(
-        "set_wallpaper: image_path=%s lockscreen=%s both=%s",
-        image_path,
-        lockscreen,
-        both,
-    )
-
-    if is_termux():
-        logger.debug("set_wallpaper: using termux-wallpaper")
-        termux_set_wallpaper(image_path, lockscreen=lockscreen, both=both)
-        return
-
-    system = platform.system()
-    logger.debug("set_wallpaper: platform.system()=%s", system)
-    if system == "Windows":
-        if lockscreen or both:
-            raise RuntimeError(
-                "Windows lockscreen wallpaper is not implemented. "
-                "Please omit --lockscreen/--both (desktop wallpaper only)."
-            )
-        windows_set_wallpaper(image_path)
-        return
-
-    raise RuntimeError(
-        f"Wallpaper setting not implemented for {system}. Use --download-only to just fetch the image."
-    )
+    wallpaper_set.set_wallpaper(image_path, mode="auto", lockscreen=lockscreen, both=both)
 
 
 def default_download_dir() -> Path:
