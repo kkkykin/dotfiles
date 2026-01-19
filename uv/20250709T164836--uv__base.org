@@ -913,6 +913,28 @@ def as_file_uri(p: Path) -> str:
     # Path.as_uri() 会做 percent-encoding（空格等），对 gsettings 友好
     return p.resolve().as_uri()
 
+def is_termux() -> bool:
+    return bool(os.environ.get("TERMUX__HOME"))
+
+def set_termux(p: Path, *, lockscreen: bool, both: bool) -> None:
+    if not which("termux-wallpaper"):
+        raise RuntimeError(
+            "termux-wallpaper not found. Install Termux:API app and run: pkg install termux-api"
+        )
+
+    path_str = str(p.resolve())
+
+    if both:
+        run(["termux-wallpaper", "-f", path_str])
+        run(["termux-wallpaper", "-l", "-f", path_str])
+        return
+
+    cmd = ["termux-wallpaper", "-f", path_str]
+    if lockscreen:
+        cmd.insert(1, "-l")
+    run(cmd)
+
+
 def set_windows(p: Path) -> None:
     import ctypes  # noqa
     SPI_SETDESKWALLPAPER = 20
@@ -1026,15 +1048,84 @@ def set_linux_auto(p: Path) -> None:
         "Try installing gsettings (GNOME), qdbus (KDE), feh (X11), or use swaymsg (sway)."
     )
 
+
+def set_wallpaper(
+    p: Path, *, mode: str = "auto", lockscreen: bool = False, both: bool = False
+) -> None:
+    if mode == "auto":
+        if is_termux():
+            set_termux(p, lockscreen=lockscreen, both=both)
+            return
+
+        if lockscreen or both:
+            raise RuntimeError(
+                "lockscreen/both options are only supported in Termux mode. "
+                "Use --mode termux (requires termux-wallpaper)."
+            )
+
+        if sys.platform.startswith("win"):
+            set_windows(p)
+            return
+        if sys.platform == "darwin":
+            set_macos(p)
+            return
+
+        set_linux_auto(p)
+        return
+
+    if mode == "termux":
+        set_termux(p, lockscreen=lockscreen, both=both)
+        return
+
+    if lockscreen or both:
+        raise RuntimeError(
+            "lockscreen/both options are only supported in Termux mode. "
+            "Use --mode termux (requires termux-wallpaper)."
+        )
+
+    if mode == "windows":
+        set_windows(p)
+    elif mode == "macos":
+        set_macos(p)
+    elif mode == "gnome":
+        if not set_gnome_like(p):
+            raise RuntimeError("gsettings method failed or not available")
+    elif mode == "kde":
+        if not set_kde_plasma(p):
+            raise RuntimeError("KDE qdbus method failed or not available")
+    elif mode == "sway":
+        if not set_sway(p):
+            raise RuntimeError("swaymsg method failed or not available")
+    elif mode == "feh":
+        if not set_feh(p):
+            raise RuntimeError("feh method failed or not available")
+    else:
+        raise ValueError(f"Unknown mode: {mode}")
+
+
 def main():
     ap = argparse.ArgumentParser(description="Set desktop wallpaper (best-effort auto-detect).")
     ap.add_argument("path", help="Path to image file")
-    ap.add_argument("--mode", default="auto",
-                    choices=["auto", "windows", "macos", "gnome", "kde", "sway", "feh"],
-                    help="Force a specific backend")
+    ap.add_argument(
+        "--mode",
+        default="auto",
+        choices=["auto", "termux", "windows", "macos", "gnome", "kde", "sway", "feh"],
+        help="Force a specific backend",
+    )
+    lock_group = ap.add_mutually_exclusive_group()
+    lock_group.add_argument(
+        "--lockscreen",
+        action="store_true",
+        help="Set lockscreen wallpaper (Termux only)",
+    )
+    lock_group.add_argument(
+        "--both",
+        action="store_true",
+        help="Set both home+lockscreen wallpaper (Termux only)",
+    )
     args = ap.parse_args()
 
-    # 接收来自 mpv 的路径可能是把 '\' 换成 '/' 过的，Path 依然能处理
+    # 接收来自 mpv 的路径可能是把 '\\' 换成 '/' 过的，Path 依然能处理
     p = Path(args.path).expanduser()
     if not p.exists():
         # 有些情况下传的是 file:///...，做一次兼容
@@ -1045,31 +1136,7 @@ def main():
         return 2
 
     try:
-        if args.mode == "windows":
-            set_windows(p)
-        elif args.mode == "macos":
-            set_macos(p)
-        elif args.mode == "gnome":
-            if not set_gnome_like(p):
-                raise RuntimeError("gsettings method failed or not available")
-        elif args.mode == "kde":
-            if not set_kde_plasma(p):
-                raise RuntimeError("KDE qdbus method failed or not available")
-        elif args.mode == "sway":
-            if not set_sway(p):
-                raise RuntimeError("swaymsg method failed or not available")
-        elif args.mode == "feh":
-            if not set_feh(p):
-                raise RuntimeError("feh method failed or not available")
-        else:
-            # auto
-            if sys.platform.startswith("win"):
-                set_windows(p)
-            elif sys.platform == "darwin":
-                set_macos(p)
-            else:
-                set_linux_auto(p)
-
+        set_wallpaper(p, mode=args.mode, lockscreen=args.lockscreen, both=args.both)
         return 0
     except Exception as e:
         print(f"[wallpaper_set] failed: {e}", file=sys.stderr)
