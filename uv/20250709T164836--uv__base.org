@@ -106,6 +106,7 @@ import logging
 import os
 import re
 
+import random
 import shutil
 import subprocess
 import sys
@@ -607,6 +608,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
     p.add_argument("--output", type=Path, default=None, help="Write to exact file path")
     p.add_argument("--download-only", action="store_true", help="Do not set wallpaper")
     p.add_argument(
+        "--restore-random",
+        action="store_true",
+        help="Set wallpaper from a random backed-up image (no network request)",
+    )
+    p.add_argument(
         "--dry-run",
         action="store_true",
         help="Print selected URL(s) and exit (exec mode prints URLs + exec list)",
@@ -640,6 +646,54 @@ def main(argv: list[str]) -> int:
     logger.debug("args=%s", args)
 
     exec_mode = args.exec_cmd is not None
+    restore_mode = bool(args.restore_random)
+    if exec_mode and restore_mode:
+        print("Error: --restore-random cannot be combined with --exec", file=sys.stderr)
+        return 2
+
+    if restore_mode:
+        conflicts: list[str] = []
+        if args.download_only:
+            conflicts.append("--download-only")
+        if args.output is not None:
+            conflicts.append("--output")
+        if args.backup_current:
+            conflicts.append("--backup-current")
+        if conflicts:
+            print(
+                "Error: --restore-random cannot be combined with " + ", ".join(conflicts),
+                file=sys.stderr,
+            )
+            return 2
+
+        backup_dir = args.backup_dir
+        if backup_dir is None:
+            backup_dir = args.download_dir / _BACKUP_DIR_NAME
+
+        backup_dir = backup_dir.expanduser()
+        if not backup_dir.is_dir():
+            print(f"Error: backup dir not found: {backup_dir}", file=sys.stderr)
+            return 1
+
+        candidates = [p for p in backup_dir.iterdir() if p.is_file() and not p.name.endswith(".part")]
+        if not candidates:
+            print(f"Error: no backup images found in: {backup_dir}", file=sys.stderr)
+            return 1
+
+        chosen = random.choice(candidates)
+        print(f"Restored: {chosen}")
+        if args.dry_run:
+            return 0
+
+        try:
+            set_wallpaper(chosen, lockscreen=args.lockscreen, both=args.both)
+        except Exception as e:
+            print(f"Failed to set wallpaper: {e}", file=sys.stderr)
+            return 1
+
+        print("Wallpaper updated")
+        return 0
+
     if exec_mode:
         if not args.exec_cmd:
             print("Error: --exec requires an external command (e.g. --exec mpv --loop)", file=sys.stderr)
