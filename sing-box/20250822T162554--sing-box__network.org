@@ -460,9 +460,9 @@
       },
       {
         "download_detour": "direct",
-        "tag": "geosite-google@!cn",
+        "tag": "geosite-google",
         "type": "remote",
-        "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-google@!cn.srs"
+        "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-google.srs"
       },
       {
         "download_detour": "direct",
@@ -531,7 +531,7 @@
                      (outbound . "s[browse]")
                      (rules . [((rule_set . ["geosite-category-porn"
                                              "geosite-category-ai-!cn"
-                                             "geosite-google@!cn"
+                                             "geosite-google"
                                              "geosite-microsoft"]))
                                ((rule_set . "browse-rules"))])
                      (type . "logical"))
