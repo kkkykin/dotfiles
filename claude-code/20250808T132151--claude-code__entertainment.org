@@ -37,6 +37,7 @@
     "MCP_TIMEOUT": "300000",
     "MCP_TOOL_TIMEOUT": "600000"
   },
+  "hasCompletedOnboarding": true,
   "permissions": {
     "allow": [],
     "deny": []
