@@ -418,7 +418,7 @@ mapkey(';pl', 'toggle proxy current site', () => {
 #+end_src
 
 #+begin_src js :noweb-prefix no
-const zrProxyConf = <<json-file-to-js-obj(file="pac.json.gpg")>>
+const zrProxyConf = <<sops-json-to-js-obj(file="../pac.json")>>
 #+end_src
 
 #+begin_src js
@@ -449,16 +449,17 @@ mapkey(';pb', 'set proxy byhost', () => {
 :PROPERTIES:
 :CUSTOM_ID: 1dcc733d-0fa2-4156-8020-04f6a8446d27
 :END:
-#+name: json-file-to-js-obj
+#+name: sops-json-to-js-obj
 #+begin_src elisp
 (if (file-exists-p file)
-    (with-current-buffer (find-file-noselect file)
+    (with-temp-buffer
+      (call-process "sops" nil t nil "-d" file)
       (buffer-string))
   "{}")
 #+end_src
 
 #+begin_src javascript :tangle "_tangle/pac.js" :noweb-prefix no
-var pacGlobal = <<json-file-to-js-obj(file="pac.json.gpg")>>
+var pacGlobal = <<sops-json-to-js-obj(file="../pac.json")>>
 
 function matchHost(host, rule_list) {
   for (var i = 0; i < rule_list.length; i++) {
