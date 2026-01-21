@@ -412,6 +412,12 @@
       },
       {
         "download_detour": "direct",
+        "tag": "geoip-telegram",
+        "type": "remote",
+        "url": "$jsdelivr/gh/chocolate4u/Iran-sing-box-rules@rule-set/geoip-telegram.srs"
+      },
+      {
+        "download_detour": "direct",
         "tag": "geoip-microsoft",
         "type": "remote",
         "url": "$jsdelivr/gh/chocolate4u/Iran-sing-box-rules@rule-set/geoip-microsoft.srs"
@@ -543,6 +549,7 @@
                      (type . "logical"))
                     ((outbound . "s[this-way]")
                      (rule_set . ["geosite-category-porn"
+                                  "geoip-telegram"
                                   "proxy-rules"]))
                     ((action . "resolve"))))
        (post-rules '(((ip_is_private . t)
