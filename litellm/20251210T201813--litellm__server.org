@@ -130,21 +130,24 @@
                      (goto-char 1)
                      (json-parse-buffer :object-type 'alist :array-type 'list)))
          (public '(("modelscope" . ((api_base . "https://api-inference.modelscope.cn/v1")
-                                    (prefix . "ms")
-                                    (weight . 5)))
+                                    (order . 30)
+                                    (prefix . "ms")))
+                   ("cerebras" . ((api_base . "https://api.cerebras.ai/v1")
+                                  (order . 30)
+                                  (prefix . "cerebras")))
                    ("nvidia" . ((api_base . "https://integrate.api.nvidia.com/v1")
-                                (prefix . "nvidia_nim")
-                                (weight . 3)))
+                                (order . 30)
+                                (prefix . "nvidia_nim")))
                    ;; ("hf" . ((api_base . "https://router.huggingface.co/v1")
                    ;;          (prefix . "huggingface")))
                    ("poll" . ((api_base . "https://gen.pollinations.ai")
-                              (weight . 5)
+                              (order . 30)
                               (tags . ["nsfw"])
                               (prefix . "poll")))
                    ("ouyangqiqi" . ((tags . ("tavern"))))
                    ("beizhi" . ((tags . ("tavern"))))
                    ("bohe" . ((tags . ("tavern"))
-                              (weight . 10)))
+                              (order . 50)))
                    ("sc0152" . ((tags . ("tavern"))))
                    ("cpa" . ((order . 50)))
                    ("88code" . ((order . 10)))))
@@ -189,7 +192,7 @@
                . ((api_base . "https://mrfakename-z-image-turbo.hf.space")
                   (api_key . ,(auth-source-pick-first-password
                                :host "router.huggingface.co" :user "apikey"))
-                  (weight . 5)
+                  (order . 10)
                   (model . "gd/z-image-turbo")
                   (tags . ["nsfw"]))))))))
     (seq-do-indexed
@@ -224,64 +227,25 @@
 
 * models
 #+name: models-tbl
-| name                          | opencode    | poll   | nvidia                              | cpa   | modelscope                          |
-|-------------------------------+-------------+--------+-------------------------------------+-------+-------------------------------------|
-| deepseek-v3.2                 |             |        | deepseek-ai/%s                      | t     | deepseek-ai/DeepSeek-V3.2           |
-| qwen3-235b-a22b-instruct      |             |        |                                     | t     | Qwen/Qwen3-235B-A22B-Instruct-2507  |
-| qwen3-235b-a22b-thinking-2507 |             |        |                                     | t     | Qwen/Qwen3-235B-A22B-Thinking-2507  |
-| qwen3-coder-plus              |             |        | qwen/qwen3-coder-480b-a35b-instruct | t     | Qwen/Qwen3-Coder-480B-A35B-Instruct |
-| Qwen/Qwen-Image-2512          |             |        |                                     |       | t                                   |
-| qwen3-max                     |             |        |                                     | t     |                                     |
-| qwen3-vl-plus                 |             |        |                                     | t     | Qwen/Qwen3-VL-235B-A22B-Instruct    |
-| kimi-k2-0905                  |             |        |                                     | t     |                                     |
-| kimi-k2-thinking              |             |        | moonshotai/%s                       | t     |                                     |
-| deepseek-v3.2-chat            |             |        |                                     | t     |                                     |
-| deepseek-v3.2-reasoner        |             |        |                                     | t     |                                     |
-| deepseek-r1                   |             |        | deepseek-ai/%s                      | t     | deepseek-ai/DeepSeek-R1-0528        |
-| minimax-m2.1                  | ant/%s-free |        | minimaxai/%s                        | ant/t |                                     |
-| z-image-turbo                 |             | zimage |                                     |       | Tongyi-MAI/Z-Image-Turbo            |
-| glm-4.6v                      |             |        |                                     |       | ZhipuAI/GLM-4.6V                    |
-| glm-4.7                       | ant/%s-free |        | z-ai/%s                             | ant/t |                                     |
-| gpt-5.2                       |             |        |                                     | cx/t  |                                     |
-
-#+name: models-tbl-bak
-| name                          | beizhi                 | Nyxar | WCyrus | api | Sanyela | zhongruan | pangil            | kkkyyx     | dabuliu           | bohe                  | HenryXiaoYang | bytebender                   | jason_wong1 | anyrouter | huan                 | snow | 88code | ouyangqiqi              | modelscope                          | sc0152                                    | linuxdo |
-|-------------------------------+------------------------+-------+--------+-----+---------+-----------+-------------------+------------+-------------------+-----------------------+---------------+------------------------------+-------------+-----------+----------------------+------+--------+-------------------------+-------------------------------------+-------------------------------------------+---------|
-| glm-4.6                       |                        |       |        | t   |         |           |                   |            |                   |                       |               |                              |             |           |                      |      |        |                         |                                     |                                           |         |
-| claude-3-5-haiku-20241022     |                        |       |        |     |         | ant/t     |                   |            |                   |                       |               |                              | ant/t       | ant/t     |                      |      |        |                         |                                     |                                           | t       |
-| claude-4-sonnet               |                        |       |        |     |         |           | '("t" "%s-think") | cursor2-%s | '("t" "%s-think") |                       |               |                              |             |           |                      |      |        | t                       |                                     |                                           | t       |
-| claude-4.5-sonnet             |                        |       |        |     |         |           | '("t" "%s-think") | cursor2-%s | '("t" "%s-think") |                       |               | '("t" "%s-official-reverse") |             |           |                      |      |        |                         |                                     |                                           | t       |
-| claude-haiku-4-5-20251001     | t                      | t     | ant/t  |     | t       | ant/t     | t                 |            |                   |                       | ant/t         |                              | ant/t       | ant/t     |                      |      |        |                         |                                     |                                           | t       |
-| claude-opus-4-5               |                        |       |        |     |         |           |                   |            |                   | %s-thinking           |               | claude-4.5-opus              |             |           |                      |      |        |                         |                                     |                                           | t       |
-| claude-opus-4-5-20251101      | t                      |       | ant/t  |     | t       | ant/t     | t                 |            |                   |                       | ant/t         |                              | ant/t       | ant/t     |                      |      |        |                         |                                     |                                           | t       |
-| claude-sonnet-4-20250514      |                        | t     |        |     | t       | ant/t     |                   |            |                   |                       | ant/t         |                              | ant/t       | ant/t     |                      |      |        |                         |                                     |                                           | t       |
-| claude-sonnet-4-5             |                        |       |        |     |         |           | '("t" "%s-think") |            |                   | t                     |               | t                            |             |           |                      |      |        | t                       |                                     | claude-sonnet-4.5 [渠道id:33][輸出3k上限] | t       |
-| claude-sonnet-4-5-20250929    | t                      | t     | ant/t  |     | t       | ant/t     | t                 | cursor2-%s |                   |                       | ant/t         | t                            | ant/t       | ant/t     |                      |      |        |                         |                                     |                                           | t       |
-| gpt-5                         |                        | t     |        |     |         |           |                   | cx/t       |                   |                       |               |                              |             |           |                      | t    |        |                         |                                     |                                           | t       |
-| gpt-5-codex                   |                        |       |        |     |         |           |                   | cx/t       |                   |                       |               |                              |             | ant/t     |                      | t    | t      |                         |                                     |                                           | t       |
-| gpt-5.1                       |                        |       |        |     |         |           |                   | cx/t       |                   |                       |               | t                            |             |           |                      | t    | t      |                         |                                     |                                           | t       |
-| gpt-5.1-codex                 |                        |       |        |     |         |           | t                 | cx/t       |                   |                       |               | '("t" "cx/%s-2cx")           |             |           |                      | t    | t      |                         |                                     |                                           |         |
-| gpt-5.1-codex-max             |                        |       |        |     |         |           |                   | cx/t       |                   |                       |               | cx/%s-2cx                    |             |           |                      | t    | t      |                         |                                     |                                           | t       |
-| gpt-5.2                       |                        |       |        |     |         |           |                   |            |                   |                       |               | '("t" "cx/%s-2cx")           |             |           |                      |      |        |                         |                                     |                                           |         |
-| gpt-5.2-codex                 |                        |       |        |     |         |           |                   |            |                   |                       |               | '("t" "cx/%s-2cx")           |             |           |                      |      | t      |                         |                                     |                                           |         |
-| gemini-2.5-flash              |                        |       |        |     |         |           |                   |            |                   |                       |               |                              |             |           |                      |      |        |                         |                                     |                                           |         |
-| gemini-2.5-pro                | %s-thinking            |       |        |     |         |           | t                 |            |                   | %s-1m                 |               | t                            |             | ant/t     |                      |      |        | '("t" "hyb-Optimal/%s") |                                     |                                           | t       |
-| gemini-3-flash                | '("t" "%s-nothinking") |       |        |     |         |           |                   | %s-preview |                   |                       |               | %s-preview                   |             |           |                      |      |        |                         |                                     |                                           |         |
-| gemini-3-pro                  | %s-preview             |       |        |     |         |           | %s-coding-32k     |            |                   | '("%s-low" "%s-high") |               | %s-preview                   |             |           |                      |      |        | gemini-pro-latest       |                                     |                                           | t       |
-| grok-4.1                      |                        |       |        |     |         |           |                   |            |                   |                       |               | %s-thinking                  |             |           | '("t" "%s-thinking") |      |        | '("t" "%s-thinking")    |                                     |                                           | t       |
-| qwen3-coder-plus              |                        |       |        | t   |         |           |                   |            |                   |                       |               |                              |             |           |                      |      |        |                         | Qwen/Qwen3-Coder-480B-A35B-Instruct |                                           |         |
-| qwen3-max                     |                        |       |        | t   |         |           |                   |            |                   |                       |               |                              |             |           |                      |      |        |                         |                                     |                                           |         |
-| qwen3-vl-plus                 |                        |       |        | t   |         |           |                   |            |                   |                       |               |                              |             |           |                      |      |        |                         | Qwen/Qwen3-VL-235B-A22B-Instruct    |                                           |         |
-| kimi-k2-0905                  |                        |       |        | t   |         |           |                   |            |                   |                       |               |                              |             |           |                      |      |        |                         |                                     |                                           |         |
-| kimi-k2                       |                        |       |        | t   |         |           |                   |            |                   |                       |               |                              |             |           |                      |      |        |                         |                                     |                                           |         |
-| deepseek-v3.2                 |                        |       |        | t   |         |           |                   |            |                   |                       |               |                              |             |           |                      |      |        |                         | deepseek-ai/DeepSeek-V3.2           |                                           |         |
-| deepseek-r1                   |                        |       |        | t   |         |           |                   |            |                   |                       |               |                              |             |           |                      |      |        |                         | deepseek-ai/DeepSeek-R1-0528        |                                           |         |
-| deepseek-v3                   |                        |       |        | t   |         |           |                   |            |                   |                       |               |                              |             |           |                      |      |        |                         |                                     |                                           |         |
-| qwen3-235b-a22b-thinking-2507 |                        |       |        | t   |         |           |                   |            |                   |                       |               |                              |             |           |                      |      |        |                         | Qwen/Qwen3-235B-A22B-Thinking-2507  |                                           |         |
-| qwen3-235b-a22b-instruct      |                        |       |        | t   |         |           |                   |            |                   |                       |               |                              |             |           |                      |      |        |                         | Qwen/Qwen3-235B-A22B-Instruct-2507  |                                           |         |
-| minimax-m2                    |                        |       |        | t   |         |           |                   |            |                   |                       |               |                              |             |           |                      |      |        |                         |                                     |                                           |         |
-| z-image-turbo                 |                        |       |        |     |         |           |                   |            |                   |                       |               |                              |             |           |                      |      |        |                         | Tongyi-MAI/Z-Image-Turbo            |                                           |         |
-| glm-4.6v                      |                        |       |        |     |         |           |                   |            |                   |                       |               |                              |             |           |                      |      |        |                         | ZhipuAI/GLM-4.6V                    |                                           |         |
+| name                          | cerebras                       | opencode    | poll   | nvidia                              | cpa   | modelscope                          |
+|-------------------------------+--------------------------------+-------------+--------+-------------------------------------+-------+-------------------------------------|
+| deepseek-v3.2                 |                                |             |        | deepseek-ai/%s                      | t     | deepseek-ai/DeepSeek-V3.2           |
+| qwen3-235b-a22b-instruct      | qwen-3-235b-a22b-instruct-2507 |             |        |                                     | t     | Qwen/Qwen3-235B-A22B-Instruct-2507  |
+| qwen3-235b-a22b-thinking-2507 |                                |             |        |                                     | t     | Qwen/Qwen3-235B-A22B-Thinking-2507  |
+| qwen3-coder-plus              |                                |             |        | qwen/qwen3-coder-480b-a35b-instruct | t     | Qwen/Qwen3-Coder-480B-A35B-Instruct |
+| Qwen/Qwen-Image-2512          |                                |             |        |                                     |       | t                                   |
+| qwen3-max                     |                                |             |        |                                     | t     |                                     |
+| qwen3-vl-plus                 |                                |             |        |                                     | t     | Qwen/Qwen3-VL-235B-A22B-Instruct    |
+| kimi-k2-0905                  |                                |             |        |                                     | t     |                                     |
+| kimi-k2-thinking              |                                |             |        | moonshotai/%s                       | t     |                                     |
+| deepseek-v3.2-chat            |                                |             |        |                                     | t     |                                     |
+| deepseek-v3.2-reasoner        |                                |             |        |                                     | t     |                                     |
+| deepseek-r1                   |                                |             |        | deepseek-ai/%s                      | t     | deepseek-ai/DeepSeek-R1-0528        |
+| minimax-m2.1                  |                                | ant/%s-free |        | minimaxai/%s                        | ant/t |                                     |
+| z-image-turbo                 |                                |             | zimage |                                     |       | Tongyi-MAI/Z-Image-Turbo            |
+| glm-4.6v                      |                                |             |        |                                     |       | ZhipuAI/GLM-4.6V                    |
+| glm-4.7                       | zai-%s                         | ant/%s-free |        | z-ai/%s                             | ant/t |                                     |
+| gpt-5.2                       |                                |             |        |                                     | cx/t  |                                     |
 
 * plugins
 
