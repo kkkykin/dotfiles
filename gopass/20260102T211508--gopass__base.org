@@ -8,5 +8,5 @@
 gopass config core.cliptimeout 10
 gopass config core.notifications false
 gopass config show.safecontent true
-gopass config otp.autoclip true
+gopass config otp.onlyclip true
 #+end_src
