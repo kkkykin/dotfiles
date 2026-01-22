@@ -478,6 +478,12 @@
       },
       {
         "download_detour": "direct",
+        "tag": "geosite-ebay",
+        "type": "remote",
+        "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-ebay.srs"
+      },
+      {
+        "download_detour": "direct",
         "tag": "geosite-adblockplus",
         "type": "remote",
         "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-adblockplus.srs"
@@ -523,7 +529,8 @@
                      (rule_set . "block-rules"))
                     ((mode . "or")
                      (outbound . "direct")
-                     (rules . [((rule_set . "direct-rules"))
+                     (rules . [((rule_set . ["direct-rules"
+                                             "geosite-ebay"]))
                                ((protocol . ["bittorrent"
                                              "ntp"
                                              "stun"]))])
