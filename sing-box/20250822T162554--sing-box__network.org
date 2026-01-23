@@ -32,6 +32,11 @@
                           (with-temp-buffer
                             (insert-file-contents disabled-sub-file)
                             (read (current-buffer)))))
+       (relays '((((type . "socks")
+                   (tag . "warp")
+                   (server . "127.0.0.1")
+                   (server_port . 40000)
+                   (version . "5")))))
        nodes
        sub-outbounds
        us-outbounds
@@ -110,22 +115,24 @@
                   (push (push `(tag . ,tag) obd) obds)))
               outbounds)
              (if tags
-                 (if (gethash "node" sub)
-                     (let ((json `((outbounds . ,(vconcat obds)))))
-                       (push tags nodes)
-                       (write-region (json-serialize json) nil out-path))
-                   (let* ((extra `(((type . "selector")
-                                    (tag . ,selector)
-                                    (outbounds . ,(vconcat (cons urltest tags)))
-                                    (default . ,urltest)
-                                    (interrupt_exist_connections . :false))
-                                   ((type . "urltest")
-                                    (tag . ,urltest)
-                                    (outbounds . ,(vconcat tags)))))
-                          (merged (vconcat extra obds))
-                          (json `((outbounds . ,merged))))
-                     (push (format "s[%s]" name) sub-outbounds)
+                 (cond
+                  ((gethash "relay" sub) (push obds relays))
+                  ((gethash "node" sub)
+                   (let ((json `((outbounds . ,(vconcat obds)))))
+                     (push tags nodes)
                      (write-region (json-serialize json) nil out-path)))
+                  (t (let* ((extra `(((type . "selector")
+                                      (tag . ,selector)
+                                      (outbounds . ,(vconcat (cons urltest tags)))
+                                      (default . ,urltest)
+                                      (interrupt_exist_connections . :false))
+                                     ((type . "urltest")
+                                      (tag . ,urltest)
+                                      (outbounds . ,(vconcat tags)))))
+                            (merged (vconcat extra obds))
+                            (json `((outbounds . ,merged))))
+                       (push (format "s[%s]" name) sub-outbounds)
+                       (write-region (json-serialize json) nil out-path))))
                (message "Sub: %s not work." name)))
          (wrong-type-argument (message "Sub: %s not work." name))
          (json-parse-error (message "Sub: %s json not valid." name))
@@ -904,8 +911,8 @@ SEP defaults to \"/\"."
 #+begin_src elisp
 (let ((tailscale-state-dir (expand-file-name "tailscale_state" "_tangle"))
       (download-tags '("s[this-way]" "direct"))
-      (browse-tags '("s[this-way]" "direct"))
-      warp-tags
+      (browse-tags '("s[this-way]" "direct" "s[relay]"))
+      relay-tags
       wg-rules-group
       s-tags)
   (push `(state_directory . ,tailscale-state-dir) ts-ep)
@@ -936,7 +943,6 @@ SEP defaults to \"/\"."
             (ip (gethash ip-type attr))
             (u-tag (format "u[%s]" name))
             (s-tag (format "s[%s]" name))
-            (warp-tag (format "warp[%s]" name))
             vps-tags)
        (pcase (gethash "type" attr)
          ("download" (push s-tag download-tags))
@@ -1021,14 +1027,14 @@ SEP defaults to \"/\"."
                  (tag . ,s-tag)
                  (type . "selector"))
                obds)
-         (push `((type . "socks")
-                 (tag . ,warp-tag)
-                 (server . "127.0.0.1")
-                 (server_port . 40000)
-                 (version . "5")
-                 (detour . ,s-tag))
-               obds)
-         (push warp-tag warp-tags)
+         (dolist (group relays)
+           (dolist (relay group)
+             (let ((tag (format "%s[%s]" (alist-get 'tag relay) name)))
+               (push (append `((tag . ,tag)
+                               (detour . ,s-tag))
+                             relay)
+                     obds)
+               (push tag relay-tags))))
          (push s-tag s-tags))
 
        (when-let* ((sys-name (string-trim (or (org-file-contents "_system-name.txt" t t)
@@ -1124,11 +1130,11 @@ SEP defaults to \"/\"."
       (write-region (json-serialize `((outbounds . ,(vconcat region-obds))))
                     nil (expand-file-name "_900-region.json" client-tmp-dir)))
 
-    (when warp-tags
-      (let ((w-tag "s[warp]"))
+    (when relay-tags
+      (let ((w-tag "s[relay]"))
         (push `(((type . "selector")
                  (tag . ,w-tag)
-                 (outbounds . ,(vconcat warp-tags))))
+                 (outbounds . ,(vconcat relay-tags))))
               pre-obds)
         (push w-tag s-this-way)))
     

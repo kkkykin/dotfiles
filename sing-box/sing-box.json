@@ -50,6 +50,12 @@
 				"id": "ENC[AES256_GCM,data:DpVWa/A0qUEmr4pqvrwaxBtUfFrtwvxJ4Ik=,iv:BmnvA/NUfZUCZITo1+3tZaLsu22Hu3gGius7/IRRauU=,tag:njCwotwXEk7IKhcDwumZkg==,type:str]",
 				"node": "ENC[AES256_GCM,data:PUffyA==,iv:oIZZ/gNX4fXY0tu14JXKmpr9MhJsvXmPP00E5KxE7ts=,tag:0JlC8rtQNz2ZoBrBEARx/w==,type:bool]",
 				"link": "ENC[AES256_GCM,data:SqM3vr7vGOcPI8MehO7EX9gFFl5Dg0eQ7oxY86lK2mBjLEa62Aaz2uEFuGbbquI2WACMahvOWwoqSdOGGlFv09nJNMms0j6hTkLGpFYP2n8JYEkO/McqYQ9OgOWIo6PJPo8wGN8SEl/BQK0sBVgFoc5GRxV5RL+q/FQNb5GuaN+Wh4k61oi//1Gl9pJq4JokBDYHM77Br7q7kexBitKEp70CVs9iiQ==,iv:SJHlUpOXX+4ucpmNkCVH6JYZ0Kg5z/lZYdj+eVo2tj4=,tag:fy5OrmK3cp/pO9rWrsp3cA==,type:str]"
+			},
+			{
+				"enable": "ENC[AES256_GCM,data:569V0g==,iv:ygXc7VuuxoqtQrCd61fEFyFMPKxJQ6jBgHGJ3h/JWI0=,tag:/vunUxqcCrb57dG68Pquug==,type:bool]",
+				"id": "ENC[AES256_GCM,data:RrLevX6oxJepZqMznId3x3zgLr/IX3JE,iv:a65B5C5UDl7WZ+gKxOdkyGcMep5HeYpbsz8Hg++CApc=,tag:P1J2QCGOT+z41DQDwOz8lQ==,type:str]",
+				"relay": "ENC[AES256_GCM,data:ELvkaw==,iv:E2XiPlTYKR7szWH0T8vyuDI5d/KMW2rp1WpQNTL6o2U=,tag:tQMiPQWW66C2Kjh7ztDsjw==,type:bool]",
+				"link": "ENC[AES256_GCM,data:8Lv4MEFPowgU/dM8H6j7pPe1cM4zwLkQNVp+eE6Hjvve+4Ya2Ty2MlZZKVJBulOuVNJ9kpB64Rk/I6dYQloYWLLPmyNSj8tfWD8EqbBb8f+gVyW64JrF9oBD6nURJL+vnVIDHH2p7/3DMtN2N+uXoD3VG/bxTXKpHXml5s+2xXr8YwpRKXTKBZhNIo1LoFeAPaXkkH5dz3GkvT0VtRk8SLFYeWfBHh4=,iv:hYSdO/yWyWsKfqK/yaGLVWygTI75p8zwMRPZdVcLLl4=,tag:Pta63QGAVcU6inDqtO2qlQ==,type:str]"
 			}
 		]
 	},
@@ -207,8 +213,8 @@
 		}
 	},
 	"sops": {
-		"lastmodified": "2026-01-22T16:47:45Z",
-		"mac": "ENC[AES256_GCM,data:dnTc3fcUbKH1Ml8Lbg0aWrNdsSGt5s2AtAE5DY9i/u+8ob+WE91sJM9qJeUr6rKSve3jW+rDslddCFw/IVdA2WlJhzRVM0V21Vc0PP8fvLUPJzsEDht2BsBiUNxHi42wdYvFVXi1wWk19zXsLdHAHxiNiQnFi+gJRiqaEQOscbg=,iv:lEGvZAVv/30AUMQAqPjlpnHWaUkmymBPAgHxejTT/7I=,tag:ZUEG1cJ+ZybwFJXokbTttg==,type:str]",
+		"lastmodified": "2026-01-23T08:34:34Z",
+		"mac": "ENC[AES256_GCM,data:WylztyQgZAYzmvhL+1jufzKXcMToN4943t38B27Kj14XY+fZxcBYtcw0/elyYsnYzrpCXaSPB+/LYTphX70UdzUdms5nDp9CMm6TrZKhrn7IlYCdYj43D/uTwvgUs+FnOPmn3QfPUvaBPNMtLy/5OsVt2fPpipZMOXeKZ0tSS/8=,iv:xikiL0RQzk9aXc5Ch6jnTbWqDKGX/WVO+wjqTlWMkAM=,tag:S5uXPrmPpIlyryw1Y5awZw==,type:str]",
 		"pgp": [
 			{
 				"created_at": "2026-01-15T00:51:44Z",
