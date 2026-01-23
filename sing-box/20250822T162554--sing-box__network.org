@@ -485,6 +485,12 @@
       },
       {
         "download_detour": "direct",
+        "tag": "geosite-talkatone",
+        "type": "remote",
+        "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-talkatone.srs"
+      },
+      {
+        "download_detour": "direct",
         "tag": "geosite-ebay",
         "type": "remote",
         "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-ebay.srs"
@@ -552,6 +558,7 @@
                      (rules . [((rule_set . ["geosite-category-porn"
                                              "geosite-category-ai-!cn"
                                              "geosite-google"
+                                             "geosite-talkatone"
                                              "geosite-microsoft"]))
                                ((rule_set . "browse-rules"))])
                      (type . "logical"))
@@ -734,11 +741,6 @@ SEP defaults to \"/\"."
         "fdfe:dcba:9876::1/126"
       ],
       "auto_route": true,
-      "include_package": [
-        "com.arlosoft.macrodroid",
-        "com.fooview.android.fooview",
-        "InfinityLoop1309.NewPipeEnhanced"
-      ],
       "mtu": 9000,
       "platform": {
         "http_proxy": {
@@ -1467,6 +1469,7 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
                                "com.google.android.gms.location.history"
                                "com.google.android.gm"
                                "com.google.android.googlequicksearchbox"
+                               "com.talkatone.android"
                                "com.google.android.youtube"])))
                         local)))))
 #+end_src
