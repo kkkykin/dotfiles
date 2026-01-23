@@ -29,6 +29,11 @@
 			},
 			{
 				"enable": "ENC[AES256_GCM,data:569V0g==,iv:ygXc7VuuxoqtQrCd61fEFyFMPKxJQ6jBgHGJ3h/JWI0=,tag:/vunUxqcCrb57dG68Pquug==,type:bool]",
+				"id": "ENC[AES256_GCM,data:vRSJPKHweqQ=,iv:U8O3RR4v0/0nQIsdIp2ZfpQa78tlnIBNeSOhNgZRosI=,tag:xdaKn7t0mZ1H0JFKT1BGzg==,type:str]",
+				"sb": "ENC[AES256_GCM,data:LOMXFk065gORA40rvzgXiVJdR5PAli9L6cSHEJvl21P+TYhx8192ooWoBgRLpPlra+T+Pshj9lDWt6J+Kjq6w77P6Iw0jCyyUxfOAZaX,iv:pBhqYcGYKia51cYQdh9wAeKuSk/vHZVzZIESTbxkjzk=,tag:J97ywjB3f/tR8Yy2UlYdUQ==,type:str]"
+			},
+			{
+				"enable": "ENC[AES256_GCM,data:569V0g==,iv:ygXc7VuuxoqtQrCd61fEFyFMPKxJQ6jBgHGJ3h/JWI0=,tag:/vunUxqcCrb57dG68Pquug==,type:bool]",
 				"id": "ENC[AES256_GCM,data:y9u8FbKoBaV5ia9kDw==,iv:078IAEm6vdJQtxXDTt1HLDLoQjNzrB2if3lbveYlvWc=,tag:8HghnPbm8iLvf2LKTkIOGQ==,type:str]",
 				"node": "ENC[AES256_GCM,data:PUffyA==,iv:oIZZ/gNX4fXY0tu14JXKmpr9MhJsvXmPP00E5KxE7ts=,tag:0JlC8rtQNz2ZoBrBEARx/w==,type:bool]",
 				"link": "ENC[AES256_GCM,data:g3qAf5DVhqTi6VaQzxI+c2VGgcHc3ngJHIQkmOgq8q/zut8H34o2/CAZmQ6xDTngMajHdB+b8RBl6t7TNxIyIy0ZeEJSM8HzMe6FqHG0YDJnsg7LQc3r8NocT3QPvMRhRidSuIOKXPx7p4HhIimgr2OUP8ImLOv+S5UPXYqjRoZUUPhWZjjPXLo9YxM2Tg0EP/ZESN5ZWCXHF/zfdsb1KxsOxPUObHPv3+gPybwOckEFJog2Ef52SGjEOSkfowqgVz+HE9u3HCbXKYLv6Yl9uyEgCbs8KA==,iv:Oylvhj2uvqQ2DmP/nQPCPxM8g3065peJ0w+3vxWz0dw=,tag:KAoOscukMO4+4E79oIMDCg==,type:str]"
@@ -213,8 +218,8 @@
 		}
 	},
 	"sops": {
-		"lastmodified": "2026-01-23T08:34:34Z",
-		"mac": "ENC[AES256_GCM,data:WylztyQgZAYzmvhL+1jufzKXcMToN4943t38B27Kj14XY+fZxcBYtcw0/elyYsnYzrpCXaSPB+/LYTphX70UdzUdms5nDp9CMm6TrZKhrn7IlYCdYj43D/uTwvgUs+FnOPmn3QfPUvaBPNMtLy/5OsVt2fPpipZMOXeKZ0tSS/8=,iv:xikiL0RQzk9aXc5Ch6jnTbWqDKGX/WVO+wjqTlWMkAM=,tag:S5uXPrmPpIlyryw1Y5awZw==,type:str]",
+		"lastmodified": "2026-01-23T09:23:43Z",
+		"mac": "ENC[AES256_GCM,data:u/fOlOGaAZrxH7DVeeWNvYzUeoGV4JdD0kH4N8ad79+ZQ5XdL/2HOaPwIJD0shaOrSPQynnBPbUxO1URSKUH/zHhJ4JviXnYPxW3JJXBu7mdB/xdcnQzM5m2e3ZBRnafyXRhExOwvdXWBaNFy/J8Rc2j/4Iku6xLClY7H0lfEI4=,iv:ISd0m/wt2TsiS33bZOC6O1sJSsibgpWSJdiqFy6KloE=,tag:xyDn9fTIfaQflLG1WiS0Ew==,type:str]",
 		"pgp": [
 			{
 				"created_at": "2026-01-15T00:51:44Z",
