@@ -63,7 +63,7 @@ local function get_current_dir()
   return dir
 end
 
-vim.keymap.set('n', '<Leader>d', function()
+vim.keymap.set('n', '<Leader>c', function()
     local dir = get_current_dir()
     print(dir)
     vim.fn.chdir(dir)
@@ -136,9 +136,45 @@ vim.keymap.set('n', '<Leader>e', open_with_emacsclient, { silent = true })
 :CUSTOM_ID: 149a8156-b704-4bbc-933d-7924b01b1c09
 :END:
 #+begin_src lua
-local function emacs_eval(sexp)
-  vim.fn.system('emacsclient -ne ' .. vim.fn.shellescape(sexp))
+local function escape_elisp_string(s)
+  return (s:gsub("\\", "\\\\"):gsub('"', '\\"'))
 end
+
+local function emacs_eval(sexp, cb)
+  cb = cb or function(_) end
+
+  vim.system({ "emacsclient", "-n", "-e", sexp },
+             { text = true },
+             function(res)
+               vim.schedule(function() cb(res) end)
+             end)
+end
+#+end_src
+
+*** dictionary
+:PROPERTIES:
+:CUSTOM_ID: 00830061-38d8-4bac-9d60-8a7acf7d17c3
+:END:
+#+begin_src lua
+local function dictionary_search_under_cursor()
+  local word = vim.fn.expand("<cword>")
+  if not word or word == "" then
+    vim.notify("No word under cursor", vim.log.levels.WARN)
+    return
+  end
+
+  local sexp = string.format('(dictionary-search "%s")', escape_elisp_string(word))
+  emacs_eval(sexp, function(res)
+                     if res.code ~= 0 then
+                       local msg = (res.stderr and res.stderr ~= "" and res.stderr)
+                         or ("emacsclient exited with code " .. tostring(res.code))
+                       vim.notify(msg, vim.log.levels.ERROR)
+                       return
+                     end
+                   end)
+end
+
+vim.keymap.set("n", "<leader>d", dictionary_search_under_cursor, { desc = "Emacs dictionary-search under cursor" })
 #+end_src
 
 *** org
@@ -784,24 +820,27 @@ vim.api.nvim_create_user_command(
 
 #+begin_src lua
 if (vim.uv or vim.loop).fs_stat(lazypath) then
-  vim.opt.rtp:prepend(lazypath)
-  vim.g.mapleader = ' '
-  vim.g.maplocalleader = '\\'
+  local rtp = vim.opt.rtp:get()
+  local already_in_rtp = vim.tbl_contains(rtp, lazypath)
 
-  -- Setup lazy.nvim
-  require('lazy').setup({
-    spec = {
-      <<plug-orgmode>>
-      -- add your plugins here
-    },
-    -- Configure any other settings here. See the documentation for more details.
-    -- colorscheme that will be used when installing plugins.
-    install = {
-      -- colorscheme = { 'habamax' }
-    },
-    -- automatically check for plugin updates
-    checker = { enabled = true },
-  })
+  -- 只在 lazypath 还不在 rtp 时，做一次性初始化
+  if not already_in_rtp then
+    vim.opt.rtp:prepend(lazypath)
+
+    vim.g.mapleader = ' '
+    vim.g.maplocalleader = '\\'
+
+    require('lazy').setup({
+      spec = {
+        <<plug-orgmode>>
+        -- add your plugins here
+      },
+      install = {
+        -- colorscheme = { 'habamax' }
+      },
+      checker = { enabled = true },
+    })
+  end
 end
 #+end_src
 *** sub
