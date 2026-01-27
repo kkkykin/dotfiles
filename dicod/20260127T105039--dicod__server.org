@@ -40,3 +40,6 @@ dicodconfig -w
 # systemctl restart dicod
 systemctl kill -s HUP dicod
 #+end_src
+
+*** 转换
+https://github.com/ilius/pyglossary
