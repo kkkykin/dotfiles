@@ -208,13 +208,13 @@
 :CUSTOM_ID: 3aeea361-850d-4cc8-b292-065568c194d3
 :END:
 
-** client
+*** client
 :PROPERTIES:
 :tangle-dir: _tangle/tmp
 :CUSTOM_ID: 4acfcf10-2bef-4815-af7a-fd5f0271c77f
 :END:
 
-*** main
+***** main
 :PROPERTIES:
 :CUSTOM_ID: fed30130-cdf9-42cb-805c-50dbb7b4c5bf
 :END:
@@ -506,7 +506,7 @@
 }
 #+end_src
 
-*** bounds
+***** bounds
 :PROPERTIES:
 :CUSTOM_ID: c772b10e-46cb-40e1-96e2-70361ae1c337
 :END:
@@ -514,7 +514,7 @@
 <<gen-client-bounds()>>
 #+end_src
 
-*** route
+***** route
 :PROPERTIES:
 :CUSTOM_ID: 7a630887-b412-4cd8-a80f-584867a817e2
 :END:
@@ -668,7 +668,7 @@ SEP defaults to \"/\"."
                         (route (rules . ,(vconcat pre-rules mode-rules post-rules))))))))
 #+end_src
 
-*** hosts
+***** hosts
 :PROPERTIES:
 :CUSTOM_ID: b8b405ea-5649-4bb3-9abd-ab60a0332b85
 :END:
@@ -695,9 +695,9 @@ SEP defaults to \"/\"."
                         (server . ,tag))]))))))
 #+end_src
 
-*** platform
+***** platform
 
-**** pc
+***** pc
 :PROPERTIES:
 :CUSTOM_ID: cf7be985-bfaa-4ed0-8240-190e588c1fd2
 :END:
@@ -722,12 +722,12 @@ SEP defaults to \"/\"."
 }
 #+end_src
 
-*** tun
+***** tun
 :PROPERTIES:
 :tangle-dir: (concat tun-dir)
 :END:
 
-**** android
+***** android
 :PROPERTIES:
 :CUSTOM_ID: 2970e9bb-61e8-4eb3-bc19-233858560385
 :END:
@@ -760,7 +760,7 @@ SEP defaults to \"/\"."
 }
 #+end_src
 
-**** linux
+***** linux
 :PROPERTIES:
 :CUSTOM_ID: 17b75a2d-d55b-4d9d-b248-50ddbb61fdd9
 :END:
@@ -797,7 +797,7 @@ SEP defaults to \"/\"."
 }
 #+end_src
 
-*** log timestamp
+***** log timestamp
 :PROPERTIES:
 :CUSTOM_ID: cf1faa67-36f3-4e44-bec2-312bac3dd217
 :END:
@@ -809,12 +809,12 @@ SEP defaults to \"/\"."
 }
 #+end_src
 
-** server
+*** server
 :PROPERTIES:
 :tangle-dir: (concat server-dir)
 :END:
 
-*** main
+***** main
 :PROPERTIES:
 :CUSTOM_ID: b85ab91b-1175-4b51-9f3c-f37a0b589979
 :END:
@@ -859,6 +859,14 @@ SEP defaults to \"/\"."
     ],
     "rules": [
       {
+        "inbound": "dict-in",
+        "outbound": "direct",
+        "override_address": "127.0.0.1",
+        "override_port": 5628,
+        "rule_set": "geoip-cn",
+        "rule_set_ip_cidr_match_source": true
+      },
+      {
         "action": "sniff",
         "sniffer": "dns"
       },
@@ -879,7 +887,7 @@ SEP defaults to \"/\"."
 }
 #+end_src
 
-*** server0
+***** server0
 :PROPERTIES:
 :CUSTOM_ID: bc0f24ed-8894-45b6-9008-4a5f1879b0f1
 :END:
@@ -887,7 +895,7 @@ SEP defaults to \"/\"."
 <<gen-server-bounds(name="vps0")>>
 #+end_src
 
-*** server1
+***** server1
 :PROPERTIES:
 :CUSTOM_ID: 24c5c785-b594-4987-b947-a22e63c24f3e
 :END:
@@ -896,7 +904,7 @@ SEP defaults to \"/\"."
 <<gen-server-bounds(name="vps1")>>
 #+end_src
 
-*** server2
+***** server2
 :PROPERTIES:
 :CUSTOM_ID: dafd128d-c905-49be-a432-42aff4d2159d
 :END:
@@ -908,7 +916,7 @@ SEP defaults to \"/\"."
 :PROPERTIES:
 :header-args:elisp: :var vps-secrets=(gethash "vps" box-secrets) wg-clients=(gethash "wg" box-secrets) ts-ep='((tag . "ts-ep") (type . "tailscale")) obds='(((tag . "direct") (type . "direct"))) ibds='() ep='() conf='() dns-rules='()
 :END:
-** client
+*** client
 #+name: gen-client-bounds
 #+begin_src elisp
 (let ((tailscale-state-dir (expand-file-name "tailscale_state" "_tangle"))
@@ -1183,7 +1191,7 @@ SEP defaults to \"/\"."
 <<return-bounds>>
 #+end_src
 
-** server
+*** server
 #+name: gen-server-bounds
 #+begin_src elisp
 (push '(advertise_exit_node . t) ts-ep)
@@ -1196,6 +1204,12 @@ SEP defaults to \"/\"."
        wg-peers)
 
   (when-let* ((ip (gethash "ip" attr)))
+    (push `((listen . "::")
+            (listen_port . 2628)
+            (network . "tcp")
+            (tag . "dict-in")
+            (type . "direct"))
+          ibds)
     (push `((listen . "127.0.0.1")
             (listen_port . 53)
             (network . "udp")
@@ -1304,7 +1318,7 @@ SEP defaults to \"/\"."
 <<return-bounds>>
 #+end_src
 
-** return
+*** return
 #+name: return-bounds
 #+begin_src elisp
 (push ts-ep ep)
