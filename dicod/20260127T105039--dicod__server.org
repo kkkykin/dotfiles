@@ -1,0 +1,42 @@
+#+title:      dicod
+#+date:       [2026-01-27 Tue 10:50]
+#+filetags:   :server:
+#+identifier: 20260127T105039
+
+* install
+#+begin_src sh :eval no
+apt install dicod dict-freedict-jpn-eng dict-foldoc dict-jargon dict-vera dict-wn dict-gcide
+#+end_src
+
+* config
+
+*** daemon
+#+begin_src conf-unix
+listen (127.0.0.1:2628);
+#+end_src
+
+*** order
+路径: /etc/dicod/dicod.order
+#+begin_src org :tangle "no"
+eng-zho
+freedict-jpn-eng
+foldoc
+jargon
+vera
+wn
+CC-CEDICT-20260114-dictd
+#+end_src
+
+* 字典
+
+*** 下载
+https://github.com/scillidan/share_cc-cedict/releases
+https://freedict.org/downloads/
+
+*** 安装
+#+begin_src sh
+mv *.{dict.dz,index} /usr/share/dictd/
+dicodconfig -w
+# systemctl restart dicod
+systemctl kill -s HUP dicod
+#+end_src
