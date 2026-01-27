@@ -12,7 +12,55 @@ apt install dicod dict-freedict-jpn-eng dict-foldoc dict-jargon dict-vera dict-w
 
 *** daemon
 #+begin_src conf-unix
-listen (127.0.0.1:2628);
+listen (127.0.0.1:5628);
+max-children 5;
+hostname dicod;
+
+load-module python {
+        command "python load-path=/usr/share/dico/python";
+}
+
+m4_define([mk_wikipedia_db],[
+database {
+        name "$1-wikipedia";
+        handler "python load-path=/usr/share/dico/python init-script=mediawiki $1.wikipedia.org";
+        mime-headers <<-EOT
+          Content-Type: text/x-wiki
+          Content-Transfer-Encoding: quoted-printable
+          X-Wiki-Language: $1
+EOT;
+m4_ifelse([$2],,,[
+        description "$2";])
+m4_ifelse([$3],,,[
+        info <<-EOT
+$3
+EOT;])
+}
+])
+
+m4_define([mk_wiktionary_db],[
+database {
+        name "$1-wiktionary";
+        handler "python load-path=/usr/share/dico/python init-script=mediawiki $1.wiktionary.org";
+        mime-headers <<-EOT
+          Content-Type: text/x-wiki
+          Content-Transfer-Encoding: quoted-printable
+          X-Wiki-Language: $1
+EOT;
+m4_ifelse([$2],,,[
+        description "$2";])
+m4_ifelse([$3],,,[
+        info <<-EOT
+$3
+EOT;])
+}
+])
+
+mk_wikipedia_db([en], [en.wikipedia.org])
+mk_wiktionary_db([en],
+  [en.wiktionary.org],
+  [English language Wiktionary, a collaborative project to produce a
+   free-content multilingual dictionary.])
 #+end_src
 
 *** order
@@ -43,3 +91,195 @@ systemctl kill -s HUP dicod
 
 *** 转换
 https://github.com/ilius/pyglossary
+
+* module
+
+*** wikipedia
+#+begin_src py
+# -*- coding: utf-8 -*-
+from __future__ import print_function
+import sys
+import re
+import socket
+from xml.dom import minidom
+from wikitrans.wiki2text import TextWiktionaryMarkup
+
+if sys.version_info[0] > 2:
+    from urllib.request import urlopen, Request
+    from urllib.error import URLError
+    from urllib.parse import quote as url_quote
+    from html.entities import name2codepoint
+
+    class unicode(str):
+        pass
+
+    def unichr(c):
+        return chr(c)
+else:
+    from urllib2 import urlopen, Request, quote as url_quote, URLError
+    from htmlentitydefs import name2codepoint
+    # Set utf-8 as the default encoding.
+    # Trying to do so using encode('utf_8')/unicode, which is
+    # supposed to be the right way, does not work.
+    # Simply calling sys.setdefaultencoding is not possible,
+    # because, for some obscure reason, Python chooses to delete
+    # this symbol from the namespace after setting its default
+    # encoding in site.py. That's why reload is needed.
+    reload(sys)
+    sys.setdefaultencoding('utf-8')
+
+try:
+    import json
+except ImportError:
+    import simplejson as json
+
+import dico
+
+__version__ = '1.04'  # patched for py3/wikitrans text type compatibility
+
+
+class DicoModule:
+    user_agent = 'Mozilla/1.0'
+    endpoint_match = '/w/api.php?action=opensearch&format=json&search='
+    endpoint_define = '/wiki/Special:Export/'
+
+    def __init__(self, *argv):
+        self.wikihost = argv[0]
+        socket.setdefaulttimeout(4)
+        dico.register_markup('wiki')
+
+    def open(self, dbname):
+        self.dbname = dbname
+        return True
+
+    def close(self):
+        return True
+
+    def descr(self):
+        return self.wikihost
+
+    def info(self):
+        return False
+
+    @staticmethod
+    def _to_bytes(s):
+        """
+        Ensure bytes for libraries that expect bytes and call .decode().
+        - py2: bytes == str -> isinstance(s, bytes) True for byte-strings, so keep as-is
+        - py3: bytes is distinct; str will be encoded to utf-8
+        """
+        if s is None:
+            return b''
+        if isinstance(s, bytes):
+            return s
+        # py2: unicode -> encode; py3: str -> encode
+        return s.encode('utf-8')
+
+    def define_word(self, word):
+        url = 'http://%s%s%s' % (self.wikihost, self.endpoint_define,
+                                 url_quote(word))
+        req = Request(url)
+        req.add_header('User-Agent', self.user_agent)
+        try:
+            xml = urlopen(req).read()
+        except URLError:
+            return False
+
+        try:
+            dom = minidom.parseString(xml)
+        except Exception:
+            return False
+
+        el = dom.getElementsByTagName('text')
+        if len(el):
+            # Some pages may have empty <text/>; be defensive.
+            node = el[0].firstChild
+            if node is None:
+                data = ''
+            else:
+                data = node.data
+
+            if dico.current_markup() != 'wiki':
+                # Convert HTML entities, then ensure bytes for wikitrans parser.
+                data = self.__htmlentitydecode(data)
+                data = self._to_bytes(data)
+
+                wikiparser = TextWiktionaryMarkup(text=data)
+                wikiparser.parse()
+                data = str(wikiparser)
+
+            return ['define', data]
+        else:
+            return False
+
+    def match_word(self, strat, key):
+        url = 'http://%s%s%s' % (self.wikihost, self.endpoint_match,
+                                 url_quote(key.word))
+        req = Request(url)
+        req.add_header('User-Agent', self.user_agent)
+        try:
+            payload = urlopen(req).read()
+            # payload is bytes on py3; safe decode here
+            result = json.loads(payload.decode('utf8'))
+            if result:
+                if strat.has_selector:
+                    fltres = []
+                    for k in result[1]:
+                        if strat.select(k, key):
+                            fltres.append(k)
+                    if len(fltres) > 0:
+                        return ['match', sorted(fltres, key=str.lower)]
+                else:
+                    result[1].sort()
+                    return ['match', sorted(result[1], key=str.lower)]
+            return False
+        except (URLError, ValueError):
+            return False
+
+    def output(self, rh, n):
+        if rh[0] == 'define':
+            print(rh[1], end='')
+        else:
+            list = rh[1]
+            # softspace is a py2-era thing; setting it is harmless if supported.
+            try:
+                sys.stdout.softspace = 0
+            except Exception:
+                pass
+            print(list[n], end='')
+        return True
+
+    def result_count(self, rh):
+        if rh[0] == 'define':
+            return 1
+        else:
+            return len(rh[1])
+
+    def compare_count(self, rh):
+        return 1
+
+    def result_headers(self, rh, hdr):
+        if dico.current_markup() != 'wiki':
+            hdr['Content-Type'] = 'text/plain'
+        elif '.wikipedia.org' in self.wikihost:
+            hdr['Content-Type'] = 'text/x-wiki-wikipedia'
+        elif '.wiktionary.org' in self.wikihost:
+            hdr['Content-Type'] = 'text/x-wiki-wiktionary'
+        else:
+            hdr['Content-Type'] = 'text/x-wiki'
+        return hdr
+
+    def free_result(self, rh):
+        pass
+
+    def __htmlentitydecode(self, s):
+        # Ensure we're working with text for regex substitution.
+        # (If somehow bytes slipped in, decode it safely.)
+        if isinstance(s, bytes):
+            try:
+                s = s.decode('utf-8', 'replace')
+            except Exception:
+                s = str(s)
+        return re.sub('&(%s);' % '|'.join(name2codepoint),
+                      lambda m: chr(name2codepoint[m.group(1)]), s)
+#+end_src
