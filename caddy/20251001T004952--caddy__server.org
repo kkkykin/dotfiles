@@ -359,20 +359,49 @@ handle_path /aria2-jsonrpc {
 
 #+header: :var proxy-auth-header=(plist-get caddy-proxy :header)
 #+header: :var proxy-auth-key=(plist-get caddy-proxy :key)
+#+header: :var main_domain=(auth-source-pick-first-password :host "domain" :user "main")
 #+begin_src org :tangle (zr-org-by-tangle-dir "server.env")
 PROXY_AUTH_HEADER=$proxy-auth-header
 PROXY_AUTH_KEY=$proxy-auth-key
+MAIN_DOMAIN=$main_domain
 #+end_src
 
 #+begin_src caddy :tangle (zr-org-by-tangle-dir "server.Caddyfile")
 {
-	local_certs
+    local_certs
     servers :443 {
-		protocols h1 h2 h2c
-	}
+        protocols h1 h2 h2c
+    }
     on_demand_tls {
-		ask http://127.0.0.1:9123/ask
-	}
+        ask http://127.0.0.1:9123/ask
+    }
+    layer4 {
+        :853 {
+            @allow {
+                tls sni dot.{$MAIN_DOMAIN}
+                remote_ip_list /var/lib/caddy/geoip-cn.cidr.txt
+            }
+            route @allow {
+                tls {
+                    connection_policy {
+                        alpn dot
+                    }
+                }
+                proxy tcp/127.0.0.1:53
+            }
+        }
+        :2628 {
+            @cn remote_ip_list /var/lib/caddy/geoip-cn.cidr.txt
+            route @cn {
+                proxy {
+                    upstream {
+                        dial tcp/127.0.0.1:5628
+                        max_connections 5
+                    }
+                }
+            }
+        }
+    }
 }
 
 (allowed-proxy) {
@@ -499,4 +528,126 @@ http://127.0.0.1:9123 {
 #+name: format-matcher
 #+begin_src elisp :var fmt="host %s" val=hosts[] sep="\n"
 (mapconcat (lambda (s) (format fmt s)) val sep)
+#+end_src
+* service
+*** cidr
+#+begin_src sh :shebang "#!/usr/bin/env bash" :tangle "no"
+set -euo pipefail
+
+usage() {
+  cat <<'EOF'
+Usage:
+  caddy-cidr.sh -o OUTPUT_DIR URL [URL ...]
+Example:
+  caddy-cidr.sh -o /var/lib/caddy/ \
+    https://github.com/SagerNet/sing-geoip/raw/refs/heads/rule-set/geoip-cn.srs \
+    https://github.com/SagerNet/sing-geoip/raw/refs/heads/rule-set/geoip-us.srs
+EOF
+}
+
+need_cmd() {
+  command -v "$1" >/dev/null 2>&1 || {
+    echo "Error: missing dependency: $1" >&2
+    exit 1
+  }
+}
+
+OUT_DIR=""
+while getopts ":o:h" opt; do
+  case "$opt" in
+    o) OUT_DIR="$OPTARG" ;;
+    h) usage; exit 0 ;;
+    \?) echo "Error: invalid option: -$OPTARG" >&2; usage; exit 2 ;;
+    :)  echo "Error: option -$OPTARG requires an argument" >&2; usage; exit 2 ;;
+  esac
+done
+shift $((OPTIND - 1))
+
+if [[ -z "${OUT_DIR}" || $# -lt 1 ]]; then
+  echo "Error: -o OUTPUT_DIR and at least one URL are required." >&2
+  usage
+  exit 2
+fi
+
+need_cmd curl
+need_cmd sing-box
+need_cmd jq
+
+mkdir -p "$OUT_DIR"
+
+# 返回 URL 的文件名（去掉 query string）
+url_basename() {
+  local url="$1"
+  url="${url%%\?*}"
+  printf '%s' "${url##*/}"
+}
+
+for url in "$@"; do
+  fname="$(url_basename "$url")"
+  if [[ -z "$fname" || "$fname" == "/" ]]; then
+    echo "Error: cannot determine filename from URL: $url" >&2
+    exit 1
+  fi
+
+  # 如果不是 .srs，仍然允许，但文件名会照 URL 来
+  srs_path="${OUT_DIR%/}/${fname}"
+  base="${fname%.*}"              # 去掉最后一个扩展名（.srs）
+  json_path="${OUT_DIR%/}/${base}.json"
+  txt_path="${OUT_DIR%/}/${base}.cidr.txt"
+
+  echo "==> Download: $url"
+  curl -fL --retry 3 --retry-delay 1 -o "$srs_path" "$url"
+
+  echo "==> Decompile: $srs_path -> $json_path"
+  sing-box rule-set decompile "$srs_path" -o "$json_path"
+
+  echo "==> Extract CIDR: $json_path -> $txt_path"
+  # 提取所有 rules 里的 ip_cidr 数组元素，一行一个；去重；去空行
+  jq -r '.. | .ip_cidr? // empty | .[]' "$json_path" \
+    | awk 'NF' \
+    | sort -u > "$txt_path"
+
+  rm -f "$srs_path" "$json_path"
+  echo "==> Done: $txt_path ($(wc -l < "$txt_path") lines)"
+done
+#+end_src
+
+/etc/systemd/system/srs-decompile.service
+#+begin_src conf-unix :tangle no
+[Unit]
+Description=Download sing-box srs and decompile to cidr text for Caddy
+
+[Service]
+Type=oneshot
+User=caddy
+Group=caddy
+
+Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+ExecStart=/usr/local/bin/caddy-cidr.sh -o /var/lib/caddy/ \
+  https://github.com/SagerNet/sing-geoip/raw/refs/heads/rule-set/geoip-cn.srs \
+  https://github.com/Chocolate4U/Iran-sing-box-rules/raw/refs/heads/rule-set/geoip-cloudflare.srs
+#+end_src
+
+/etc/systemd/system/srs-decompile.timer
+#+begin_src conf-unix :tangle no
+[Unit]
+Description=Run srs-decompile every 12 hours
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=12h
+Persistent=true
+
+RandomizedDelaySec=30min
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target
+#+end_src
+
+#+begin_src sh :eval no
+sudo systemctl daemon-reload
+sudo systemctl enable --now srs-decompile.timer
+sudo systemctl status srs-decompile.timer
 #+end_src

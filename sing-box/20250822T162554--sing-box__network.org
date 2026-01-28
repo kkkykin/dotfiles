@@ -859,28 +859,12 @@ SEP defaults to \"/\"."
     ],
     "rules": [
       {
-        "inbound": "dict-in",
-        "outbound": "direct",
-        "override_address": "127.0.0.1",
-        "override_port": 5628,
-        "rule_set": "geoip-cn",
-        "rule_set_ip_cidr_match_source": true
-      },
-      {
         "action": "sniff",
         "sniffer": "dns"
       },
       {
         "action": "hijack-dns",
         "protocol": "dns"
-      },
-      {
-        "inbound": "dot-in",
-        "outbound": "direct",
-        "override_address": "127.0.0.1",
-        "override_port": 8853,
-        "rule_set": "geoip-cn",
-        "rule_set_ip_cidr_match_source": true
       }
     ]
   }
@@ -1204,22 +1188,10 @@ SEP defaults to \"/\"."
        wg-peers)
 
   (when-let* ((ip (gethash "ip" attr)))
-    (push `((listen . "::")
-            (listen_port . 2628)
-            (network . "tcp")
-            (tag . "dict-in")
-            (type . "direct"))
-          ibds)
     (push `((listen . "127.0.0.1")
             (listen_port . 53)
-            (network . "udp")
-            (tag . "dns4-in")
-            (type . "direct"))
-          ibds)
-    (push `((listen . "::")
-            (listen_port . 853)
             (network . "tcp")
-            (tag . "dot-in")
+            (tag . "dns4-in")
             (type . "direct"))
           ibds))
 
