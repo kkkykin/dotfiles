@@ -79,6 +79,12 @@ ForwardX11 yes
 ForwardX11Trusted yes
 #+end_src
 
+https://github.com/mholt/caddy-l4/issues/101
+#+name: over-tls
+#+begin_src conf-space
+ProxyCommand openssl s_client -quiet -connect example.com:443 -servername example.com
+#+end_src
+
 * sshd
 :PROPERTIES:
 :CUSTOM_ID: 24511934-a6f2-41a1-a951-9063eb8218b2
