@@ -5,12 +5,13 @@
 
 * install
 #+begin_src sh :eval no
-apt install dicod dict-freedict-jpn-eng dict-foldoc dict-jargon dict-vera dict-wn dict-gcide
+apt install dicod dict-freedict-jpn-eng dict-foldoc dict-jargon dict-vera dict-wn dict-gcide dico-module-mediawiki
 #+end_src
 
 * config
 
 *** daemon
+记得主配置文件末尾 include，影响字典查询优先级
 #+begin_src conf-unix
 listen (127.0.0.1:5628);
 max-children 5;
