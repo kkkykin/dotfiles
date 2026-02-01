@@ -1,0 +1,56 @@
+#+title:      retroarch
+#+date:       [2026-02-01 Sun 19:41]
+#+filetags:   :entertainment:
+#+identifier: 20260201T194146
+* tangle
+#+begin_src elisp
+(let* ((webdav-username "retroarch")
+       (webdav-url (string-trim (or (org-file-contents "_local-openlist-url.txt" t t)
+                                    (format "https://openlist.%s/dav" (auth-source-pick-first-password :host "mydomain" :user "main")))))
+       (url-obj (url-generic-parse-url webdav-url))
+       (webdav-password (auth-source-pick-first-password :host (url-host url-obj) :port (url-port url-obj) :user webdav-username))
+       (zr-org-tangle-default-dir (pcase system-type
+                                    ('android "/storage/emulated/0/RetroArch/")
+                                    (_ "_tangle")))
+       (cfg-path (zr-org-by-tangle-dir "config/init.cfg")))
+  (org-babel-tangle)
+  (pcase system-type
+    ('windows-nt
+     (make-symbolic-link
+      cfg-path
+      (substitute-in-file-name "$userprofile/scoop/persist/retroarch/config/")
+      t))
+    ('android
+     (zr-android-call-rish
+      (mapconcat
+       #'shell-quote-argument
+       (list "cp"
+             cfg-path
+             "/storage/emulated/0/Android/data/com.retroarch.aarch64/files/retroarch.cfg"))))))
+#+end_src
+
+* config
+:PROPERTIES:
+:CUSTOM_ID: ebec603c-eb14-4d8a-9149-00805139a369
+:END:
+#+header: :var webdav-url=(identity webdav-url)
+#+header: :var webdav-username=(identity webdav-username)
+#+header: :var webdav-password=(identity webdav-password)
+#+begin_src conf-unix :mkdirp t :tangle (identity cfg-path)
+audio_rewind_mute = "true"
+cloud_sync_driver = "webdav"
+cloud_sync_enable = "true"
+cloud_sync_sync_configs = "false"
+config_save_on_exit = "true"
+menu_startup_page = "2"
+remap_save_on_exit = "true"
+rewind_enable = "true"
+savestate_auto_index = "true"
+savestate_auto_load = "true"
+savestate_auto_save = "true"
+user_language = "12"
+video_notch_write_over_enable = "true"
+webdav_password = "$webdav-password"
+webdav_url = "$webdav-url"
+webdav_username = "$webdav-username"
+#+end_src
