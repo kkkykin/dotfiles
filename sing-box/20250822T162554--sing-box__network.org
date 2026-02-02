@@ -383,6 +383,11 @@
         "type": "local"
       },
       {
+        "path": "$rule_sets_dir/tls-record-frag.srs",
+        "tag": "tls-record-frag-rules",
+        "type": "local"
+      },
+      {
         "path": "$rule_sets_dir/direct.srs",
         "tag": "direct-rules",
         "type": "local"
@@ -553,6 +558,9 @@
                      (rules . [((rule_set . "geoip-microsoft"))
                                ((rule_set . "download-rules"))])
                      (type . "logical"))
+                    ((outbound . "direct")
+                     (rule_set . "tls-record-frag-rules")
+                     (tls_record_fragment . t))
                     ((mode . "and")
                      (outbound . "s[browse]")
                      (rules . [((rule_set . ["geosite-category-porn"
@@ -1306,7 +1314,7 @@ SEP defaults to \"/\"."
 :END:
 https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
 
-** proxy
+*** proxy
 :PROPERTIES:
 :CUSTOM_ID: 86dd13c4-1322-4298-a426-d3bbed2b8a44
 :END:
@@ -1347,7 +1355,7 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
                                   (domain_regex . ,(vconcat domain-regex)))))))))
 #+end_src
 
-** direct
+*** direct
 :PROPERTIES:
 :CUSTOM_ID: f436f071-b706-45c3-a131-db6e6e84d786
 :END:
@@ -1359,6 +1367,8 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
 #+begin_src elisp
 (let* ((default `(((ip_cidr
                     . ,(vector (format "%s/%s" dns-remote-server (if dns-remote-ipv6-p "128" "32")))))
+                  ((domain_suffix
+                    . [".weyolo.com"]))
                   ((process_name
                     . ["cfst"
                        "cloudflared"]))))
@@ -1372,7 +1382,26 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
      (rules . ,(vconcat local default)))))
 #+end_src
 
-** block
+*** tls-record-frag
+:PROPERTIES:
+:CUSTOM_ID: d94b5454-151d-4674-87f4-19d04f6282d2
+:END:
+#+begin_src json :tangle (zr-org-by-tangle-dir "tls-record-frag.json") :mkdirp t
+<<gen-tls-record-frag-rule-set()>>
+#+end_src
+
+#+name: gen-tls-record-frag-rule-set
+#+begin_src elisp
+(let* ((default `(((domain_suffix
+                    . [".weyolo.com"]))))
+       (local-file "_tls-record-frag.eld")
+       (local (org-file-contents local-file t t)))
+  (json-serialize
+   `((version . 3)
+     (rules . ,(vconcat local default)))))
+#+end_src
+
+*** block
 :PROPERTIES:
 :CUSTOM_ID: 07161900-feaf-46fe-af4f-5dde91b3d716
 :END:
@@ -1394,7 +1423,7 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
      (rules . ,(vconcat local default)))))
 #+end_src
 
-** mitm
+*** mitm
 :PROPERTIES:
 :CUSTOM_ID: 6e15e6bb-74d3-4b61-8cc5-a6a733cc9eec
 :END:
@@ -1422,7 +1451,7 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
                              (or local place-holder))))]))))
 #+end_src
 
-** browse
+*** browse
 :PROPERTIES:
 :CUSTOM_ID: 6cf04f09-9f9c-43c6-b54c-5c087842b0c5
 :END:
@@ -1460,7 +1489,7 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
                         local)))))
 #+end_src
 
-** download
+*** download
 :PROPERTIES:
 :CUSTOM_ID: 7c609bc0-32ab-40dd-a48a-a330001c2f9d
 :END:
@@ -1486,7 +1515,7 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
                         local)))))
 #+end_src
 
-** wireguard
+*** wireguard
 :PROPERTIES:
 :CUSTOM_ID: d8aff9df-7c29-46e7-8d01-74c5795c9be6
 :END:
@@ -1507,7 +1536,7 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
      (rules . ,(or local place-holder)))))
 #+end_src
 
-** tailscale
+*** tailscale
 :PROPERTIES:
 :CUSTOM_ID: 614dce44-209a-4405-9eff-47a6edc61ed8
 :END:
@@ -1529,7 +1558,7 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
      (rules . ,(or local place-holder)))))
 #+end_src
 
-** dns-local
+*** dns-local
 :PROPERTIES:
 :CUSTOM_ID: a02fb290-ed0d-45d4-9b62-a86d148727bf
 :END:
@@ -1556,7 +1585,7 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
      (rules . ,(vconcat local default)))))
 #+end_src
 
-** dns-remote
+*** dns-remote
 :PROPERTIES:
 :CUSTOM_ID: c4683997-5c7f-4181-bed1-743ffc858cb6
 :END:
