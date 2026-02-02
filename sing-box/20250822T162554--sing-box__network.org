@@ -727,7 +727,7 @@ SEP defaults to \"/\"."
 :tangle-dir: (concat tun-dir)
 :END:
 
-***** android
+******* android
 :PROPERTIES:
 :CUSTOM_ID: 2970e9bb-61e8-4eb3-bc19-233858560385
 :END:
@@ -760,7 +760,7 @@ SEP defaults to \"/\"."
 }
 #+end_src
 
-***** linux
+******* linux
 :PROPERTIES:
 :CUSTOM_ID: 17b75a2d-d55b-4d9d-b248-50ddbb61fdd9
 :END:
