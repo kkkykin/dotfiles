@@ -70,3 +70,6 @@ input_overlay_hide_in_menu = "false"
 input_overlay_opacity = "0.800000"
 menu_driver = "rgui"
 #+end_src
+
+* db
+https://github.com/libretro/libretro-database
