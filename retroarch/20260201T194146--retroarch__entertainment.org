@@ -56,3 +56,17 @@ webdav_password = "$webdav-password"
 webdav_url = "$webdav-url"
 webdav_username = "$webdav-username"
 #+end_src
+
+*** android
+***** overlay
+:PROPERTIES:
+:CUSTOM_ID: f952d8c8-bac0-4d9e-a77c-a9aeedbe4aaa
+:END:
+
+https://forums.libretro.com/t/rgpad-a-universal-gamepad-overlay/41134
+#+begin_src conf-unix :tangle (if (eq 'android system-type) cfg-path "no")
+input_overlay = "/data/user/0/com.retroarch.aarch64/overlays/gamepads/rgpad/rgpad_modern.cfg"
+input_overlay_hide_in_menu = "false"
+input_overlay_opacity = "0.800000"
+menu_driver = "rgui"
+#+end_src
