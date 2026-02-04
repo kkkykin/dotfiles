@@ -24,7 +24,7 @@
      (zr-android-call-rish
       (mapconcat
        #'shell-quote-argument
-       (list "cp"
+       (list "mv"
              cfg-path
              "/storage/emulated/0/Android/data/com.retroarch.aarch64/files/retroarch.cfg")
        " ")))))
@@ -59,18 +59,30 @@ webdav_username = "$webdav-username"
 #+end_src
 
 *** android
+:PROPERTIES:
+:header-args: :tangle (if (eq 'android system-type) cfg-path "no")
+:END:
 ***** overlay
 :PROPERTIES:
 :CUSTOM_ID: f952d8c8-bac0-4d9e-a77c-a9aeedbe4aaa
 :END:
 
 https://forums.libretro.com/t/rgpad-a-universal-gamepad-overlay/41134
-#+begin_src conf-unix :tangle (if (eq 'android system-type) cfg-path "no")
+#+begin_src conf-unix
 input_overlay = "/data/user/0/com.retroarch.aarch64/overlays/gamepads/rgpad/rgpad_modern.cfg"
 input_overlay_enable_autopreferred = "false"
 input_overlay_hide_in_menu = "false"
 input_overlay_opacity = "0.800000"
 menu_driver = "rgui"
+#+end_src
+
+***** notification
+:PROPERTIES:
+:CUSTOM_ID: fb1ee86c-39fe-4501-8667-0b56fda02172
+:END:
+#+begin_src conf-unix
+menu_enable_widgets = "false"
+video_font_size = "20.000000"
 #+end_src
 
 * db
