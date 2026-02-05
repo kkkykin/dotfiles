@@ -76,13 +76,13 @@ wn
 CC-CEDICT-20260114-dictd
 #+end_src
 
-* 字典
+* dict
 
-*** 下载
+*** download
 https://github.com/scillidan/share_cc-cedict/releases
 https://freedict.org/downloads/
 
-*** 安装
+*** install
 #+begin_src sh
 mv *.{dict.dz,index} /usr/share/dictd/
 dicodconfig -w
@@ -90,7 +90,7 @@ dicodconfig -w
 systemctl kill -s HUP dicod
 #+end_src
 
-*** 转换
+*** transform
 https://github.com/ilius/pyglossary
 
 * module
