@@ -1152,3 +1152,122 @@ const ORIGINAL_RPC_URLS = [
 
 })();
 #+end_src
+
+** org protocol bridge
+:PROPERTIES:
+:CUSTOM_ID: e65224f3-0dbe-487d-9719-c92461fead64
+:END:
+
+#+header: :var browser_script_bridge_mask=(auth-source-pick-first-password :host "browser-script-bridge" :user "mask")
+#+begin_src js :tangle (zr-org-by-tangle-dir "browser-script-bridge.js")
+// ==UserScript==
+// @name         browser script bridge
+// @namespace    browser-script-bridge
+// @version      0.1.0
+// @description  Expose script helpers + provide postMessage/CustomEvent bridge
+// @match        *://*/*
+// @match        file:///*
+// @run-at       document-start
+// ==/UserScript==
+
+(function () {
+    'use strict';
+
+    function toStr(x) {
+        return (x === null || x === undefined) ? '' : String(x);
+    }
+
+    function buildOrgProtocol(action, params) {
+        const sp = new URLSearchParams();
+        for (const [k, v] of Object.entries(params || {})) {
+            // org-protocol 期待空串也保留 key（例如 title/body 允许空）
+            sp.set(k, toStr(v));
+        }
+        return `org-protocol://${action}?${sp.toString()}`;
+    }
+
+    // 尽量“不跳走当前页面”地触发自定义协议
+    function triggerExternalProtocol(uri) {
+        try {
+            // 方案 A：模拟点击链接（通常最接近“用户手势”，更容易被浏览器放行）
+            const a = document.createElement('a');
+            a.href = uri;
+            a.style.display = 'none';
+            (document.body || document.documentElement).appendChild(a);
+            a.click();
+            a.remove();
+            return;
+        } catch (e) {
+            // ignore
+        }
+
+        try {
+            // 方案 B：hidden iframe（部分站点/浏览器可能不触发）
+            const iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            iframe.src = uri;
+            (document.body || document.documentElement).appendChild(iframe);
+            setTimeout(() => iframe.remove(), 1500);
+            return;
+        } catch (e) {
+            // ignore
+        }
+
+        // 方案 C：最后兜底，直接改 location（可能会导致当前页导航）
+        try {
+            window.location.href = uri;
+        } catch (e) {
+            // ignore
+        }
+    }
+
+    // ====== 对外 API（逻辑实现） ======
+    function storeLink(url = location.href, title = document.title) {
+        const uri = buildOrgProtocol('store-link', { url, title });
+        triggerExternalProtocol(uri);
+        return uri;
+    }
+
+    function capture(url = location.href, title = document.title, body = '') {
+        const uri = buildOrgProtocol('capture', { url, title, body });
+        triggerExternalProtocol(uri);
+        return uri;
+    }
+
+    function openSource(url = location.href) {
+        const uri = buildOrgProtocol('open-source', { url });
+        triggerExternalProtocol(uri);
+        return uri;
+    }
+
+    //   window.addEventListener('message', (event) => {
+
+    //       const data = event && event.data;
+    //       if (!detail || detail["mask"] !== browser_script_bridge_mask) return;
+    
+    //       const action = data.action;
+    //       if (action === 'store-link') {
+    //           storeLink(data.url, data.title);
+    //       } else if (action === 'capture') {
+    //           capture(data.url, data.title, data.body);
+    //       } else if (action === 'open-source') {
+    //           openSource(data.url);
+    //       }
+    //   });
+
+    window.addEventListener('browser-script-bridge', (event) => {
+        const detail = event && event.detail;
+        if (!detail || detail["mask"] !== browser_script_bridge_mask) return;
+
+        const action = detail.action;
+        if (action === 'store-link') {
+            storeLink(detail.url, detail.title);
+        } else if (action === 'capture') {
+            capture(detail.url, detail.title, detail.body);
+        } else if (action === 'open-source') {
+            openSource(detail.url);
+        }
+    });
+
+})();
+#+end_src

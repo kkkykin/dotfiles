@@ -21,7 +21,7 @@
 #+end_src
 
 * source
-** apis
+*** apis
 :PROPERTIES:
 :CUSTOM_ID: 2e669b54-0206-40f4-a9dc-1bdfab188886
 :END:
@@ -37,11 +37,12 @@ const {
   mapkey,
   tabOpenLink,
   unmap,
+  vmapkey,
   Hints,
   Front,
 } = api;
 #+end_src
-*** settings
+***** settings
 :PROPERTIES:
 :CUSTOM_ID: 26c182f8-317e-4ca3-bc8c-fe5110e04971
 :END:
@@ -55,10 +56,36 @@ settings.llm = {
   ollama: { model: 'qwen2.5-coder:32b' }
 };
 #+end_src
-** utils
+*** utils
 :PROPERTIES:
 :CUSTOM_ID: 7ffe28ab-62a9-4c9e-82cc-5c4a15f9dafd
 :END:
+
+#+header: :var browser_script_bridge_mask=(auth-source-pick-first-password :host "browser-script-bridge" :user "mask")
+#+begin_src js
+function callBrowserScriptBridge(detail) {
+    detail.mask = browser_script_bridge_mask;
+    window.dispatchEvent(new CustomEvent('browser-script-bridge', { detail }));
+}
+
+mapkey(',l', 'org store link', () => {
+    callBrowserScriptBridge({
+        action: 'store-link',
+        url: location.href,
+        title: document.title
+    });
+})
+
+mapkey(',c', 'org capture', () => {
+    callBrowserScriptBridge({
+        action: 'capture',
+        url: location.href,
+        title: document.title,
+        body: getSelection().toString()
+    });
+})
+#+end_src
+
 #+begin_src js
 function extractDomainFromHost(hostname) {
   try {
@@ -103,7 +130,7 @@ function callEmacs(fn, args){
   link.remove();
 }
 #+end_src
-** misc
+*** misc
 #+begin_src js :tangle no
 mapkey(',o', 'Open detected links from text in new tab', () => {
   Hints.create(settings.clickablePat, el => {
@@ -111,7 +138,7 @@ mapkey(',o', 'Open detected links from text in new tab', () => {
   }, {statusLine: "Open detected links from text in new tab"});
 });
 #+end_src
-** internal
+*** internal
 :PROPERTIES:
 :CUSTOM_ID: 86a568a1-98d2-4357-b9b2-93b0bb510f1b
 :END:
@@ -139,7 +166,7 @@ async function callInternal(app, headers, body){
 }
 #+end_src
 
-*** mpv
+***** mpv
 :PROPERTIES:
 :CUSTOM_ID: 66f4ed36-2d7f-453f-a04a-8c1291931ecd
 :END:
@@ -157,7 +184,7 @@ function callMpv(url, args){
 }
 #+end_src
 
-**** binding
+***** binding
 :PROPERTIES:
 :CUSTOM_ID: d090c98d-fa29-41b6-bf52-7db55ee3bd81
 :END:
@@ -181,7 +208,7 @@ for (const k of mpvKeyBindings) {
 }
 #+end_src
 
-** inline query
+*** inline query
 :PROPERTIES:
 :CUSTOM_ID: b4da8523-58a6-41c1-94fc-fde44bdfa1e3
 :END:
@@ -265,7 +292,7 @@ Front.registerInlineQuery({
 });
 #+end_src
 
-** search engine
+*** search engine
 :PROPERTIES:
 :CUSTOM_ID: c1157996-52a0-4db7-86f1-16a13b1bb71a
 :END:
@@ -286,7 +313,7 @@ for (const alias of mySearchAlias) {
 }
 #+end_src
 
-** theme
+*** theme
 :PROPERTIES:
 :CUSTOM_ID: 891f5762-a76b-4f1c-b57e-ceb2f351bbc8
 :END:
@@ -371,7 +398,7 @@ settings.theme = `
 `
 #+end_src
 
-** chrome
+*** chrome
 :PROPERTIES:
 :CUSTOM_ID: 55bbd191-e7d6-4374-a7b8-932039f55538
 :END:
@@ -380,7 +407,7 @@ settings.theme = `
 if (getBrowserName() === 'Chrome') {
 #+end_src
 
-*** proxy
+***** proxy
 :PROPERTIES:
 :CUSTOM_ID: 8a494f69-f794-4e91-96d6-e3299aa22068
 :END:
@@ -445,7 +472,7 @@ mapkey(';pb', 'set proxy byhost', () => {
 });
 #+end_src
 
-**** pac
+***** pac
 :PROPERTIES:
 :CUSTOM_ID: 1dcc733d-0fa2-4156-8020-04f6a8446d27
 :END:
@@ -512,7 +539,7 @@ function FindProxyForURL(url, host) {
 }
 #+end_src
 
-*** end
+***** end
 :PROPERTIES:
 :CUSTOM_ID: 66421736-0059-408e-b459-30112a58c0c1
 :END:
@@ -520,7 +547,7 @@ function FindProxyForURL(url, host) {
 }
 #+end_src
 
-** dwim
+*** dwim
 :PROPERTIES:
 :CUSTOM_ID: 60ddd28f-3a84-4104-9ff7-2a352320fe9b
 :END:
@@ -584,7 +611,7 @@ mapkey(',,', '根据当前URL执行特定操作', function() {
 });
 #+end_src
 
-*** sub
+***** sub
 :PROPERTIES:
 :header-args:js: :tangle no
 :END:
@@ -612,7 +639,7 @@ if (match) {
 }
 #+end_src
 
-** bind
+*** bind
 :PROPERTIES:
 :CUSTOM_ID: f9830fb5-c95c-48b3-9d67-fdf2ee3122d7
 :END:
@@ -624,7 +651,7 @@ if (document.title.endsWith(' · FreshRSS')) {
 }
 #+end_src
 
-** webback
+*** webback
 :PROPERTIES:
 :CUSTOM_ID: 865b3264-6f3a-4324-82e1-1f7600fad28c
 :END:
@@ -682,7 +709,7 @@ mapkey(',ws', 'Save current page in Wayback Machine', function() {
 });
 #+end_src
 
-** external
+*** external
 :PROPERTIES:
 :CUSTOM_ID: a81eca7e-fa2d-43bd-af96-ce2315a31dab
 :END:
@@ -720,7 +747,7 @@ function loadScript(url, onload, name) {
 }
 #+end_src
 
-*** QRCode
+***** QRCode
 :PROPERTIES:
 :CUSTOM_ID: 9d549487-6a6b-49c4-ae77-7e0de65cbdde
 :END:
