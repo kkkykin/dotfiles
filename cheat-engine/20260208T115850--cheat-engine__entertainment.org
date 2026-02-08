@@ -1,0 +1,176 @@
+#+title:      cheat-engine
+#+date:       [2026-02-08 Sun 11:58]
+#+filetags:   :entertainment:
+#+identifier: 20260208T115850
+
+* tangle
+#+begin_src elisp
+nil
+#+end_src
+
+* custom-type
+
+*** rpg maker vx
+https://forum.cheatengine.org/viewtopic.php?t=562498
+#+begin_src asm
+alloc(TypeName,256)
+alloc(ByteSize,4)
+alloc(PreferedAlignment, 4)
+alloc(ConvertRoutine,1024)
+alloc(ConvertBackRoutine,1024)
+
+TypeName:
+db 'RPG VX type',0
+
+ByteSize:
+dd 4
+
+PreferedAlignment:
+dd 1
+
+
+//The convert routine should hold a routine that converts the data to an nteger (in eax)
+//function declared as: stdcall int ConvertRoutine(unsigned char *input);
+
+//Note: Keep in mind that this routine can be called by multiple threads at the same time.
+
+ConvertRoutine:
+[32-bit]
+push ebp
+mov ebp,esp
+push ecx
+mov ecx,[ebp+8]
+[/32-bit]
+
+//at this point ecx contains the address where the bytes are stored
+
+//put the bytes into the eax register
+mov eax,[ecx] //second fun fact, addressing with 32-bit registers doesn't work in 64-bit, it becomes a 64-bit automatically (most of the time)
+shr eax,1 //shift right by 1 bit (divide by 2)
+
+//and now exit the routine
+[64-bit]
+ret
+[/64-bit]
+[32-bit]
+pop ecx
+pop ebp
+ret 4
+[/32-bit]
+
+//The convert back routine should hold a routine that converts the given integer back to a row of bytes (e.g when the user wats to write a new value)
+//function declared as: stdcall void ConvertBackRoutine(int i, unsigned char *output);
+ConvertBackRoutine:
+[32-bit]
+push ebp
+mov ebp,esp
+push edx //save the registers
+push ecx
+mov edx,[ebp+0c]
+mov ecx,[ebp+08]
+[/32-bit]
+
+//at this point edx contains the address to write the value to
+//and ecx contains the value
+
+push eax
+push edx
+
+
+mov edx,[edx] //edx now contains the original value
+and edx,1 //only save the first bit
+
+mov eax,ecx //eax gets the user input value
+shl eax,1 //shift left by 1 bit (multiply by 2)
+or eax,edx //add the bits of the original value
+
+pop edx
+mov [edx],eax //write the new value into the old value
+pop eax
+
+[64-bit]
+//everything is back to what it was, so exit
+ret
+[/64-bit]
+
+[32-bit]
+//cleanup first
+pop ecx
+pop edx
+pop ebp
+ret 8
+[/32-bit]
+#+end_src
+
+*** rpg maker mx
+https://forum.cheatengine.org/viewtopic.php?p=5738548
+#+begin_src lua
+typename="RPG maker MX"
+bytecount=4  --number of bytes of this type
+functionbasename="RPGMakerMX"
+
+function RPGMakerMX_bytestovalue(b1,b2,b3,b4,address)
+ local DataAddress=3+(b1+b2*256+b3*65536+b4*16777216);
+  if ((DataAddress)%4 ~= 0 or DataAddress<0x1000) then --return 0 if DataAddress isn't a valid 32bit aligned address
+    return 0
+  else
+    return readDouble(DataAddress) --return (double) [address]+3
+  end
+end
+
+function RPGMakerMX_valuetobytes(i,address)
+  local OriginalValue=readInteger(address)
+  local ReturnValue=dwordToByteTable(OriginalValue);
+  writeDouble(OriginalValue+3,i) --write i at [address]+3
+return ReturnValue[1],ReturnValue[2],ReturnValue[3],ReturnValue[4]
+
+end
+return typename,bytecount,functionbasename
+#+end_src
+
+*** ARCGameEngine
+#+begin_src asm
+alloc(TypeName, 14)
+alloc(UsesFloat, 1)
+alloc(CallMethod, 1)
+alloc(ConvertRoutine, 16)
+alloc(ConvertBackRoutine, 20)
+alloc(ByteSize, 4)
+alloc(AGEBitsMasker, 4)
+alloc(PreferedAlignment, 4)
+registerSymbol(AGEBitsMasker)
+
+TypeName:
+db 'ARCGameEngine', 00
+
+CallMethod:
+db #1
+
+ConvertRoutine:
+[32-bit]
+mov ecx, [rsp+04]
+[/32-bit]
+mov eax, [rcx]
+xor eax, [AGEBitsMasker]
+ror eax, 0E
+ret
+
+ConvertBackRoutine:
+[32-bit]
+mov ecx, [rsp+04]
+mov eax, [rsp+0C]
+[/32-bit]
+rol ecx, 0E
+xor ecx, [AGEBitsMasker]
+[64-bit]
+db 41
+[/64-bit]
+mov [rax], ecx
+ret
+
+ByteSize:
+dd #4
+
+PreferedAlignment:
+dd #-1
+#+end_src
