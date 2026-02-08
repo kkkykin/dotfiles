@@ -549,6 +549,8 @@
                      (outbound . "direct")
                      (rules . [((rule_set . ["direct-rules"
                                              "geosite-ebay"]))
+                               ((process_name
+                                 . [ "OneDrive.exe" ]))
                                ((protocol . ["bittorrent"
                                              "ntp"
                                              "stun"]))])
