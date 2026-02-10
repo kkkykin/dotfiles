@@ -13,11 +13,15 @@
                       (call-process "sops" nil t nil "-d" "sing-box.json")
                       (goto-char 1)
                       (json-parse-buffer)))
-       (client-tmp-dir "_tangle/tmp/")
+       (zr-org-tangle-default-dir
+        (pcase system-type
+          ('gnu/linux "/etc/sing-box/")
+          (_ "_tangle")))
+       (client-tmp-dir (expand-file-name "tmp/" zr-org-tangle-default-dir))
        (tun-dir (expand-file-name "tun/" client-tmp-dir))
-       (client-dir "_tangle/client/")
-       (server-dir (expand-file-name "_tangle/server/"))
-       (hosts-dir "_tangle/hosts/")
+       (client-dir (expand-file-name "client/" zr-org-tangle-default-dir))
+       (server-dir (expand-file-name "server/" zr-org-tangle-default-dir))
+       (hosts-dir (expand-file-name "hosts/" zr-org-tangle-default-dir))
        (hosts-uris `(;; ("github" . "https://gitlab.com/ineo6/hosts/-/raw/master/hosts")
                      ("local" . ,(expand-file-name "_hosts"))))
        hosts-files
@@ -26,7 +30,7 @@
        (clash-subscribes (gethash "subs" clash-secrets))
        (sublink-domain (or (gethash "sublink" clash-secrets)
                            "linuxdo.icmpmiao.cc"))
-       (sub-dir "_tangle/sub/")
+       (sub-dir (expand-file-name "sub/" zr-org-tangle-default-dir))
        (disabled-sub-file "_disabled-sub.eld")
        (disabled-sub (and (file-exists-p disabled-sub-file)
                           (with-temp-buffer
@@ -45,7 +49,7 @@
 
        (main-file (expand-file-name "500-main.json" client-dir))
        (tun-file (expand-file-name "500-tun.json" client-dir))
-       (rule-sets-dir (expand-file-name "rule-sets/" "_tangle/"))
+       (rule-sets-dir (expand-file-name "rule-sets/" zr-org-tangle-default-dir))
        (cf-4 "104.19.148.8")
        (cf-6 "2606:4700:e:5b:b68a:ec78:f652:5e89")
        (delete-by-moving-to-trash))
@@ -192,7 +196,7 @@
     (zr-android-call-rish
      (string-join
       (list (format "sed -i 's,%s,%s,g' %s/*.json"
-                    (expand-file-name "_tangle/")
+                    (expand-file-name zr-org-tangle-default-dir)
                     android-target-dir
                     android-dir)
             (format "rm -rf %s/{hosts,rule-sets}"
@@ -210,7 +214,7 @@
 
 *** client
 :PROPERTIES:
-:tangle-dir: _tangle/tmp
+:tangle-dir: (identity client-tmp-dir)
 :CUSTOM_ID: 4acfcf10-2bef-4815-af7a-fd5f0271c77f
 :END:
 
@@ -219,7 +223,7 @@
 :CUSTOM_ID: fed30130-cdf9-42cb-805c-50dbb7b4c5bf
 :END:
 #+header: :var rule_sets_dir=(expand-file-name rule-sets-dir)
-#+header: :var cache_path=(expand-file-name "cache.db" "_tangle")
+#+header: :var cache_path=(expand-file-name "cache.db" zr-org-tangle-default-dir)
 #+header: :var jsdelivr="https://fastly.jsdelivr.net"
 #+header: :var dns_default="ld-neo"
 #+header: :var dns_remote_answer=(format "localhost. IN %s %s" (if dns-remote-ipv6-p "AAAA" "A") dns-remote-server)
@@ -777,33 +781,36 @@ SEP defaults to \"/\"."
 #+name: linux-tun
 #+begin_src json :tangle (if (eq system-type 'gnu/linux) (zr-org-by-tangle-dir "400-linux.json") "no") :mkdirp t
 {
-  "inbounds": [
-    {
-      "address": [
-        "172.19.0.1/30",
-        "fdfe:dcba:9876::1/126"
-      ],
-      "auto_route": true,
-      "auto_redirect": true,
-      "mtu": 9000,
-      "route_exclude_address_set": ["geoip-cn"],
-      "stack": "system",
-      "strict_route": true,
-      "tag": "tun-in",
-      "type": "tun"
-    }
-  ],
-  "route": {
-    "final": "s[this-way]",
-    "rules": [
-      {
-        "inbound": "tun-in",
-        "outbound": "direct",
-        "process_name": [ "sing-box" ]
-      }
+    "inbounds": [
+        {
+            "address": [
+                "172.19.0.1/30",
+                "fdfe:dcba:9876::1/126"
+            ],
+            "auto_route": true,
+            "auto_redirect": true,
+            "mtu": 9000,
+            "route_exclude_address_set": ["geoip-cn"],
+            "stack": "system",
+            "strict_route": true,
+            "tag": "tun-in",
+            "type": "tun"
+        }
     ],
-    "auto_detect_interface": true
-  }
+    "route": {
+        "final": "s[this-way]",
+        "rules": [
+            {
+                "inbound": "tun-in",
+                "outbound": "direct",
+                "process_name": [
+                    "sing-box",
+                    "ssh"
+                ]
+            }
+        ],
+        "auto_detect_interface": true
+    }
 }
 #+end_src
 
@@ -913,7 +920,7 @@ SEP defaults to \"/\"."
 *** client
 #+name: gen-client-bounds
 #+begin_src elisp
-(let ((tailscale-state-dir (expand-file-name "tailscale_state" "_tangle"))
+(let ((tailscale-state-dir (expand-file-name "tailscale_state" zr-org-tangle-default-dir))
       (download-tags '("s[this-way]" "direct"))
       (browse-tags '("s[this-way]" "direct" "s[relay]"))
       relay-tags
@@ -958,7 +965,7 @@ SEP defaults to \"/\"."
                    (tag (format "nv[%s]" name))
                    (listen (format "http://127.0.0.1:%d" local-port))
                    (proxy (format "quic://%s:%s@%s" user-name user-pass host))
-                   (naive-dir "_tangle/naive/")
+                   (naive-dir (expand-file-name "naive/" zr-org-tangle-default-dir))
                    (host-resolver-rules (format "MAP %s %s" host
                                                 (if (eq ip-type :ipv6)
                                                     (format "[%s]" ip)
