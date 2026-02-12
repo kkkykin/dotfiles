@@ -463,11 +463,15 @@ show-console-readout=false
 :PROPERTIES:
 :CUSTOM_ID: 109e43d4-f990-4e01-a20c-916a3c6171d2
 :END:
-#+begin_src nix :tangle (expand-file-name "modules/aria2.nix" nix-dir)
+#+begin_src nix :tangle (expand-file-name "modules/nixos/aria2.nix" nix-dir)
 {
   config,
+  username,
   ...
 }: {
+  users.users.${username} = {
+    extraGroups = ["aria2"];
+  };
   services = {
     aria2 = {
       enable = true;
