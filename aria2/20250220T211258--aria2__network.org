@@ -55,7 +55,7 @@ https://github.com/P3TERX/aria2.conf
 :CUSTOM_ID: 2847641e-b3b8-4f68-b91c-4a1c6722d88e
 :END:
 
-#+begin_src conf-unix :var dir="./downloads" alloc=(if (y-or-n-p "SSD? ") "none" "falloc")
+#+begin_src conf-unix :var dir=(if (eq 'gnu/linux system-type) (expand-file-name "downloads" "/var/lib/aria2") "./downloads") alloc=(if (y-or-n-p "SSD? ") "none" "falloc")
 # 下载目录。可使用绝对路径或相对路径, 默认: 当前启动位置
 dir=$dir
 
