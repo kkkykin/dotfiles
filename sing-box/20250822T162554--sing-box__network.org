@@ -1511,6 +1511,7 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
 (let* ((local-file "_download.eld")
        (process-base '("aria2c"
                        "mpv"
+                       "nix"
                        "rclone"
                        "OpenList"))
        (local (and (file-exists-p local-file)
