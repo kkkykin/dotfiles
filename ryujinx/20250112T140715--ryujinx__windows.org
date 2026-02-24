@@ -4,8 +4,11 @@
 #+identifier: 20250112T140715
 
 * CommandLine
-https://github.com/Ryubing/Ryujinx/blob/master/src/Ryujinx/Utilities/CommandLineState.cs
+https://git.ryujinx.app/ryubing/ryujinx/-/blob/master/src/Ryujinx/Utilities/CommandLineState.cs?ref_type=heads
 
 * Setup
-https://github.com/Ryubing/Ryujinx/wiki/Ryujinx-Setup-&-Configuration-Guide
-https://ryujinx-emulator.com/setup/windows/
+https://git.ryujinx.app/ryubing/ryujinx/-/wikis/Setup-&-Configuration-Guide
+
+* Resource
+https://prodkeys.net/ryujinx-prod-keys-n28/
+https://prodkeys.net/latest-switch-firmwares-v19/
