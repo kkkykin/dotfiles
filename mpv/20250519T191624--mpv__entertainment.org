@@ -7,6 +7,7 @@
 (let ((tangle-dir zr-org-tangle-default-dir))
   (mkdir (expand-file-name "scripts" tangle-dir) t)
   (mkdir (expand-file-name "script-opts" tangle-dir) t)
+  (mkdir (expand-file-name "_cookies" tangle-dir) t)
   (make-symbolic-link (expand-file-name tangle-dir)
                       (substitute-in-file-name
                        "$USERPROFILE/scoop/persist/mpv-v3/portable_config")
@@ -263,6 +264,19 @@ ytdl-raw-options-append=cookies-from-browser=firefox
 profile-cond=path:find("^https://www.youtube.com/") or path:find('^https://[^.]+%.googlevideo.com/')
 ytdl-raw-options-append=cookies-from-browser=firefox
 profile=proxy
+profile=prefetch
+#+end_src
+**** rule34video
+:PROPERTIES:
+:CUSTOM_ID: 231befe2-74cd-454d-9114-e19dc120f1b2
+:END:
+#+begin_src conf-unix :var cookie=(let ((f (expand-file-name "_cookies/rule34video.com"))) (write-region "# Netscape HTTP Cookie File" nil f) f)
+[rule34video]
+profile-cond=path:find("^https://rule34video.com/")
+ytdl-raw-options-append=cookies=$cookie
+ytdl-raw-options-append=ignore-config=
+cookies=yes
+cookies-file=$cookie
 profile=prefetch
 #+end_src
 * scripts
