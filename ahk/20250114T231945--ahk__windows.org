@@ -141,6 +141,10 @@ edgeToggle(){
 :CUSTOM_ID: f80b46cf-63bf-45c3-8a75-fafa356597a2
 :END:
 #+begin_src ahk
+QuoteIfNeeded(path) {
+  return InStr(path, " ") && SubStr(path, 1, 1) != '"' ? '"' path '"' : path
+}
+
 centerWindow(window := 'A'){
   WinGetPos ,, &Width, &Height, window
   WinMove (A_ScreenWidth/2)-(Width/2), (A_ScreenHeight/2)-(Height/2),,, window
@@ -172,6 +176,162 @@ LogMessage(message) {
 #+begin_src ahk
 processLiveP(pid, pname){
   return ProcessExist(pid) && pname == ProcessGetName(pid)
+}
+#+end_src
+** Quark Mode
+:PROPERTIES:
+:CUSTOM_ID: 4eb610ca-557d-4312-a9be-a7d0fe28d176
+:END:
+#+begin_src ahk
+ToggleQuake(cfg) {
+  static state := Map()  ; id -> Map("hwnd",..., "lastTick",...)
+
+  if !cfg.HasProp("win") || cfg.win = ""
+    throw Error("ToggleQuake: cfg.win 不能为空")
+
+  id         := cfg.HasProp("id") ? cfg.id : cfg.win
+  debounceMs := cfg.HasProp("debounceMs") ? cfg.debounceMs : 250
+  waitSec    := cfg.HasProp("waitSec") ? cfg.waitSec : 3
+  stabilizeMs:= cfg.HasProp("stabilizeMs") ? cfg.stabilizeMs : 200
+
+  ; --- 去抖 ---
+  now := A_TickCount
+  s := state.Has(id) ? state[id] : Map()
+  if s.Has("lastTick") && (now - s["lastTick"] < debounceMs)
+    return
+  s["lastTick"] := now
+
+  ; --- 临时启用 DetectHiddenWindows（看得到 WinHide 的窗口） ---
+  prevDHW := A_DetectHiddenWindows
+  DetectHiddenWindows True
+  try {
+    win      := cfg.win
+    exe      := cfg.HasProp("exe") ? cfg.exe : ""
+    args     := cfg.HasProp("args") ? cfg.args : ""
+    workdir  := cfg.HasProp("workingDir") ? cfg.workingDir : ""
+    monitor  := cfg.HasProp("monitor") ? cfg.monitor : 1
+    anchor   := cfg.HasProp("anchor") ? cfg.anchor : "top"
+    wPct     := cfg.HasProp("wPct") ? cfg.wPct : 100
+    hPct     := cfg.HasProp("hPct") ? cfg.hPct : 50
+    xPct     := cfg.HasProp("xPct") ? cfg.xPct : 0
+    aot      := cfg.HasProp("alwaysOnTop") ? cfg.alwaysOnTop : false
+    hideMode := cfg.HasProp("hideMode") ? cfg.hideMode : "Hide"
+    activate := cfg.HasProp("activate") ? cfg.activate : true
+
+    existedAtStart := false
+    hwnd := 0
+
+    ; 1) 先用缓存 hwnd
+    if s.Has("hwnd") {
+      hwnd := s["hwnd"]
+      if !WinExist("ahk_id " hwnd) {
+        hwnd := 0
+        s.Delete("hwnd")
+      } else {
+        existedAtStart := true
+      }
+    }
+
+    ; 2) 缓存没有就按 win 规则抓一个“稳定 hwnd”
+    if !hwnd {
+      hwnd := WaitStableHwnd(win, waitSec*1000, stabilizeMs)
+      existedAtStart := !!hwnd
+    }
+
+    ; 3) 仍没有就启动再抓稳定 hwnd
+    if !hwnd {
+      if (exe = "")
+        throw Error("ToggleQuake: 找不到窗口且 cfg.exe 为空，无法启动")
+      Run(QuoteIfNeeded(exe) (args != "" ? " " args : ""), workdir != "" ? workdir : unset)
+      hwnd := WaitStableHwnd(win, waitSec*1000, stabilizeMs)
+      existedAtStart := false
+      if !hwnd
+        throw Error("ToggleQuake: 已启动但未检测到窗口: " win)
+    }
+
+    s["hwnd"] := hwnd
+
+    ; 4) toggle off：只有“开始就存在且当时激活”才隐藏
+    if (existedAtStart && WinActive("ahk_id " hwnd)) {
+      if (hideMode = "Minimize")
+        WinMinimize("ahk_id " hwnd)
+      else
+        WinHide("ahk_id " hwnd)
+      return
+    }
+
+    ; 5) toggle on：显示/恢复/移动 —— WinMove 若失败就清缓存重抓一次再试
+    SafeShowRestore(hwnd)
+
+    if !SafeMove(hwnd, win, monitor, anchor, wPct, hPct, xPct, waitSec, stabilizeMs, s)
+      throw Error("ToggleQuake: WinMove 失败且重试仍找不到窗口（可能窗口被重建/关闭）")
+
+    WinSetAlwaysOnTop(!!aot, "ahk_id " s["hwnd"])
+    if activate
+      WinActivate("ahk_id " s["hwnd"])
+
+  } finally {
+    DetectHiddenWindows prevDHW
+    state[id] := s
+  }
+}
+
+; --- 等到窗口句柄“稳定”（连续几次相同 hwnd） ---
+WaitStableHwnd(win, timeoutMs, stabilizeMs := 200) {
+  interval := 50
+  need := Max(2, Ceil(stabilizeMs / interval))
+  t0 := A_TickCount
+  last := 0, same := 0
+
+  while (A_TickCount - t0 < timeoutMs) {
+    hwnd := WinExist(win)
+    if (hwnd && hwnd = last) {
+      same += 1
+      if (same >= need)
+        return hwnd
+    } else {
+      last := hwnd
+      same := hwnd ? 1 : 0
+    }
+    Sleep interval
+  }
+  return 0
+}
+
+SafeShowRestore(hwnd) {
+  ; 这些调用可能遇到“句柄刚好失效”，所以包一下
+  try WinShow("ahk_id " hwnd)
+  try WinRestore("ahk_id " hwnd)
+}
+
+SafeMove(hwnd, win, monitor, anchor, wPct, hPct, xPct, waitSec, stabilizeMs, s) {
+  try {
+    return DoMove(hwnd, monitor, anchor, wPct, hPct, xPct)
+  } catch {
+    ; 句柄可能刚失效：清缓存，按 win 规则重抓稳定 hwnd，再 move 一次
+    s.Delete("hwnd")
+    newHwnd := WaitStableHwnd(win, waitSec*1000, stabilizeMs)
+    if !newHwnd
+      return false
+    s["hwnd"] := newHwnd
+    SafeShowRestore(newHwnd)
+    try {
+      return DoMove(newHwnd, monitor, anchor, wPct, hPct, xPct)
+    } catch {
+      return false
+    }
+  }
+}
+
+DoMove(hwnd, monitor, anchor, wPct, hPct, xPct) {
+  MonitorGetWorkArea(monitor, &L, &T, &R, &B)
+  workW := R - L, workH := B - T
+  targetW := Floor(workW * (wPct / 100))
+  targetH := Floor(workH * (hPct / 100))
+  targetX := L + Floor((workW - targetW) * (xPct / 100))
+  targetY := (anchor = "bottom") ? (B - targetH) : T
+  WinMove(targetX, targetY, targetW, targetH, "ahk_id " hwnd)
+  return true
 }
 #+end_src
 ** rapid-fire
@@ -1000,6 +1160,18 @@ Capslock & r::{
   SoundBeep 1000 + 500 * rapidFireEnable
   tmpMsg 'Rapid Fire ' status
 }
+
+#s::ToggleQuake({
+  id: "wezquake",
+  win: "ahk_class WezQuake",
+  exe: "wezterm-gui.exe",
+  args: 'start --always-new-process --class WezQuake -- nvim',
+  anchor: "top",
+  wPct: 100,
+  hPct: 50,
+  hideMode: "Hide",
+  debounceMs: 250
+})
 #+end_src
 
 *** Local
