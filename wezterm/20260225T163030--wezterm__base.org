@@ -1,0 +1,30 @@
+#+title:      wezterm
+#+date:       [2026-02-25 Wed 16:30]
+#+filetags:   :base:
+#+identifier: 20260225T163030
+
+* tangle
+#+begin_src elisp
+(let ((dir (expand-file-name
+            ".config/wezterm"
+            (pcase system-type
+              ('windows-nt (getenv "userprofile"))
+              (_ "~")))))
+  (mkdir (file-name-parent-directory dir) t)
+  (org-babel-tangle)
+  (make-symbolic-link (expand-file-name zr-org-tangle-default-dir) dir t))
+#+end_src
+
+* config
+:PROPERTIES:
+:CUSTOM_ID: 4d954b8d-ce41-45c1-8a44-a95c8ec157e4
+:END:
+#+begin_src lua :mkdirp t :tangle (zr-org-by-tangle-dir "wezterm.lua")
+local wezterm = require 'wezterm'
+local config = {}
+
+config.window_decorations = "RESIZE"
+config.hide_tab_bar_if_only_one_tab = true
+
+return config
+#+end_src
