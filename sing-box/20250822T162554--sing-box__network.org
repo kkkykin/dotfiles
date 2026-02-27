@@ -76,7 +76,7 @@
    (lambda (sub)
      (when-let* ((name (gethash "id" sub))
                  ((not (member name disabled-sub)))
-                 ((gethash "enable" sub)))
+                 ((eq t (gethash "enable" sub))))
        (condition-case nil
            (let* ((sb (gethash "sb" sub))
                   (link (gethash "link" sub))
