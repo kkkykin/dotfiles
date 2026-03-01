@@ -95,7 +95,9 @@
 			"ENC[AES256_GCM,data:oQ2qq+9dEiYcSWTt,iv:GqAE2FyVY/Ne5rCpo2YW013GamP2JlwrH0lLliYmsIk=,tag:9wbGjnfQspK8ApN6O7au8A==,type:str]",
 			"ENC[AES256_GCM,data:lNwE7jSH43+NCA==,iv:E6tkxfendU/qLb61Su8ttC6fP/yzPvMqE+nkXIjNwxc=,tag:ll0QQEvD14DpbHJmzG011Q==,type:str]",
 			"ENC[AES256_GCM,data:Utd72Ox3ihftfQ==,iv:iAsUkBTbUHYapB0zq6LIsF+vrAtLVTwsbHtcDUWWPCc=,tag:7qgX7i7nBoGeQJuRS4kT0g==,type:str]",
+			"ENC[AES256_GCM,data:SFmG4KNIJc/NyQ==,iv:kEKx3HKS8W84L/CwJfxpKoLDwSWbXg1Bi/aVU39UVBg=,tag:MB/lvDvy4ArakWPD3F2ZvA==,type:str]",
 			"ENC[AES256_GCM,data:a5hyYSpAQ0JnODVL,iv:k9ED9/ZQVuXZXI86mTsri8WP+TE6dumm1Kg/0Jl7Ajs=,tag:4LrixvSOzEXKPOdVVjO/XA==,type:str]",
+			"ENC[AES256_GCM,data:5dKsxHQt8j3nIg==,iv:mClgT8uL9qIvN6KDEcVSIqXAlir2cnaIalKEf75QSkc=,tag:EgL6R7dRzPOqeWpSrQHWCg==,type:str]",
 			"ENC[AES256_GCM,data:Wzfxb/Z3oGPQaQk=,iv:KbNklLvqXNjrNI84ikPt+ejVuLKS67481P8wIstGAAU=,tag:cu6bgjMIk8hqtOxATu6L+g==,type:str]",
 			"ENC[AES256_GCM,data:1YRTiWJkanACGA==,iv:dg8K5ife1VGWDzbz5gECwWwlilIylPquvMod5iR7E7Q=,tag:C1IMV9T4ek2uXM0wcFU0ww==,type:str]",
 			"ENC[AES256_GCM,data:aO5bZS7iYLNRAC0=,iv:pvzdVEoC1rRmKRtrNhxKgEVh5vzshEI/Xqd2G+wMbFU=,tag:mi5Fy4J58ZLCNhU2xjgKnA==,type:str]",
@@ -121,8 +123,8 @@
 	],
 	"proxyMode": "ENC[AES256_GCM,data:QN78nwH2,iv:gAqfCnD62FxthNDL1QOKwCyf+hjJ/R5rG3WNgfSdH7c=,tag:SIaazzLH6CtyDNeVJCNJKw==,type:str]",
 	"sops": {
-		"lastmodified": "2026-02-27T09:16:42Z",
-		"mac": "ENC[AES256_GCM,data:hSXPjWomnyHtAc4zFJ8sS/+Xnu2vdcrElfS+7agVJzCMz1m/adl0Lz9TKm3T0t10TvBlY9pBCvaL+XxJDyq8c3yQglnAjzhqkwe8IcmnsCEpem69Spgoprv7SSnYOXpi3FnF8VjG+L9U/fCZoe/LmuY0JrmUfPbOXw/QcDDevKQ=,iv:OSmJxkFrK3EU0M6SFD1AdBD3dimt5AYX+ucS+48bRCA=,tag:5SlSDdLOINHjPz+qjilVLw==,type:str]",
+		"lastmodified": "2026-03-01T12:16:31Z",
+		"mac": "ENC[AES256_GCM,data:d/8GZcXOmvDEqz6JENC/OwJaa8LlN3LedcywmjN2A/P0mH95FcLIZ59dPN0w6AziY4Dj3s2KLgZPXF8cgUB/qYrKH6nGBoc96PzvGKduh05VXlnlVAy12YdJRxg9RPNt9OYSebCqHcW/o+YgbB/wZ/qSQHnzb6PH7PYojqH9SQI=,iv:jChxZRlovK4Ybx9o/XVeEhbdyjSqIEQiVnqLBPQE2gY=,tag:FSB91hbwi5UI2MxIdq825A==,type:str]",
 		"pgp": [
 			{
 				"created_at": "2026-01-20T02:02:54Z",
