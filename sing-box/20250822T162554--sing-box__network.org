@@ -1377,7 +1377,8 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
 (let* ((default `(((ip_cidr
                     . ,(vector (format "%s/%s" dns-remote-server (if dns-remote-ipv6-p "128" "32")))))
                   ((domain_suffix
-                    . [".weyolo.com"]))
+                    . [".steamcontent.com"
+                       ".weyolo.com"]))
                   ((process_name
                     . ["cfst"
                        "cloudflared"]))))
