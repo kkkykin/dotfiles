@@ -253,6 +253,7 @@ ToggleQuake(cfg) {
 
     ; 4) toggle off：只有“开始就存在且当时激活”才隐藏
     if (existedAtStart && WinActive("ahk_id " hwnd)) {
+      Send("!{Esc}")
       if (hideMode = "Minimize")
         WinMinimize("ahk_id " hwnd)
       else
@@ -263,8 +264,11 @@ ToggleQuake(cfg) {
     ; 5) toggle on：显示/恢复/移动 —— WinMove 若失败就清缓存重抓一次再试
     SafeShowRestore(hwnd)
 
-    if !SafeMove(hwnd, win, monitor, anchor, wPct, hPct, xPct, waitSec, stabilizeMs, s)
-      throw Error("ToggleQuake: WinMove 失败且重试仍找不到窗口（可能窗口被重建/关闭）")
+    ; 仅“第一次启动”时才调整大小位置
+    if !existedAtStart {
+      if !SafeMove(hwnd, win, monitor, anchor, wPct, hPct, xPct, waitSec, stabilizeMs, s)
+        throw Error("ToggleQuake: WinMove 失败且重试仍找不到窗口（可能窗口被重建/关闭）")
+    }
 
     WinSetAlwaysOnTop(!!aot, "ahk_id " s["hwnd"])
     if activate
@@ -1161,14 +1165,14 @@ Capslock & r::{
   tmpMsg 'Rapid Fire ' status
 }
 
-#s::ToggleQuake({
+#`::ToggleQuake({
   id: "wezquake",
   win: "ahk_class WezQuake",
   exe: "wezterm-gui.exe",
-  args: 'start --always-new-process --class WezQuake -- nvim',
+  args: 'connect --class WezQuake --position 0,0 unix',
   anchor: "top",
   wPct: 100,
-  hPct: 50,
+  hPct: 51,
   hideMode: "Hide",
   debounceMs: 250
 })
