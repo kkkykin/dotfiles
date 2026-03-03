@@ -19,12 +19,89 @@
 :PROPERTIES:
 :CUSTOM_ID: 4d954b8d-ce41-45c1-8a44-a95c8ec157e4
 :END:
+#+header: :var init_windows_script=(expand-file-name "../init/_tangle/profile.cmd")
+#+header: :var default_nvim_server=(identity zr-viper-default-nvim-server)
 #+begin_src lua :mkdirp t :tangle (zr-org-by-tangle-dir "wezterm.lua")
 local wezterm = require 'wezterm'
+local act = wezterm.action
+local mux = wezterm.mux
 local config = {}
 
 config.window_decorations = "RESIZE"
 config.hide_tab_bar_if_only_one_tab = true
+config.unix_domains = {
+  { name = 'unix' },
+}
+config.enable_tab_bar = false
+config.window_padding = {
+  left = 0,
+  right = 0,
+  top = 0,
+  bottom = 0,
+}
+config.font_size = 11.0
+
+local function is_windows()
+  if wezterm.target_triple:find('windows') then
+    return true
+  else
+    return false
+  end
+end
+
+-- 返回 true 表示端口已被占用（不可绑定）
+local function port_in_use(port)
+  if is_windows then
+    -- Windows: 用 PowerShell 查询监听端口
+    local ok, _, _ = wezterm.run_child_process({
+      'powershell', '-NoProfile', '-Command',
+      string.format(
+        "if (Get-NetTCPConnection -State Listen -LocalPort %d -ErrorAction SilentlyContinue) { exit 0 } else { exit 1 }",
+        port
+      ),
+    })
+    return ok
+  else
+    -- macOS/Linux: 用 python3 尝试 bind 127.0.0.1:port
+    -- 约定：exit 0 = in use；exit 1 = free
+    local script = string.format([[
+python3 - <<'PY'
+import socket, sys
+port = %d
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+try:
+    s.bind(("127.0.0.1", port))
+except OSError:
+    sys.exit(0)  # in use
+else:
+    sys.exit(1)  # free
+finally:
+    s.close()
+PY
+]], port)
+
+    local ok, _, _ = wezterm.run_child_process({ 'sh', '-lc', script })
+    return ok
+  end
+end
+
+wezterm.on('mux-startup', function()
+  -- local tab, pane, window = mux.spawn_window(cmd or {})
+
+  local tab, pane, window = mux.spawn_window({
+    args = { 'nvim', '--listen', default_nvim_server, '+te powershell', '+star' },
+    cwd = os.getenv("USERPROFILE") or os.getenv("HOME")
+  })
+  if tab then
+    tab:set_title('nvim')
+  end
+
+  if is_windows then
+    local tab, pane, window = window:spawn_tab({
+      args = { 'cmd', '/k', init_windows_script, 'init' },
+    })
+  end
+end)
 
 return config
 #+end_src
