@@ -1,0 +1,32 @@
+#+title:      joyshockmapper
+#+date:       [2026-03-03 Tue 20:32]
+#+filetags:   :entertainment:
+#+identifier: 20260303T203229
+
+* tangle
+#+begin_src elisp
+(let ((app-dir (substitute-in-file-name "$USERPROFILE/scoop/apps/joyshockmapper/current/")))
+  (dolist (f (org-babel-tangle))
+    (if (string-suffix-p ".txt" f)
+        (copy-file f app-dir t))))
+#+end_src
+
+* config
+
+*** OnStartup
+:PROPERTIES:
+:CUSTOM_ID: fad4508d-1b65-4795-9916-42a5cc2201ca
+:END:
+https://github.com/Electronicks/JoyShockMapper/blob/master/dist/OnStartup.txt
+
+#+begin_src org :mkdirp t :tangle (zr-org-by-tangle-dir "OnStartup.txt")
+GyroConfigs/xbox.txt
+
+RESTART_GYRO_CALIBRATION
+SLEEP 2                       # wait two seconds
+FINISH_GYRO_CALIBRATION
+
+#AUTOLOAD = OFF # Uncomment to disable AUTOLOAD on startup
+
+HIDE_MINIMIZED = ON # Uncomment to remove JSM from the taskbar when minimized.
+#+end_src
