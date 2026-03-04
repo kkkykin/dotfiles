@@ -31,6 +31,9 @@ allow-loopback-pinentry
 
 #+begin_src conf 
 enable-win32-openssh-support
+
+# wezterm
+enable-putty-support
 #+end_src
 ** Linux
 :PROPERTIES:
@@ -47,6 +50,9 @@ https://incenp.org/notes/2015/gnupg-for-ssh-authentication.html
 :END:
 
 ** conf
+:PROPERTIES:
+:CUSTOM_ID: 02f1ab73-8fc5-4fb4-8ecc-6d616f139c61
+:END:
 #+begin_src conf-space :tangle (zr-org-by-tangle-dir "gpg-ed25519.conf")
 %no-protection
 Key-Type: eddsa

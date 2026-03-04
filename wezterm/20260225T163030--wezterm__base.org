@@ -33,6 +33,7 @@ config.unix_domains = {
   { name = 'unix' },
 }
 config.mux_enable_ssh_agent = false
+config.ssh_backend = "Ssh2"
 config.enable_tab_bar = false
 config.window_padding = {
   left = 0,
