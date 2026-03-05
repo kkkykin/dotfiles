@@ -1191,6 +1191,7 @@ GroupAdd 'EmacsParty', 'ahk_class Emacs'
 GroupAdd 'EmacsParty', 'ahk_class Xming X'
 GroupAdd 'EmacsParty', 'ahk_exe scrcpy.exe'
 GroupAdd 'EmacsParty', 'ahk_exe WindowsTerminal.exe'
+GroupAdd 'EmacsParty', 'ahk_exe wezterm-gui.exe'
 #+end_src
 
 #+begin_src ahk
@@ -1223,8 +1224,8 @@ cmdTitle := 'Command Prompt'
 
 #HotIf WinActive('ahk_group EmacsParty')
 <^Space::^@
-#HotIf WinActive('ahk_exe scrcpy.exe')
->!`::Run 'wt.exe -w _quake ft'
+; #HotIf WinActive('ahk_exe scrcpy.exe')
+; >!`::Run 'wt.exe -w _quake ft'
 
 #HotIf WinActive('ahk_exe WXWork.exe') and not WinActive('ahk_class ImagePreview')
 Capslock::WinMinimize
