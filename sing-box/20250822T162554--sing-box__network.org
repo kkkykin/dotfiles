@@ -1005,7 +1005,7 @@ SEP defaults to \"/\"."
                          (reality . ((enabled . t)
                                      (public_key . ,(gethash "pub-key" attr))
                                      (short_id . ,(gethash "short-id" attr))))
-                         (server_name . ,(gethash "hy-host" attr))
+                         (server_name . ,(gethash "vl-host" attr))
                          (utls . ((enabled . t)))))
                  (uuid . ,(gethash "user-uuid" attr))
                  (type . "vless"))
@@ -1243,7 +1243,7 @@ SEP defaults to \"/\"."
           ep))
 
   (when-let* ((port (gethash "vl-port" attr))
-              (host (gethash "hy-host" attr))
+              (host (gethash "vl-host" attr))
               (tag (format "vl[%s]" name)))
     (push `((listen . "::")
             (listen_port . ,port)
