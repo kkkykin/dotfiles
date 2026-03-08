@@ -495,6 +495,12 @@
       },
       {
         "download_detour": "direct",
+        "tag": "geosite-telegram",
+        "type": "remote",
+        "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-telegram.srs"
+      },
+      {
+        "download_detour": "direct",
         "tag": "geosite-talkatone",
         "type": "remote",
         "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-talkatone.srs"
@@ -572,6 +578,8 @@
                      (outbound . "s[browse]")
                      (rules . [((rule_set . ["geosite-category-porn"
                                              "geosite-category-ai-!cn"
+                                             "geosite-telegram"
+                                             "geoip-telegram"
                                              "geosite-google"
                                              "geosite-talkatone"
                                              "geosite-microsoft"]))
@@ -585,7 +593,6 @@
                      (type . "logical"))
                     ((outbound . "s[this-way]")
                      (rule_set . ["geosite-category-porn"
-                                  "geoip-telegram"
                                   "proxy-rules"]))
                     ((action . "resolve"))))
        (post-rules '(((ip_is_private . t)
@@ -1489,7 +1496,8 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
                        "cli-proxy-api"
                        "firefox"
                        "msedge"
-                       "msedgewebview2"))
+                       "msedgewebview2"
+                       "Telegram"))
        (local (and (file-exists-p local-file)
                    (with-temp-buffer
                      (insert-file-contents local-file)
