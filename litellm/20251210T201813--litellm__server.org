@@ -33,7 +33,10 @@
              (t (vconcat x))))
      (all-string-p (l) (cl-every #'stringp l))
      (string-match-embed-p (s) (string-match-p "embed" s))
-     (string-match-image-p (s) (string-match-p "[iI]mage" s))
+     (string-match-image-p (s)
+       (pcase s
+         ((rx (or ?i ?I) "mage") t)
+         ("grok-imagine" t)))
      (format-models (name params)
        (let* ((models (ensure-list (or (alist-get 'model params) name)))
               (prefix (alist-get 'prefix params))
@@ -53,7 +56,9 @@
              (pcase m
                ((guard prefix)
                 (setq model-id (format "%s/%s" prefix (if (string= "t" m) name m))
-                      mode nil))
+                      mode (pcase name
+                             ((pred string-match-embed-p) "embedding")
+                             ((pred string-match-image-p) "image_generation"))))
                ("t"
                 (setq model-id (concat "openai/" name)
                       mode (pcase name
@@ -227,25 +232,32 @@
 
 * models
 #+name: models-tbl
-| name                          | cerebras                       | opencode    | poll   | nvidia                              | cpa   | modelscope                          |
-|-------------------------------+--------------------------------+-------------+--------+-------------------------------------+-------+-------------------------------------|
-| deepseek-v3.2                 |                                |             |        | deepseek-ai/%s                      | t     | deepseek-ai/DeepSeek-V3.2           |
-| qwen3-235b-a22b-instruct      | qwen-3-235b-a22b-instruct-2507 |             |        |                                     | t     | Qwen/Qwen3-235B-A22B-Instruct-2507  |
-| qwen3-235b-a22b-thinking-2507 |                                |             |        |                                     | t     | Qwen/Qwen3-235B-A22B-Thinking-2507  |
-| qwen3-coder-plus              |                                |             |        | qwen/qwen3-coder-480b-a35b-instruct | t     | Qwen/Qwen3-Coder-480B-A35B-Instruct |
-| Qwen/Qwen-Image-2512          |                                |             |        |                                     |       | t                                   |
-| qwen3-max                     |                                |             |        |                                     | t     |                                     |
-| qwen3-vl-plus                 |                                |             |        |                                     | t     | Qwen/Qwen3-VL-235B-A22B-Instruct    |
-| kimi-k2-0905                  |                                |             |        |                                     | t     |                                     |
-| kimi-k2-thinking              |                                |             |        | moonshotai/%s                       | t     |                                     |
-| deepseek-v3.2-chat            |                                |             |        |                                     | t     |                                     |
-| deepseek-v3.2-reasoner        |                                |             |        |                                     | t     |                                     |
-| deepseek-r1                   |                                |             |        | deepseek-ai/%s                      | t     | deepseek-ai/DeepSeek-R1-0528        |
-| minimax-m2.1                  |                                | ant/%s-free |        | minimaxai/%s                        | ant/t |                                     |
-| z-image-turbo                 |                                |             | zimage |                                     |       | Tongyi-MAI/Z-Image-Turbo            |
-| glm-4.6v                      |                                |             |        |                                     |       | ZhipuAI/GLM-4.6V                    |
-| glm-4.7                       | zai-%s                         | ant/%s-free |        | z-ai/%s                             | ant/t |                                     |
-| gpt-5.2                       |                                |             |        |                                     | cx/t  |                                     |
+| name                          | cerebras                       | opencode    | poll   | nvidia                              | cpa   | modelscope                          | longcat |
+|-------------------------------+--------------------------------+-------------+--------+-------------------------------------+-------+-------------------------------------+---------|
+| deepseek-v3.2                 |                                |             |        | deepseek-ai/%s                      | t     | deepseek-ai/DeepSeek-V3.2           |         |
+| qwen3-235b-a22b-instruct      | qwen-3-235b-a22b-instruct-2507 |             |        |                                     | t     | Qwen/Qwen3-235B-A22B-Instruct-2507  |         |
+| qwen3-235b-a22b-thinking-2507 |                                |             |        |                                     | t     | Qwen/Qwen3-235B-A22B-Thinking-2507  |         |
+| qwen3-coder-plus              |                                |             |        | qwen/qwen3-coder-480b-a35b-instruct | t     | Qwen/Qwen3-Coder-480B-A35B-Instruct |         |
+| Qwen/Qwen-Image-2512          |                                |             |        |                                     |       | t                                   |         |
+| qwen3-max                     |                                |             |        |                                     | t     |                                     |         |
+| qwen3-vl-plus                 |                                |             |        |                                     | t     | Qwen/Qwen3-VL-235B-A22B-Instruct    |         |
+| kimi-k2-0905                  |                                |             |        |                                     | t     |                                     |         |
+| kimi-k2-thinking              |                                |             |        | moonshotai/%s                       | t     |                                     |         |
+| deepseek-v3.2-chat            |                                |             |        |                                     | t     |                                     |         |
+| deepseek-v3.2-reasoner        |                                |             |        |                                     | t     |                                     |         |
+| deepseek-r1                   |                                |             |        | deepseek-ai/%s                      | t     | deepseek-ai/DeepSeek-R1-0528        |         |
+| minimax-m2.1                  |                                | ant/%s-free |        | minimaxai/%s                        | ant/t |                                     |         |
+| z-image-turbo                 |                                |             | zimage |                                     |       | Tongyi-MAI/Z-Image-Turbo            |         |
+| glm-4.6v                      |                                |             |        |                                     |       | ZhipuAI/GLM-4.6V                    |         |
+| glm-4.7                       | zai-%s                         | ant/%s-free |        | z-ai/%s                             | ant/t |                                     |         |
+| gpt-5.2                       |                                |             |        |                                     | cx/t  |                                     |         |
+| coder-model                   |                                |             |        |                                     | t     |                                     |         |
+| LongCat-Flash-Thinking-2601   |                                |             |        |                                     |       |                                     | t       |
+| LongCat-Flash-Lite            |                                |             |        |                                     |       |                                     | t       |
+| grok-imagine                  |                                |             | t      |                                     |       |                                     |         |
+| claude-fast                   |                                |             | t      |                                     |       |                                     |         |
+| claude-airforce               |                                |             | t      |                                     |       |                                     |         |
+| gemini-fast                   |                                |             | t      |                                     |       |                                     |         |
 
 * plugins
 
