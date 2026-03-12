@@ -53,6 +53,13 @@
        (rule-sets-dir (expand-file-name "rule-sets/" zr-org-tangle-default-dir))
        (cf-4 "104.19.148.8")
        (cf-6 "2606:4700:e:5b:b68a:ec78:f652:5e89")
+       (client-proxy-users '("download"
+                             "direct"
+                             "browse"
+                             "mitm"
+                             "relay"
+                             "tailscale"
+                             "this-way"))
        (delete-by-moving-to-trash))
   (delete-directory client-tmp-dir t)
   (mkdir hosts-dir t)
@@ -318,7 +325,7 @@
       },
       {
         "accept_default_resolvers": false,
-        "endpoint": "ts-ep",
+        "endpoint": "s[tailscale]",
         "tag": "tailscale-dns",
         "type": "tailscale"
       },
@@ -550,9 +557,9 @@
                      (rules . [((protocol . "dns"))
                                ((port . 53))])
                      (type . "logical"))
-                    ((outbound . "mitm")
+                    ((outbound . "s[mitm]")
                      (rule_set . "mitm-rules"))
-                    ((outbound . "ts-ep")
+                    ((outbound . "s[tailscale]")
                      (rule_set . "tailscale-rules"))
                     ((action . "reject")
                      (rule_set . "block-rules"))
@@ -595,6 +602,13 @@
                      (rule_set . ["geosite-category-porn"
                                   "proxy-rules"]))
                     ((action . "resolve"))))
+       (pre-user-rules
+        (mapcar (lambda (u)
+                  `((auth_user . ,u)
+                    (outbound . ,(pcase u
+                                   ((rx bos "warp") u)
+                                   (_ (format "s[%s]" u))))))
+                client-proxy-users))
        (post-rules '(((ip_is_private . t)
                       (outbound . "direct")
                       (rule_set . ["geosite-geolocation-cn"
@@ -686,8 +700,12 @@ SEP defaults to \"/\"."
                      new-rule))))))))))
     (let* ((mode-rules (apply #'vconcat (clash-expand-clash-mode-combinations
                                          mode-rules-group))))
-      (json-serialize `((experimental (clash_api (default_mode . ,default-mode)))
-                        (route (rules . ,(vconcat pre-rules mode-rules post-rules))))))))
+      (json-serialize
+       `((experimental (clash_api (default_mode . ,default-mode)))
+         (route (rules . ,(vconcat pre-user-rules
+                                   pre-rules
+                                   mode-rules
+                                   post-rules))))))))
 #+end_src
 
 ***** hosts
@@ -853,7 +871,7 @@ SEP defaults to \"/\"."
     "servers": [
       {
         "accept_default_resolvers": false,
-        "endpoint": "ts-ep",
+        "endpoint": "s[tailscale]",
         "tag": "tailscale-dns",
         "type": "tailscale"
       },
@@ -923,7 +941,7 @@ SEP defaults to \"/\"."
 
 * bounds
 :PROPERTIES:
-:header-args:elisp: :var vps-secrets=(gethash "vps" box-secrets) wg-clients=(gethash "wg" box-secrets) ts-ep='((tag . "ts-ep") (type . "tailscale")) obds='(((tag . "direct") (type . "direct"))) ibds='() ep='() conf='() dns-rules='()
+:header-args:elisp: :var vps-secrets=(gethash "vps" box-secrets) wg-clients=(gethash "wg" box-secrets) ts-ep='((tag . "s[tailscale]") (type . "tailscale")) obds='(((tag . "direct") (type . "direct"))) ibds='() ep='() conf='() dns-rules='()
 :END:
 *** client
 #+name: gen-client-bounds
@@ -936,17 +954,10 @@ SEP defaults to \"/\"."
       s-tags)
   (push `(state_directory . ,tailscale-state-dir) ts-ep)
 
-  (unless (file-exists-p "_500-inbounds.json")
-    (push '((listen_port . 10807)
-            (set_system_proxy . :false)
-            (tag . "mixed-in")
-            (type . "mixed"))
-          ibds))
-
   ;; misc outbounds
   (push '((server . "127.0.0.1")
           (server_port . 8080)
-          (tag . "mitm")
+          (tag . "s[mitm]")
           (type . "http"))
         obds)
 
@@ -963,6 +974,10 @@ SEP defaults to \"/\"."
             (u-tag (format "u[%s]" name))
             (s-tag (format "s[%s]" name))
             vps-tags)
+
+       (push name client-proxy-users)
+       (push (format "warp[%s]" name) client-proxy-users)
+
        (pcase (gethash "type" attr)
          ("download" (push s-tag download-tags))
          ("browse" (push s-tag browse-tags)))
@@ -1194,6 +1209,22 @@ SEP defaults to \"/\"."
              (outbounds . ,(vconcat (seq-difference s-dns `(,u-dns "direct"))))))
           pre-obds)
     (setq obds (append (apply #'append pre-obds) obds)))
+
+  (push `((listen_port . 10806)
+          (set_system_proxy . :false)
+          (tag . "user-mix")
+          (type . "mixed")
+          (users . ,(cl-map 'vector
+                            (lambda (n)
+                              `((username . ,n)
+                                (password . "1")))
+                            client-proxy-users)))
+        ibds)
+  (push '((listen_port . 10807)
+          (set_system_proxy . :false)
+          (tag . "anony-mix")
+          (type . "mixed"))
+        ibds)
 
   ;; bind-interface
   (when-let* ((default-interface-file (expand-file-name "_default-interface"))
