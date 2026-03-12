@@ -143,6 +143,8 @@
                    ("nvidia" . ((api_base . "https://integrate.api.nvidia.com/v1")
                                 (order . 30)
                                 (prefix . "nvidia_nim")))
+                   ("longcat" . ((api_base . "https://api.longcat.chat/openai")
+                                 (order . 30)))
                    ;; ("hf" . ((api_base . "https://router.huggingface.co/v1")
                    ;;          (prefix . "huggingface")))
                    ("poll" . ((api_base . "https://gen.pollinations.ai")
