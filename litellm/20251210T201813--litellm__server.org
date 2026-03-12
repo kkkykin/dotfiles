@@ -147,7 +147,7 @@
                                  (order . 30)))
                    ;; ("hf" . ((api_base . "https://router.huggingface.co/v1")
                    ;;          (prefix . "huggingface")))
-                   ("poll" . ((api_base . "https://gen.pollinations.ai")
+                   ("poll" . ((api_base . "https://gen.pollinations.ai/v1")
                               (order . 30)
                               (tags . ["nsfw"])
                               (prefix . "poll")))
@@ -178,8 +178,9 @@
                              (callbacks . ["pre_call.header_forward"])))
          (general-settings `((forward_client_headers_to_llm_api . :false)
                              (disable_master_key_return . t)
-                             (allow_requests_on_db_unavailable . t)
-                             (background_health_checks . :false)))
+                             (background_health_checks . t)
+                             (health_check_interval . ,(* 60 30))
+                             (allow_requests_on_db_unavailable . t)))
          (router-settings '((allowed_fails . 3)
                             (cooldown_time . 30)
                             (enable_tag_filtering . t)
@@ -188,6 +189,12 @@
                                                   (dall-e-3 . "gemini-3-pro-image")))
                             (fallbacks . [((gemini-3-pro . ["gemini-2.5-pro"]))
                                           ((claude-opus-4-5-20251101 . ["claude-opus-4-5"]))
+                                          ((coder-model . ["qwen3-coder-plus"
+                                                           "LongCat-Flash-Thinking-2601"
+                                                           "glm-4.7"
+                                                           "minimax-m2.1"
+                                                           "kimi-k2-thinking"
+                                                           "deepseek-v3.2"]))
                                           ((claude-sonnet-4-5-20250929 . ["claude-sonnet-4-5" "claude-4.5-sonnet"]))
                                           ((claude-sonnet-4-20250514 . ["claude-4-sonnet"]))
                                           ((gpt-5.1-codex-max . ["gpt-5.1-codex" "gpt-5.1"]))
@@ -236,13 +243,11 @@
 #+name: models-tbl
 | name                          | cerebras                       | opencode    | poll   | nvidia                              | cpa   | modelscope                          | longcat |
 |-------------------------------+--------------------------------+-------------+--------+-------------------------------------+-------+-------------------------------------+---------|
-| deepseek-v3.2                 |                                |             |        | deepseek-ai/%s                      | t     | deepseek-ai/DeepSeek-V3.2           |         |
+| deepseek-v3.2                 |                                |             |        |                                     | t     | deepseek-ai/DeepSeek-V3.2           |         |
 | qwen3-235b-a22b-instruct      | qwen-3-235b-a22b-instruct-2507 |             |        |                                     | t     | Qwen/Qwen3-235B-A22B-Instruct-2507  |         |
 | qwen3-235b-a22b-thinking-2507 |                                |             |        |                                     | t     | Qwen/Qwen3-235B-A22B-Thinking-2507  |         |
 | qwen3-coder-plus              |                                |             |        | qwen/qwen3-coder-480b-a35b-instruct | t     | Qwen/Qwen3-Coder-480B-A35B-Instruct |         |
-| Qwen/Qwen-Image-2512          |                                |             |        |                                     |       | t                                   |         |
 | qwen3-max                     |                                |             |        |                                     | t     |                                     |         |
-| qwen3-vl-plus                 |                                |             |        |                                     | t     | Qwen/Qwen3-VL-235B-A22B-Instruct    |         |
 | kimi-k2-0905                  |                                |             |        |                                     | t     |                                     |         |
 | kimi-k2-thinking              |                                |             |        | moonshotai/%s                       | t     |                                     |         |
 | deepseek-v3.2-chat            |                                |             |        |                                     | t     |                                     |         |
@@ -250,7 +255,6 @@
 | deepseek-r1                   |                                |             |        | deepseek-ai/%s                      | t     | deepseek-ai/DeepSeek-R1-0528        |         |
 | minimax-m2.1                  |                                | ant/%s-free |        | minimaxai/%s                        | ant/t |                                     |         |
 | z-image-turbo                 |                                |             | zimage |                                     |       | Tongyi-MAI/Z-Image-Turbo            |         |
-| glm-4.6v                      |                                |             |        |                                     |       | ZhipuAI/GLM-4.6V                    |         |
 | glm-4.7                       | zai-%s                         | ant/%s-free |        | z-ai/%s                             | ant/t |                                     |         |
 | gpt-5.2                       |                                |             |        |                                     | cx/t  |                                     |         |
 | coder-model                   |                                |             |        |                                     | t     |                                     |         |
