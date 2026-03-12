@@ -478,3 +478,7 @@ if __name__ == "__main__":
 | cf  | https://cf-speedtest-v2.acfun.win/300mb.test                                                                                |
 | aws | https://images-assets.nasa.gov/video/GSFC_20100722_Hubble_m10619_Exoplanets/GSFC_20100722_Hubble_m10619_Exoplanets~orig.mp4 |
 | cf2 | https://speed.cloudflare.com/__down?bytes=314572800                                                                         |
+
+* tunnel
+https://cf.090227.xyz/
+https://blog.dalenull.work/2024/09/28/speed-up-your-cloudflare-tunnel/
