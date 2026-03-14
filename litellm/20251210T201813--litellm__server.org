@@ -191,17 +191,18 @@
                                           ((claude-opus-4-5-20251101 . ["claude-opus-4-5"]))
                                           ((coder-model . ["qwen3-coder-plus"
                                                            "LongCat-Flash-Thinking-2601"
-                                                           "glm-4.7"
+                                                           "qwen3-max"
+                                                           "qwen3-235b-a22b-thinking-2507"
+                                                           "qwen3-235b-a22b-instruct"
                                                            "minimax-m2.1"
-                                                           "kimi-k2-thinking"
-                                                           "deepseek-v3.2"]))
+                                                           "kimi-k2-thinking"]))
                                           ((claude-sonnet-4-5-20250929 . ["claude-sonnet-4-5" "claude-4.5-sonnet"]))
                                           ((claude-sonnet-4-20250514 . ["claude-4-sonnet"]))
-                                          ((gpt-5.1-codex-max . ["gpt-5.1-codex" "gpt-5.1"]))
                                           ((claude-3-5-haiku-20241022 . ["claude-haiku-4-5-20251001"]))])))
          (include-config (directory-files zr-org-tangle-default-dir nil "\\.yaml" t))
          (model-list
           `((((model_name . "z-image-turbo")
+              (model_info (mode . "image_generation"))
               (litellm_params
                . ((api_base . "https://mrfakename-z-image-turbo.hf.space")
                   (api_key . ,(auth-source-pick-first-password
@@ -241,29 +242,24 @@
 
 * models
 #+name: models-tbl
-| name                          | cerebras                       | opencode    | poll   | nvidia                              | cpa   | modelscope                          | longcat |
-|-------------------------------+--------------------------------+-------------+--------+-------------------------------------+-------+-------------------------------------+---------|
-| deepseek-v3.2                 |                                |             |        |                                     | t     | deepseek-ai/DeepSeek-V3.2           |         |
-| qwen3-235b-a22b-instruct      | qwen-3-235b-a22b-instruct-2507 |             |        |                                     | t     | Qwen/Qwen3-235B-A22B-Instruct-2507  |         |
-| qwen3-235b-a22b-thinking-2507 |                                |             |        |                                     | t     | Qwen/Qwen3-235B-A22B-Thinking-2507  |         |
-| qwen3-coder-plus              |                                |             |        | qwen/qwen3-coder-480b-a35b-instruct | t     | Qwen/Qwen3-Coder-480B-A35B-Instruct |         |
-| qwen3-max                     |                                |             |        |                                     | t     |                                     |         |
-| kimi-k2-0905                  |                                |             |        |                                     | t     |                                     |         |
-| kimi-k2-thinking              |                                |             |        | moonshotai/%s                       | t     |                                     |         |
-| deepseek-v3.2-chat            |                                |             |        |                                     | t     |                                     |         |
-| deepseek-v3.2-reasoner        |                                |             |        |                                     | t     |                                     |         |
-| deepseek-r1                   |                                |             |        | deepseek-ai/%s                      | t     | deepseek-ai/DeepSeek-R1-0528        |         |
-| minimax-m2.1                  |                                | ant/%s-free |        | minimaxai/%s                        | ant/t |                                     |         |
-| z-image-turbo                 |                                |             | zimage |                                     |       | Tongyi-MAI/Z-Image-Turbo            |         |
-| glm-4.7                       | zai-%s                         | ant/%s-free |        | z-ai/%s                             | ant/t |                                     |         |
-| gpt-5.2                       |                                |             |        |                                     | cx/t  |                                     |         |
-| coder-model                   |                                |             |        |                                     | t     |                                     |         |
-| LongCat-Flash-Thinking-2601   |                                |             |        |                                     |       |                                     | t       |
-| LongCat-Flash-Lite            |                                |             |        |                                     |       |                                     | t       |
-| grok-imagine                  |                                |             | t      |                                     |       |                                     |         |
-| claude-fast                   |                                |             | t      |                                     |       |                                     |         |
-| claude-airforce               |                                |             | t      |                                     |       |                                     |         |
-| gemini-fast                   |                                |             | t      |                                     |       |                                     |         |
+| name                          | cerebras                       | poll   | nvidia                              | cpa  | modelscope                         | longcat |
+|-------------------------------+--------------------------------+--------+-------------------------------------+------+------------------------------------+---------|
+| qwen3-235b-a22b-instruct      | qwen-3-235b-a22b-instruct-2507 |        |                                     | t    | Qwen/Qwen3-235B-A22B-Instruct-2507 |         |
+| qwen3-235b-a22b-thinking-2507 |                                |        |                                     | t    | Qwen/Qwen3-235B-A22B-Thinking-2507 |         |
+| qwen3-coder-plus              |                                |        | qwen/qwen3-coder-480b-a35b-instruct | t    |                                    |         |
+| qwen3-max                     |                                |        |                                     | t    |                                    |         |
+| kimi-k2-thinking              |                                |        | moonshotai/%s                       |      |                                    |         |
+| deepseek-r1                   |                                |        |                                     | t    |                                    |         |
+| minimax-m2.1                  |                                |        | minimaxai/%s                        |      |                                    |         |
+| z-image-turbo                 |                                | zimage |                                     |      | Tongyi-MAI/Z-Image-Turbo           |         |
+| gpt-5.2                       |                                |        |                                     | cx/t |                                    |         |
+| coder-model                   |                                |        |                                     | t    |                                    |         |
+| LongCat-Flash-Thinking-2601   |                                |        |                                     |      |                                    | t       |
+| LongCat-Flash-Lite            |                                |        |                                     |      |                                    | t       |
+| grok-imagine                  |                                | t      |                                     |      |                                    |         |
+| claude-fast                   |                                | t      |                                     |      |                                    |         |
+| claude-airforce               |                                | t      |                                     |      |                                    |         |
+| gemini-fast                   |                                | t      |                                     |      |                                    |         |
 
 * plugins
 
@@ -422,6 +418,7 @@ Usage in config.yaml:
 import asyncio
 import base64
 import json
+import os
 import time
 from typing import Any, AsyncIterator, Iterator, Optional, Union
 from urllib.parse import urlencode
@@ -462,6 +459,40 @@ MAX_N_IMAGES = 50  # Maximum number of images per request
 # =============================================================================
 # Shared Utility Functions
 # =============================================================================
+
+def _get_httpx_verify_setting() -> Union[bool, str]:
+    """Resolve SSL verification setting for httpx.Client/AsyncClient.
+
+    Precedence:
+    1) Environment variable SSL_VERIFY
+       - false/0/no/off -> False
+       - true/1/yes/on -> True
+       - other non-empty string -> treated as CA bundle path for httpx verify
+    2) litellm.ssl_verify (bool or non-empty str path)
+    3) Default True
+    """
+
+    env_value = os.environ.get("SSL_VERIFY")
+    if env_value is not None:
+        env_value_stripped = env_value.strip()
+        if env_value_stripped:
+            env_value_lower = env_value_stripped.lower()
+            if env_value_lower in {"false", "0", "no", "off"}:
+                return False
+            if env_value_lower in {"true", "1", "yes", "on"}:
+                return True
+            return env_value_stripped
+
+    litellm_ssl_verify = getattr(litellm, "ssl_verify", None)
+    if isinstance(litellm_ssl_verify, bool):
+        return litellm_ssl_verify
+    if isinstance(litellm_ssl_verify, str):
+        litellm_ssl_verify_stripped = litellm_ssl_verify.strip()
+        if litellm_ssl_verify_stripped:
+            return litellm_ssl_verify_stripped
+
+    return True
+
 
 def _sanitize_params_for_delegation(
     optional_params: Optional[dict],
@@ -660,7 +691,7 @@ class OpenAIDelegateHandler(CustomLLM):
             api_base=self._get_api_base(api_base),
             api_key=api_key,
             timeout=self._get_effective_timeout(timeout),
-            **params,
+            ,**params,
         )
 
     async def acompletion(
@@ -691,7 +722,7 @@ class OpenAIDelegateHandler(CustomLLM):
             api_base=self._get_api_base(api_base),
             api_key=api_key,
             timeout=self._get_effective_timeout(timeout),
-            **params,
+            ,**params,
         )
 
     def streaming(
@@ -723,7 +754,7 @@ class OpenAIDelegateHandler(CustomLLM):
             api_key=api_key,
             timeout=self._get_effective_timeout(timeout),
             stream=True,
-            **params,
+            ,**params,
         )
         for chunk in response:
             usage = getattr(chunk, "usage", None)
@@ -788,7 +819,7 @@ class OpenAIDelegateHandler(CustomLLM):
             api_key=api_key,
             timeout=self._get_effective_timeout(timeout),
             stream=True,
-            **params,
+            ,**params,
         )
         async for chunk in response:
             usage = getattr(chunk, "usage", None)
@@ -874,7 +905,11 @@ class ModelScopeLLM(OpenAIDelegateHandler):
         task_url = self._get_task_url(task_id)
         headers = self._get_poll_headers(api_key)
 
-        with httpx.Client(timeout=request_timeout) as client:
+        with httpx.Client(
+            timeout=request_timeout,
+            verify=_get_httpx_verify_setting(),
+            trust_env=True,
+        ) as client:
             while True:
                 elapsed = time.monotonic() - start_time
                 if elapsed > poll_timeout:
@@ -915,7 +950,11 @@ class ModelScopeLLM(OpenAIDelegateHandler):
         task_url = self._get_task_url(task_id)
         headers = self._get_poll_headers(api_key)
 
-        async with httpx.AsyncClient(timeout=request_timeout) as client:
+        async with httpx.AsyncClient(
+            timeout=request_timeout,
+            verify=_get_httpx_verify_setting(),
+            trust_env=True,
+        ) as client:
             while True:
                 elapsed = time.monotonic() - start_time
                 if elapsed > poll_timeout:
@@ -982,7 +1021,11 @@ class ModelScopeLLM(OpenAIDelegateHandler):
     ) -> list[str]:
         """Generate a single image and return URLs."""
         try:
-            with httpx.Client(timeout=request_timeout) as http_client:
+            with httpx.Client(
+                timeout=request_timeout,
+                verify=_get_httpx_verify_setting(),
+                trust_env=True,
+            ) as http_client:
                 response = http_client.post(image_api_base, headers=headers, json=request_body)
                 response.raise_for_status()
                 task_data = response.json()
@@ -1011,7 +1054,11 @@ class ModelScopeLLM(OpenAIDelegateHandler):
     ) -> list[str]:
         """Generate a single image asynchronously and return URLs."""
         try:
-            async with httpx.AsyncClient(timeout=request_timeout) as http_client:
+            async with httpx.AsyncClient(
+                timeout=request_timeout,
+                verify=_get_httpx_verify_setting(),
+                trust_env=True,
+            ) as http_client:
                 response = await http_client.post(image_api_base, headers=headers, json=request_body)
                 response.raise_for_status()
                 task_data = response.json()
@@ -1240,7 +1287,11 @@ class HuggingFaceLLM(CustomLLM):
         start_time = time.monotonic()
         result_url = self._build_result_url(api_base, event_id)
 
-        with httpx.Client(timeout=request_timeout) as client:
+        with httpx.Client(
+            timeout=request_timeout,
+            verify=_get_httpx_verify_setting(),
+            trust_env=True,
+        ) as client:
             while True:
                 elapsed = time.monotonic() - start_time
                 if elapsed > poll_timeout:
@@ -1276,7 +1327,11 @@ class HuggingFaceLLM(CustomLLM):
         start_time = time.monotonic()
         result_url = self._build_result_url(api_base, event_id)
 
-        async with httpx.AsyncClient(timeout=request_timeout) as client:
+        async with httpx.AsyncClient(
+            timeout=request_timeout,
+            verify=_get_httpx_verify_setting(),
+            trust_env=True,
+        ) as client:
             while True:
                 elapsed = time.monotonic() - start_time
                 if elapsed > poll_timeout:
@@ -1312,7 +1367,11 @@ class HuggingFaceLLM(CustomLLM):
     ) -> list[str]:
         """Generate a single image and return URLs."""
         try:
-            with httpx.Client(timeout=request_timeout) as http_client:
+            with httpx.Client(
+                timeout=request_timeout,
+                verify=_get_httpx_verify_setting(),
+                trust_env=True,
+            ) as http_client:
                 response = http_client.post(gradio_url, headers=headers, json=request_data)
                 response.raise_for_status()
                 task_data = response.json()
@@ -1338,7 +1397,11 @@ class HuggingFaceLLM(CustomLLM):
     ) -> list[str]:
         """Generate a single image asynchronously and return URLs."""
         try:
-            async with httpx.AsyncClient(timeout=request_timeout) as http_client:
+            async with httpx.AsyncClient(
+                timeout=request_timeout,
+                verify=_get_httpx_verify_setting(),
+                trust_env=True,
+            ) as http_client:
                 response = await http_client.post(gradio_url, headers=headers, json=request_data)
                 response.raise_for_status()
                 task_data = response.json()
@@ -1479,7 +1542,7 @@ class PollinationsLLM(OpenAIDelegateHandler):
         """
         from urllib.parse import quote
 
-        base_url = self._get_image_base_url(api_base)
+        base_url = self._get_image_base_url(POLLINATIONS_BASE_URL)
         encoded_prompt = quote(prompt, safe='')
         url = f"{base_url}{POLLINATIONS_IMAGE_ENDPOINT}/{encoded_prompt}"
 
@@ -1548,7 +1611,11 @@ class PollinationsLLM(OpenAIDelegateHandler):
         url = self._build_image_url(prompt, model, optional_params, api_base)
 
         try:
-            with httpx.Client(timeout=request_timeout) as http_client:
+            with httpx.Client(
+                timeout=request_timeout,
+                verify=_get_httpx_verify_setting(),
+                trust_env=True,
+            ) as http_client:
                 response = http_client.get(url, headers=headers)
                 response.raise_for_status()
                 return base64.b64encode(response.content).decode('utf-8')
@@ -1571,7 +1638,11 @@ class PollinationsLLM(OpenAIDelegateHandler):
         url = self._build_image_url(prompt, model, optional_params, api_base)
 
         try:
-            async with httpx.AsyncClient(timeout=request_timeout) as http_client:
+            async with httpx.AsyncClient(
+                timeout=request_timeout,
+                verify=_get_httpx_verify_setting(),
+                trust_env=True,
+            ) as http_client:
                 response = await http_client.get(url, headers=headers)
                 response.raise_for_status()
                 return base64.b64encode(response.content).decode('utf-8')
@@ -1657,6 +1728,1167 @@ modelscope_llm = ModelScopeLLM()
 huggingface_llm = HuggingFaceLLM()
 pollinations_llm = PollinationsLLM()
 #+end_src
+
+* check
+:PROPERTIES:
+:CUSTOM_ID: 93e9a856-0251-465d-9080-e0a6852eb3d5
+:END:
+#+begin_src python :tangle (zr-org-by-tangle-dir "check.py")
+#!/usr/bin/env -S uv run -s
+# /// script
+# dependencies = [
+#   "litellm[proxy]",
+#   "pyyaml",
+# ]
+# [[tool.uv.index]]
+# url = "https://mirrors.cloud.tencent.com/pypi/simple/"
+# ///
+
+"""LiteLLM Proxy Model Health Check Script
+
+读取 litellm-proxy 配置文件，对 model_list 中的每个模型进行测活。
+
+测活实现：
+- 使用 LiteLLM 内置的 `litellm.ahealth_check()` 适配层，覆盖 chat/completion/embedding/image/audio/responses 等多种 mode。
+- mode 判定规则：
+  1) 优先使用 model_info.mode
+  2) 否则传 mode=None 让 LiteLLM 尝试从 model_cost 推断（推断不到则默认按 chat 测活）
+"""
+
+from __future__ import annotations
+
+import argparse
+import asyncio
+import json
+import os
+import re
+import sys
+import time
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Set, Tuple
+from urllib.parse import urlsplit, urlunsplit
+
+import yaml
+
+import litellm
+
+# 设置日志输出
+litellm.set_verbose = False
+
+# proxy 配置里常见的路由字段，直接透传给 SDK 可能导致 provider 报错
+_NON_REQUEST_LITELLM_PARAMS = {
+    "order",
+    "tags",
+}
+
+_HEALTH_CHECK_SUPPORTED_MODES = {
+    "chat",
+    "completion",
+    "embedding",
+    "audio_speech",
+    "audio_transcription",
+    "image_generation",
+    "video_generation",
+    "batch",
+    "rerank",
+    "realtime",
+    "responses",
+    "ocr",
+}
+
+# 仅用于输出展示的 endpoint hint（实际请求由 LiteLLM 路由，不保证与各 provider 的真实路径一致）
+_MODE_TO_ENDPOINT_HINT: Dict[str, str] = {
+    "chat": "/v1/chat/completions",
+    "completion": "/v1/completions",
+    "embedding": "/v1/embeddings",
+    "image_generation": "/v1/images/generations",
+    "audio_speech": "/v1/audio/speech",
+    "audio_transcription": "/v1/audio/transcriptions",
+    "responses": "/v1/responses",
+}
+
+
+def _norm(s: Optional[str]) -> str:
+    return (s or "").strip().lower()
+
+
+_SPLIT_RE = re.compile(r"[,\s]+")
+
+# 遇到这些 HTTP 状态码时，不再重试（例如鉴权失败 / 资源不存在 / 被限流）
+_NON_RETRYABLE_HTTP_STATUS_CODES: Set[int] = {403, 404, 429}
+
+
+def _safe_int(value: Any) -> Optional[int]:
+    try:
+        return int(value)
+    except Exception:
+        return None
+
+
+def _extract_http_status_code_from_message(message: Optional[str]) -> Optional[int]:
+    if not message:
+        return None
+
+    s = str(message)
+
+    # 直接匹配常见的 HTTP code 文本（最可靠）
+    m = re.search(r"\b(403|404|429)\b", s)
+    if m:
+        try:
+            return int(m.group(1))
+        except Exception:
+            return None
+
+    lower = s.lower()
+
+    # LiteLLM health_check 内部会把异常吞掉并转成字符串返回，很多时候字符串里没有直接的数字状态码。
+    # 这时只能从异常类型名中推断。
+    if re.search(r"\bpermissiondeniederror\b", lower):
+        return 403
+    if re.search(r"\bnotfounderror\b", lower):
+        return 404
+    if re.search(r"\bratelimiterror\b", lower):
+        return 429
+
+    # 某些 SDK 不直接输出 code，只输出语义化描述
+    if "too many requests" in lower or "rate limit" in lower or "ratelimit" in lower:
+        return 429
+    if "forbidden" in lower:
+        return 403
+    if "not found" in lower:
+        return 404
+
+    return None
+
+
+def _extract_http_status_code(err: Any) -> Optional[int]:
+    """尽力从异常/响应对象/错误 payload 中提取 HTTP status code。"""
+
+    if err is None:
+        return None
+
+    # 直接是 int
+    if isinstance(err, int):
+        if 100 <= err <= 599:
+            return err
+        return None
+
+    # dict payload（例如 {'status_code': 429, ...}）
+    if isinstance(err, dict):
+        for k in ("status_code", "status", "http_status", "code"):
+            if k in err:
+                code = _safe_int(err.get(k))
+                if code is not None:
+                    return code
+
+    # 常见异常属性
+    for attr in ("status_code", "status", "http_status", "code"):
+        if hasattr(err, attr):
+            code = _safe_int(getattr(err, attr))
+            if code is not None:
+                return code
+
+    # httpx / requests 风格：exc.response.status_code
+    resp = getattr(err, "response", None)
+    if resp is not None and resp is not err:
+        for attr in ("status_code", "status"):
+            if hasattr(resp, attr):
+                code = _safe_int(getattr(resp, attr))
+                if code is not None:
+                    return code
+
+    # 最后兜底：从字符串里解析
+    return _extract_http_status_code_from_message(str(err))
+
+
+def _is_non_retryable_http_error(err: Any) -> bool:
+    code = _extract_http_status_code(err)
+    return code in _NON_RETRYABLE_HTTP_STATUS_CODES
+
+
+def _parse_multi_value_arg(values: Optional[List[str]]) -> Set[str]:
+    """将 argparse 的可重复参数解析为 set。
+
+    支持：
+    - --only-tags a,b --only-tags c
+    - --only-tags "a b"
+    """
+
+    out: Set[str] = set()
+    if not values:
+        return out
+
+    for raw in values:
+        if raw is None:
+            continue
+        raw = str(raw).strip()
+        if not raw:
+            continue
+        for part in _SPLIT_RE.split(raw):
+            p = _norm(part)
+            if p:
+                out.add(p)
+
+    return out
+
+
+def _get_provider_from_model(model: str) -> str:
+    model = (model or "").strip()
+    if not model:
+        return "unknown"
+    if "/" not in model:
+        return "unknown"
+    return model.split("/", 1)[0]
+
+
+def _get_endpoint_hint(provider: str, mode: str) -> str:
+    """仅用于输出展示的 endpoint hint（不影响实际请求路径）。
+
+    实际请求由 LiteLLM 路由，此处仅用于在 report/console 中给出提示。
+    """
+
+    provider = _norm(provider)
+    mode = _norm(mode)
+
+    # Anthropic chat 使用 Messages API（而非 OpenAI Chat Completions）
+    if provider == "anthropic" and mode == "chat":
+        return "/v1/messages"
+
+    return _MODE_TO_ENDPOINT_HINT.get(mode, "")
+
+
+def _redact_url(url: str) -> str:
+    url = (url or "").strip()
+    if not url:
+        return ""
+
+    try:
+        parts = urlsplit(url)
+        if not parts.scheme:
+            return url
+
+        netloc = parts.netloc
+        if "@" in netloc:
+            userinfo, hostport = netloc.rsplit("@", 1)
+            if ":" in userinfo:
+                user, _ = userinfo.split(":", 1)
+                userinfo = f"{user}:***"
+            else:
+                userinfo = f"{userinfo}:***"
+            netloc = f"{userinfo}@{hostport}"
+
+        # proxy 信息不需要 query/fragment
+        return urlunsplit((parts.scheme, netloc, parts.path, "", ""))
+    except Exception:
+        return url
+
+
+def _utc_now_iso() -> str:
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+
+
+_REDACT_PATTERNS = [
+    # OpenAI-style keys
+    (re.compile(r"\bsk-[A-Za-z0-9]{8,}\b"), "sk-***"),
+    # Generic bearer tokens
+    (
+        re.compile(r"(?i)\b(bearer)\s+([A-Za-z0-9\-\._~\+/]+=*)"),
+        r"\1 ***",
+    ),
+    # api_key= / api-key: patterns
+    (
+        re.compile(r"(?i)\b(api[_-]?key)\s*[:=]\s*([A-Za-z0-9\-_]{4,})"),
+        r"\1=***",
+    ),
+]
+
+
+def _redact_text(text: Optional[str]) -> Optional[str]:
+    if text is None:
+        return None
+
+    s = str(text)
+    for pat, repl in _REDACT_PATTERNS:
+        try:
+            s = pat.sub(repl, s)
+        except Exception:
+            continue
+    return s
+
+
+def _apply_network_settings(http_proxy: Optional[str], no_ssl_verify: bool) -> Dict[str, Any]:
+    """在发起任何网络请求前应用代理/SSL 设置。"""
+
+    applied: Dict[str, Any] = {}
+    if http_proxy:
+        proxy = str(http_proxy).strip()
+        if proxy:
+            os.environ["HTTP_PROXY"] = proxy
+            os.environ["HTTPS_PROXY"] = proxy
+            os.environ["http_proxy"] = proxy
+            os.environ["https_proxy"] = proxy
+            os.environ["AIOHTTP_TRUST_ENV"] = "1"
+            applied["http_proxy"] = _redact_url(proxy)
+            applied["aiohttp_trust_env"] = True
+
+    if no_ssl_verify:
+        os.environ["SSL_VERIFY"] = "false"
+        applied["ssl_verify"] = False
+        try:
+            litellm.ssl_verify = False  # type: ignore[attr-defined]
+        except Exception:
+            pass
+
+    return applied
+
+
+def _write_json_report(output_path: str, report: Dict[str, Any]) -> None:
+    output_path = (output_path or "").strip()
+    if not output_path:
+        return
+
+    payload = json.dumps(report, ensure_ascii=False, indent=2)
+    if output_path == "-":
+        print(payload)
+        return
+
+    out = Path(output_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(payload + "\n", encoding="utf-8")
+
+
+def _extract_tags(model_config: Dict[str, Any]) -> Set[str]:
+    """从 model_config 中提取 tags（大小写不敏感）。"""
+
+    raw = None
+    litellm_params = model_config.get("litellm_params")
+    if isinstance(litellm_params, dict) and litellm_params.get("tags") is not None:
+        raw = litellm_params.get("tags")
+    elif model_config.get("tags") is not None:
+        raw = model_config.get("tags")
+
+    if raw is None:
+        return set()
+
+    values: List[Any]
+    if isinstance(raw, str):
+        values = [raw]
+    elif isinstance(raw, list):
+        values = raw
+    else:
+        return set()
+
+    out: Set[str] = set()
+    for v in values:
+        t = _norm(str(v))
+        if t:
+            out.add(t)
+    return out
+
+
+def _build_report_item(
+    ,*,
+    model_name: str,
+    model: str,
+    provider: str,
+    mode: str,
+    status: str,
+    latency_ms: float = 0.0,
+    attempts: int = 0,
+    error: Optional[str] = None,
+    endpoint: str = "",
+    tags: Optional[Set[str]] = None,
+    response_preview: Optional[str] = None,
+) -> Dict[str, Any]:
+    item: Dict[str, Any] = {
+        "model_name": model_name,
+        "model": model,
+        "provider": provider,
+        "mode": mode,
+        "status": status,
+        "latency_ms": float(latency_ms or 0.0),
+        "attempts": int(attempts or 0),
+        "error": _redact_text(error) if error else None,
+    }
+
+    if endpoint:
+        item["endpoint"] = endpoint
+    if tags is not None:
+        item["tags"] = sorted(tags)
+    if response_preview is not None:
+        item["response_preview"] = _redact_text(response_preview)
+    return item
+
+
+def _short_preview(obj: Any, limit: int = 120) -> Optional[str]:
+    if obj is None:
+        return None
+    try:
+        text = str(obj)
+    except Exception:
+        return None
+
+    text = text.replace("\r", " ").replace("\n", " ")
+    if len(text) <= limit:
+        return text
+    return text[:limit] + "..."
+
+
+class ModelHealthChecker:
+    """模型测活检查器"""
+
+    def __init__(
+        self,
+        config_file: str,
+        timeout: float = 10.0,
+        max_retries: int = 2,
+        concurrency: int = 20,
+    ):
+        self.config_file = config_file
+        self.timeout = float(timeout)
+        self.max_retries = max(0, int(max_retries))
+        self.concurrency = max(1, int(concurrency))
+        self._sem = asyncio.Semaphore(self.concurrency)
+        self.results: List[Dict[str, Any]] = []
+
+        self._config_cache: Optional[Dict[str, Any]] = None
+        self._providers_initialized: bool = False
+        self.custom_providers_loaded: List[Dict[str, str]] = []
+        self.custom_provider_init_errors: List[Dict[str, str]] = []
+
+    def load_config(self) -> Dict[str, Any]:
+        """加载 YAML/JSON 配置文件（YAML 是 JSON 的超集）"""
+        if self._config_cache is not None:
+            return self._config_cache
+
+        with open(self.config_file, "r", encoding="utf-8") as f:
+            config = yaml.safe_load(f)
+
+        if config is None:
+            self._config_cache = {}
+            return self._config_cache
+        if not isinstance(config, dict):
+            raise ValueError("配置文件内容必须是 dict/object")
+
+        self._config_cache = config
+        return config
+
+    def initialize_litellm_settings(self) -> None:
+        """按 proxy 的方式初始化 litellm_settings（尤其是 custom_provider_map）"""
+        if self._providers_initialized:
+            return
+
+        self.custom_providers_loaded = []
+        self.custom_provider_init_errors = []
+
+        config = self.load_config()
+        litellm_settings = config.get("litellm_settings") or {}
+        if not isinstance(litellm_settings, dict):
+            self._providers_initialized = True
+            return
+
+        # 同步部分 litellm_settings（避免测活参数被 provider 拒绝）
+        for k in (
+            "drop_params",
+            "check_provider_endpoint",
+            "redact_user_api_key_info",
+        ):
+            if k in litellm_settings:
+                try:
+                    setattr(litellm, k, litellm_settings[k])
+                except Exception:
+                    pass
+
+        if "num_retries" in litellm_settings:
+            try:
+                litellm.num_retries = int(litellm_settings["num_retries"])
+            except Exception:
+                pass
+
+        custom_provider_map = litellm_settings.get("custom_provider_map") or []
+        if custom_provider_map is None:
+            custom_provider_map = []
+
+        if not isinstance(custom_provider_map, list):
+            self.custom_provider_init_errors.append(
+                {
+                    "provider": "",
+                    "custom_handler": "",
+                    "error": "litellm_settings.custom_provider_map 必须是 list",
+                }
+            )
+            self._providers_initialized = True
+            return
+
+        if not custom_provider_map:
+            self._providers_initialized = True
+            return
+
+        # 复用 proxy 的加载方式：支持按 config 文件所在目录解析相对路径
+        try:
+            from litellm.proxy.types_utils.utils import get_instance_fn
+            from litellm.utils import custom_llm_setup
+        except Exception as e:
+            self.custom_provider_init_errors.append(
+                {
+                    "provider": "",
+                    "custom_handler": "",
+                    "error": f"导入 litellm proxy 工具失败: {e}",
+                }
+            )
+            self._providers_initialized = True
+            return
+
+        config_file_path = str(Path(self.config_file).resolve())
+
+        loaded_instances: List[Dict[str, Any]] = []
+        for item in custom_provider_map:
+            if not isinstance(item, dict):
+                continue
+
+            provider = item.get("provider")
+            custom_handler = item.get("custom_handler")
+            if not provider or not custom_handler:
+                self.custom_provider_init_errors.append(
+                    {
+                        "provider": str(provider or ""),
+                        "custom_handler": str(custom_handler or ""),
+                        "error": "custom_provider_map item 缺少 provider/custom_handler",
+                    }
+                )
+                continue
+
+            try:
+                instance = get_instance_fn(
+                    value=str(custom_handler),
+                    config_file_path=config_file_path,
+                )
+                loaded_instances.append(
+                    {
+                        "provider": str(provider),
+                        "custom_handler": instance,
+                    }
+                )
+                self.custom_providers_loaded.append(
+                    {
+                        "provider": str(provider),
+                        "custom_handler": str(custom_handler),
+                    }
+                )
+            except Exception as e:
+                self.custom_provider_init_errors.append(
+                    {
+                        "provider": str(provider),
+                        "custom_handler": str(custom_handler),
+                        "error": str(e),
+                    }
+                )
+
+        if loaded_instances:
+            litellm.custom_provider_map = loaded_instances
+            try:
+                custom_llm_setup()
+            except Exception as e:
+                self.custom_provider_init_errors.append(
+                    {
+                        "provider": "",
+                        "custom_handler": "",
+                        "error": f"custom_llm_setup() 失败: {e}",
+                    }
+                )
+
+        self._providers_initialized = True
+
+    def print_provider_init_summary(self) -> None:
+        if not self.custom_providers_loaded and not self.custom_provider_init_errors:
+            return
+
+        print("-" * 80)
+        print("自定义 provider 初始化（custom_provider_map）:")
+
+        for item in self.custom_providers_loaded:
+            print(f"  ✅ {item.get('provider')}: {item.get('custom_handler')}")
+
+        for item in self.custom_provider_init_errors:
+            provider = item.get("provider") or "unknown"
+            handler = item.get("custom_handler") or ""
+            err = item.get("error") or "unknown error"
+            print(f"  ❌ {provider}: {handler} -> {err}", file=sys.stderr)
+
+        print("-" * 80)
+
+    def get_model_list(self) -> List[Dict[str, Any]]:
+        """从配置中获取 model_list"""
+        config = self.load_config()
+        model_list = config.get("model_list", [])
+        if model_list is None:
+            return []
+        if not isinstance(model_list, list):
+            raise ValueError("配置文件中的 model_list 必须是 list/数组")
+        return [m for m in model_list if isinstance(m, dict)]
+
+    @staticmethod
+    def _get_model_info(model_config: Dict[str, Any]) -> Dict[str, Any]:
+        top = model_config.get("model_info")
+        if isinstance(top, dict):
+            return top
+
+        litellm_params = model_config.get("litellm_params")
+        if (
+            isinstance(litellm_params, dict)
+            and isinstance(litellm_params.get("model_info"), dict)
+        ):
+            return litellm_params["model_info"]
+
+        return {}
+
+    @staticmethod
+    def _sanitize_litellm_params(params: Dict[str, Any]) -> Dict[str, Any]:
+        return {k: v for k, v in params.items() if k not in _NON_REQUEST_LITELLM_PARAMS}
+
+    def determine_mode_for_health_check(
+        self, model_config: Dict[str, Any]
+    ) -> Optional[str]:
+        """判定 health check 的 mode（返回 None 表示交给 LiteLLM 推断）"""
+        model_info = self._get_model_info(model_config)
+        mode = _norm(model_info.get("mode"))
+        if not mode:
+            return None
+
+        # 兼容旧脚本里对 Anthropic Messages API 的派生 mode
+        if mode == "anthropic_messages":
+            return "chat"
+
+        return mode
+
+    def _infer_mode_from_model_cost(self, model: str) -> Optional[str]:
+        """尝试从 litellm.model_cost 推断 mode（用于决定注入哪些默认参数）"""
+        candidates = [model]
+        if "/" in model:
+            candidates.append(model.split("/", 1)[1])
+
+        for m in candidates:
+            try:
+                info = litellm.model_cost.get(m)
+            except Exception:
+                info = None
+
+            if isinstance(info, dict) and info.get("mode"):
+                return str(info.get("mode"))
+
+        return None
+
+    def _build_health_check_call_args(
+        self,
+        base_params: Dict[str, Any],
+        effective_mode: str,
+    ) -> Tuple[Dict[str, Any], str, List[str]]:
+        """为 litellm.ahealth_check() 组装 model_params / prompt / input"""
+        model = base_params.get("model")
+        if not model:
+            raise ValueError("litellm_params.model 未设置")
+
+        # ahealth_check 会写入 tracking 字段并修改 model_params，因此每次都传入新 dict
+        model_params: Dict[str, Any] = dict(base_params)
+
+        # SDK timeout 提示（外层仍用 asyncio.wait_for 做硬超时）
+        model_params.setdefault("timeout", self.timeout)
+
+        # 禁用 LiteLLM/OpenAI SDK 内部重试：我们自己在外层实现重试策略。
+        # 否则遇到 429 时，单次 ahealth_check 内部可能也会发起多次请求，看起来就像“还在重试”。
+        model_params.setdefault("max_retries", 0)
+        model_params.setdefault("num_retries", 0)
+
+        # chat 模式需要 messages；对其它模式无害（ahealth_check 内部会 filter 掉）
+        model_params.setdefault("messages", [{"role": "user", "content": "Hi"}])
+
+        # NOTE: 使用 10 tokens 作为健康检查最小输出，避免部分模型对 max_tokens=1 报错
+        if effective_mode in {"chat", "completion"}:
+            model_params.setdefault("max_tokens", 10)
+
+        # responses 用 max_output_tokens 控制成本/兼容性
+        if effective_mode == "responses":
+            model_params.setdefault("max_output_tokens", 10)
+
+        # prompt / input 供不同 mode 复用
+        prompt = "test"
+        input_data = ["test"]
+        return model_params, prompt, input_data
+
+    async def check_model_health(self, model_name: str, model_config: Dict[str, Any]) -> Dict[str, Any]:
+        litellm_params = model_config.get("litellm_params") or {}
+        if not isinstance(litellm_params, dict):
+            return {
+                "model_name": model_name,
+                "status": "unhealthy",
+                "mode": "unknown",
+                "endpoint": "",
+                "response": None,
+                "error": "litellm_params 不是 dict",
+                "latency": 0.0,
+                "attempts": 0,
+            }
+
+        base_params = self._sanitize_litellm_params(litellm_params)
+        requested_mode = self.determine_mode_for_health_check(model_config)
+
+        # 展示用 mode：优先配置，其次尝试从 model_cost 推断，否则默认 chat
+        effective_mode = requested_mode or self._infer_mode_from_model_cost(
+            str(base_params.get("model") or "")
+        )
+        effective_mode = effective_mode or "chat"
+
+        # 调用 ahealth_check 时：如果配置没写 mode，就传 None 让 LiteLLM 推断
+        mode_for_call = requested_mode
+
+        model = str(base_params.get("model") or "")
+        provider = _get_provider_from_model(model)
+        endpoint = _get_endpoint_hint(provider, effective_mode)
+
+        last_err: Optional[str] = None
+        last_latency = 0.0
+        attempts_made = 0
+
+        for attempt in range(self.max_retries + 1):
+            attempts_made = attempt + 1
+            start = time.perf_counter()
+            try:
+                model_params, prompt, input_data = self._build_health_check_call_args(
+                    base_params=base_params,
+                    effective_mode=effective_mode,
+                )
+
+                resp = await asyncio.wait_for(
+                    litellm.ahealth_check(
+                        model_params=model_params,
+                        mode=mode_for_call,
+                        prompt=prompt,
+                        input=input_data,
+                    ),
+                    timeout=self.timeout,
+                )
+
+                latency = time.perf_counter() - start
+
+                if isinstance(resp, dict) and resp.get("error") is not None:
+                    last_err = str(resp.get("error") or "unknown error")
+                    raise RuntimeError(last_err)
+
+                return {
+                    "model_name": model_name,
+                    "status": "healthy",
+                    "mode": effective_mode,
+                    "endpoint": endpoint,
+                    "response": _short_preview(resp),
+                    "error": None,
+                    "latency": latency,
+                    "attempts": attempts_made,
+                }
+            except Exception as e:
+                last_latency = time.perf_counter() - start
+
+                if isinstance(e, asyncio.TimeoutError):
+                    last_err = f"timeout after {self.timeout}s"
+                else:
+                    last_err = str(e) or last_err
+
+                # 403/404/429：一般为鉴权失败/资源不存在/被限流，重试没有意义
+                if _is_non_retryable_http_error(e) or _is_non_retryable_http_error(last_err):
+                    break
+
+                if attempt < self.max_retries:
+                    # 简单退避，避免瞬时错误
+                    await asyncio.sleep(0.2 * (attempt + 1))
+                    continue
+                break
+
+        return {
+            "model_name": model_name,
+            "status": "unhealthy",
+            "mode": effective_mode,
+            "endpoint": endpoint,
+            "response": None,
+            "error": (last_err or "unknown error")[:200],
+            "latency": last_latency,
+            "attempts": attempts_made,
+        }
+
+    async def _bounded_check(self, model_name: str, model_config: Dict[str, Any]) -> Dict[str, Any]:
+        async with self._sem:
+            return await self.check_model_health(model_name, model_config)
+
+    async def check_all_models(
+        self,
+        models_to_check: Optional[List[Dict[str, Any]]] = None,
+    ) -> List[Dict[str, Any]]:
+        if models_to_check is None:
+            model_list = self.get_model_list()
+
+            # 过滤掉通配符模型（不直接测试）
+            models_to_check = [
+                m
+                for m in model_list
+                if m.get("model_name") and "*" not in str(m.get("model_name", ""))
+            ]
+
+        print(f"开始检查 {len(models_to_check)} 个模型的健康状态...")
+        print(
+            f"并发: {self.concurrency} | 超时时间: {self.timeout}s | 最大重试: {self.max_retries}"
+        )
+        print("-" * 80)
+
+        tasks = []
+        for model_config in models_to_check:
+            model_name = str(model_config.get("model_name"))
+            tasks.append(self._bounded_check(model_name, model_config))
+
+        raw_results = await asyncio.gather(*tasks)
+
+        # 标准化 results 结构（便于 --output 写入 JSON 供机器消费）
+        normalized: List[Dict[str, Any]] = []
+        for idx, model_config in enumerate(models_to_check):
+            raw = raw_results[idx] if idx < len(raw_results) else {}
+
+            litellm_params = model_config.get("litellm_params") or {}
+            base_params: Dict[str, Any] = {}
+            if isinstance(litellm_params, dict):
+                base_params = self._sanitize_litellm_params(litellm_params)
+            model = str(base_params.get("model") or "")
+            provider = _get_provider_from_model(model)
+
+            mode = str(raw.get("mode") or "") or "unknown"
+            status = str(raw.get("status") or "") or "unhealthy"
+            attempts = int(raw.get("attempts") or 0)
+
+            # latency: 旧实现是秒，统一到 ms
+            latency_ms = 0.0
+            try:
+                latency_ms = float(raw.get("latency") or 0.0) * 1000.0
+            except Exception:
+                latency_ms = 0.0
+
+            endpoint = str(raw.get("endpoint") or "")
+            error = raw.get("error")
+            response_preview = raw.get("response")
+
+            normalized.append(
+                _build_report_item(
+                    model_name=str(model_config.get("model_name") or ""),
+                    model=model,
+                    provider=provider,
+                    mode=mode,
+                    status=status,
+                    latency_ms=latency_ms,
+                    attempts=attempts,
+                    error=str(error) if error else None,
+                    endpoint=endpoint,
+                    tags=_extract_tags(model_config),
+                    response_preview=str(response_preview) if response_preview else None,
+                )
+            )
+
+        self.results = normalized
+        return self.results
+
+    def print_summary(self) -> None:
+        """打印测活结果摘要"""
+        if not self.results:
+            print("没有测活结果")
+            return
+
+        healthy_count = sum(1 for r in self.results if r.get("status") == "healthy")
+        unhealthy_count = sum(1 for r in self.results if r.get("status") == "unhealthy")
+        skipped_count = sum(1 for r in self.results if r.get("status") == "skipped")
+
+        print("\n" + "=" * 80)
+        print(f"测活完成！总计: {len(self.results)} 个模型")
+        print(f"✅ 健康: {healthy_count} 个")
+        print(f"❌ 不健康: {unhealthy_count} 个")
+        if skipped_count:
+            print(f"⏭️  跳过: {skipped_count} 个")
+        print("=" * 80)
+
+        # 详细结果
+        print("\n详细结果:")
+        print("-" * 80)
+
+        for result in self.results:
+            status = str(result.get("status") or "")
+            if status == "healthy":
+                status_icon = "✅"
+            elif status == "unhealthy":
+                status_icon = "❌"
+            else:
+                status_icon = "⏭️"
+
+            model_name = result.get("model_name", "Unknown")
+            provider = result.get("provider", "")
+            mode = result.get("mode", "unknown")
+            endpoint = result.get("endpoint", "")
+            error = _redact_text(str(result.get("error") or ""))
+            attempts = int(result.get("attempts") or 0)
+
+            latency_ms = result.get("latency_ms")
+            if latency_ms is None:
+                # 兼容旧结果结构（latency 秒）
+                try:
+                    latency_ms = float(result.get("latency") or 0.0) * 1000.0
+                except Exception:
+                    latency_ms = 0.0
+
+            try:
+                latency_ms = float(latency_ms or 0.0)
+            except Exception:
+                latency_ms = 0.0
+
+            print(f"{status_icon} {model_name}")
+            if provider:
+                print(f"   provider: {provider}")
+            print(f"   mode: {mode} | endpoint: {endpoint} | attempts: {attempts}")
+            if latency_ms:
+                print(f"   延迟: {latency_ms:.1f}ms")
+            if error:
+                print(f"   错误: {error}")
+            print()
+
+def _build_arg_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="LiteLLM proxy 配置 model_list 测活脚本（基于 ahealth_check）",
+    )
+    parser.add_argument(
+        "config",
+        nargs="?",
+        default="config.json",
+        help="配置文件路径（YAML/JSON，默认: config.json）",
+    )
+    parser.add_argument("--timeout", type=float, default=120.0, help="单次请求超时时间（秒）")
+    parser.add_argument("--max-retries", type=int, default=2, help="失败重试次数（不含首次）")
+    parser.add_argument("--concurrency", type=int, default=20, help="并发数上限")
+
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="仅解析配置 + 初始化 custom_provider_map，不发起任何请求",
+    )
+    parser.add_argument(
+        "--only-tags",
+        action="append",
+        dest="only_tags",
+        help="只检查包含指定 tag 的模型（可重复；支持逗号/空格分隔）",
+    )
+    parser.add_argument(
+        "--exclude-tags",
+        action="append",
+        dest="exclude_tags",
+        help="排除包含指定 tag 的模型（可重复；支持逗号/空格分隔）",
+    )
+    parser.add_argument(
+        "--only-modes",
+        action="append",
+        dest="only_modes",
+        help=(
+            "只检查指定 mode 的模型（可重复；支持逗号/空格分隔）。"
+            f"支持: {', '.join(sorted(_HEALTH_CHECK_SUPPORTED_MODES))}"
+        ),
+    )
+    parser.add_argument(
+        "--output",
+        default="check.json",
+        help="将结果写入 JSON 文件（- 输出到 stdout）",
+    )
+    parser.add_argument(
+        "--http-proxy",
+        dest="http_proxy",
+        default="",
+        help="设置 HTTP(S) 代理，例如 http://127.0.0.1:8888（会写入 HTTP_PROXY/HTTPS_PROXY，并启用 AIOHTTP_TRUST_ENV=1）",
+    )
+    parser.add_argument(
+        "--no-ssl-verify",
+        action="store_true",
+        help="跳过 SSL 证书校验（不安全，仅用于调试/受信任网络）",
+    )
+    return parser
+
+
+async def async_main() -> int:
+    parser = _build_arg_parser()
+    args = parser.parse_args()
+
+    config_file = args.config
+    if not Path(config_file).exists():
+        cwd = Path.cwd()
+        candidates = [
+            p.name
+            for p in cwd.iterdir()
+            if p.is_file() and p.name.lower() in {"config.yaml", "config.yml", "config.json"}
+        ]
+        hint = f"（当前目录可用配置: {', '.join(candidates)}）" if candidates else ""
+        print(f"错误: 配置文件 '{config_file}' 不存在{hint}", file=sys.stderr)
+        return 1
+
+    only_tags = _parse_multi_value_arg(getattr(args, "only_tags", None))
+    exclude_tags = _parse_multi_value_arg(getattr(args, "exclude_tags", None))
+    only_modes = _parse_multi_value_arg(getattr(args, "only_modes", None))
+
+    invalid_modes = sorted(m for m in only_modes if m not in _HEALTH_CHECK_SUPPORTED_MODES)
+    if invalid_modes:
+        print(
+            f"错误: --only-modes 包含不支持的 mode: {', '.join(invalid_modes)}",
+            file=sys.stderr,
+        )
+        print(
+            f"支持的 mode: {', '.join(sorted(_HEALTH_CHECK_SUPPORTED_MODES))}",
+            file=sys.stderr,
+        )
+        return 2
+
+    applied_network = _apply_network_settings(
+        http_proxy=str(getattr(args, "http_proxy", "") or "").strip() or None,
+        no_ssl_verify=bool(getattr(args, "no_ssl_verify", False)),
+    )
+    if applied_network:
+        print("-" * 80)
+        if applied_network.get("http_proxy"):
+            print(f"已启用代理: {applied_network.get('http_proxy')}")
+        if applied_network.get("ssl_verify") is False:
+            print(
+                "警告: 已通过 --no-ssl-verify 关闭 SSL 证书校验，这会降低安全性，请仅用于调试。",
+                file=sys.stderr,
+            )
+        print("-" * 80)
+
+    checker = ModelHealthChecker(
+        config_file=config_file,
+        timeout=args.timeout,
+        max_retries=args.max_retries,
+        concurrency=args.concurrency,
+    )
+
+    checker.initialize_litellm_settings()
+    checker.print_provider_init_summary()
+
+    model_list = checker.get_model_list()
+
+    def _get_model_and_mode(model_config: Dict[str, Any]) -> Tuple[str, str]:
+        litellm_params = model_config.get("litellm_params") or {}
+        base_params: Dict[str, Any] = {}
+        if isinstance(litellm_params, dict):
+            base_params = checker._sanitize_litellm_params(litellm_params)
+        model = str(base_params.get("model") or "")
+        requested_mode = checker.determine_mode_for_health_check(model_config)
+        effective_mode = requested_mode or checker._infer_mode_from_model_cost(model) or "chat"
+        effective_mode = _norm(effective_mode) or "chat"
+        return model, effective_mode
+
+    models_to_check: List[Dict[str, Any]] = []
+    for m in model_list:
+        model_name = m.get("model_name")
+        if not model_name or "*" in str(model_name):
+            continue
+
+        tags = _extract_tags(m)
+        if only_tags and not (tags & only_tags):
+            continue
+        if exclude_tags and (tags & exclude_tags):
+            continue
+
+        _, effective_mode = _get_model_and_mode(m)
+        if only_modes and effective_mode not in only_modes:
+            continue
+
+        models_to_check.append(m)
+
+    if args.dry_run:
+        print(
+            f"dry-run: 配置解析完成，将会检查 {len(models_to_check)} 个模型（已跳过实际请求）"
+        )
+
+        # dry-run 也支持输出，方便在 CI 中查看筛选结果
+        dry_run_items: List[Dict[str, Any]] = []
+        for m in models_to_check:
+            model_name = str(m.get("model_name") or "")
+            model, effective_mode = _get_model_and_mode(m)
+            provider = _get_provider_from_model(model)
+            endpoint = _get_endpoint_hint(provider, effective_mode)
+            dry_run_items.append(
+                _build_report_item(
+                    model_name=model_name,
+                    model=model,
+                    provider=provider,
+                    mode=effective_mode,
+                    status="skipped",
+                    latency_ms=0.0,
+                    attempts=0,
+                    error=None,
+                    endpoint=endpoint,
+                    tags=_extract_tags(m),
+                    response_preview=None,
+                )
+            )
+
+        report: Dict[str, Any] = {
+            "generated_at": _utc_now_iso(),
+            "dry_run": True,
+            "config_file": str(Path(config_file).resolve()),
+            "filters": {
+                "only_tags": sorted(only_tags),
+                "exclude_tags": sorted(exclude_tags),
+                "only_modes": sorted(only_modes),
+            },
+            "network": applied_network,
+            "custom_provider_map": {
+                "loaded": checker.custom_providers_loaded,
+                "errors": checker.custom_provider_init_errors,
+            },
+            "summary": {
+                "total": len(dry_run_items),
+                "healthy": 0,
+                "unhealthy": 0,
+                "skipped": len(dry_run_items),
+            },
+            "results": dry_run_items,
+        }
+        _write_json_report(getattr(args, "output", "") or "", report)
+        return 0
+
+    results = await checker.check_all_models(models_to_check=models_to_check)
+    checker.print_summary()
+
+    report = {
+        "generated_at": _utc_now_iso(),
+        "dry_run": False,
+        "config_file": str(Path(config_file).resolve()),
+        "filters": {
+            "only_tags": sorted(only_tags),
+            "exclude_tags": sorted(exclude_tags),
+            "only_modes": sorted(only_modes),
+        },
+        "network": applied_network,
+        "custom_provider_map": {
+            "loaded": checker.custom_providers_loaded,
+            "errors": checker.custom_provider_init_errors,
+        },
+        "summary": {
+            "total": len(results),
+            "healthy": sum(1 for r in results if r.get("status") == "healthy"),
+            "unhealthy": sum(1 for r in results if r.get("status") == "unhealthy"),
+            "skipped": 0,
+        },
+        "results": results,
+    }
+    _write_json_report(getattr(args, "output", "") or "", report)
+    return 0
+
+
+def main() -> None:
+    raise SystemExit(asyncio.run(async_main()))
+
+
+if __name__ == "__main__":
+    main()
+#+end_src
+
 * knock knock
 #+begin_src elisp
 (let ((urls (with-temp-buffer
