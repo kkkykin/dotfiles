@@ -178,7 +178,7 @@
                              (callbacks . ["pre_call.header_forward"])))
          (general-settings `((forward_client_headers_to_llm_api . :false)
                              (disable_master_key_return . t)
-                             (background_health_checks . t)
+                             (background_health_checks . :false)
                              (health_check_interval . ,(* 60 30))
                              (allow_requests_on_db_unavailable . t)))
          (router-settings '((allowed_fails . 3)
