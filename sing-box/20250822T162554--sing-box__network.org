@@ -51,6 +51,7 @@
        (main-file (expand-file-name "500-main.json" client-dir))
        (tun-file (expand-file-name "500-tun.json" client-dir))
        (rule-sets-dir (expand-file-name "rule-sets/" zr-org-tangle-default-dir))
+       (cf-ips (split-string (zr-org-babel-execute-named-src-block "dns-query") "\n" t))
        (cf-4 "104.19.148.8")
        (cf-6 "2606:4700:e:5b:b68a:ec78:f652:5e89")
        (client-proxy-users '("download"
@@ -866,31 +867,11 @@ SEP defaults to \"/\"."
 #+name: server-config
 #+begin_src json :tangle (zr-org-by-tangle-dir "500-main.json") :mkdirp t
 {
-  "dns": {
-    "final": "cf-dot",
-    "servers": [
-      {
-        "accept_default_resolvers": false,
-        "endpoint": "s[tailscale]",
-        "tag": "tailscale-dns",
-        "type": "tailscale"
-      },
-      {
-        "server": "1.1.1.1",
-        "tag": "cf-dot",
-        "type": "tls"
-      }
-    ],
-    "strategy": "prefer_ipv6"
-  },
   "log": {
     "level": "info"
   },
   "route": {
     "auto_detect_interface": true,
-    "default_domain_resolver": {
-      "server": "cf-dot"
-    },
     "final": "direct",
     "rule_set": [
       {
@@ -899,19 +880,54 @@ SEP defaults to \"/\"."
         "type": "remote",
         "url": "https://github.com/SagerNet/sing-geoip/raw/refs/heads/rule-set/geoip-cn.srs"
       }
-    ],
-    "rules": [
-      {
-        "action": "sniff",
-        "sniffer": "dns"
-      },
-      {
-        "action": "hijack-dns",
-        "protocol": "dns"
-      }
     ]
   }
 }
+#+end_src
+
+***** dns
+:PROPERTIES:
+:CUSTOM_ID: 6e7026d8-9395-4dd9-9a60-b3b9a3edc5d1
+:END:
+#+begin_src json :tangle (zr-org-by-tangle-dir "500-dns.json") :mkdirp t
+<<gen-server-dns()>>
+#+end_src
+
+#+name: gen-server-dns
+#+begin_src elisp
+(let* ((cf-dns-tag "cf-dot")
+       (hosts-tag "local-hosts")
+       (mydomain (auth-source-pick-first-password :host "mydomain" :user "main"))
+       (server-hosts-map (gethash "server-hosts-map" box-secrets))
+       (dns-servers `(((accept_default_resolvers . :false)
+                       (endpoint . "s[tailscale]")
+                       (tag . "tailscale-dns")
+                       (type . "tailscale"))
+                      ((server . "1.1.1.1")
+                       (tag . ,cf-dns-tag)
+                       (type . "tls"))
+                      ((type . "hosts")
+                       (tag . ,hosts-tag)
+                       (predefined . ,server-hosts-map))))
+       (dns-rules `(((domain . ,(vconcat (hash-table-keys server-hosts-map)))
+                     (server . ,hosts-tag))
+                    ((domain_suffix . ,(concat "." mydomain))
+                     (action . "predefined")
+                     (answer . ,(cl-map 'vector (lambda (s) (format "*.%s. IN %s" mydomain s)) cf-ips)))
+                    ((network . "tcp")
+                     (server . ,cf-dns-tag)
+                     (client_subnet . "114.114.114.114/24")))))
+  (json-serialize
+   `((dns . ((final . ,cf-dns-tag)
+             (strategy . "prefer_ipv6")
+             (servers . ,(vconcat dns-servers))
+             (rules . ,(vconcat dns-rules))))
+     (route . ((default_domain_resolver . ,cf-dns-tag)
+               (rules
+                . [((action . "sniff")
+                    (sniffer . "dns"))
+                   ((action . "hijack-dns")
+                    (protocol . "dns"))]))))))
 #+end_src
 
 ***** server0
@@ -1431,6 +1447,7 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
                        ".weyolo.com"]))
                   ((process_name
                     . ["cfst"
+                       "mcis"
                        "cloudflared"]))))
        (local-file "_direct.eld")
        (local (and (file-exists-p local-file)
@@ -1667,4 +1684,79 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
    `((version . 3)
      (rules . ,(vconcat local default)))))
 #+end_src
+* dns
+#+begin_src python :shebang "#!/usr/bin/env -S uv run -qw dnspython"
+# /// script
+# dependencies = [
+#   "dnspython",
+# ]
+# [[tool.uv.index]]
+# url = "https://mirrors.cloud.tencent.com/pypi/simple/"
+# ///
+#+end_src
 
+#+name: dns-query
+#+header: :results output
+#+header: :var cf_domain="youxuan.cf.090227.xyz"
+#+header: :python "uv run -qw dnspython python"
+#+begin_src python
+import argparse
+import sys
+
+try:
+    import dns.resolver
+except ImportError:
+    print("错误: 缺少 'dnspython' 库。")
+    print("请运行以下命令安装: pip install dnspython")
+    sys.exit(1)
+
+def query_dns(domain, record_type):
+    """
+    查询指定域名的 DNS 记录
+    """
+    try:
+        # 使用默认系统 DNS 进行查询
+        resolver = dns.resolver.Resolver()
+        # 可选：设置超时时间
+        resolver.timeout = 5
+        resolver.lifetime = 5
+        
+        answers = resolver.resolve(domain, record_type)
+        
+        for rdata in answers:
+            print(f"{record_type} {rdata}")
+            
+    except dns.resolver.NoAnswer:
+        print(f"[-] {record_type} 记录: 服务器返回空响应 (无记录)")
+    except dns.resolver.NXDOMAIN:
+        print(f"[-] 错误: 域名 '{domain}' 不存在 (NXDOMAIN)")
+        return False # 域名不存在，停止后续查询
+    except dns.resolver.NoNameservers:
+        print(f"[-] {record_type} 记录: 所有名称服务器都无响应")
+    except Exception as e:
+        print(f"[-] 查询 {record_type} 时发生错误: {e}")
+        
+    return True
+
+def main():
+    parser = argparse.ArgumentParser(description="Python DNS 记录查询工具")
+    parser.add_argument("domain", help="要查询的域名 (例如: google.com)", nargs='?', default=cf_domain)
+    parser.add_argument("-t", "--type", help="指定的记录类型 (如 A, MX, NS, TXT)。如果不指定，则查询常用记录。", default=None)
+    
+    args = parser.parse_args()
+    
+    if args.type:
+        # 如果指定了类型，只查询该类型（转为大写）
+        query_dns(args.domain, args.type.upper())
+    else:
+        # 默认查询列表
+        default_types = ['A', 'AAAA']
+        
+        for r_type in default_types:
+            # 如果查询过程中发现域名不存在（NXDOMAIN），则中断循环
+            if not query_dns(args.domain, r_type):
+                break
+
+if __name__ == "__main__":
+    main()
+#+end_src

@@ -57,6 +57,12 @@
 			}
 		]
 	},
+	"server-hosts-map": {
+		"singt.kkky.eu.org": [
+			"ENC[AES256_GCM,data:ELnvOIjEyDadz6wI+w==,iv:5tKEw/9V+mg4XcekUNB5qjNvTtVwLaKUBBNPX2BGsto=,tag:dpbytH5S12I54OBgVMscvw==,type:str]",
+			"ENC[AES256_GCM,data:LIXWCjCSjGchWrsVX17qoH7YaJiYsIUcjVkrwP5k3ioIK34E,iv:b0ueKKtKtKe/MEp6FNtF9nDE7k+Yix/JpTmqs9ladoI=,tag:h5XaGDCVYtzIVipYyNQVeg==,type:str]"
+		]
+	},
 	"wg": {
 		"flip4": {
 			"addr": "ENC[AES256_GCM,data:EtvDwvyrvwF/Jw==,iv:oR3noQYPR6dBy2aACWfT/O4UoCwDu6WmklKYAHr3YIY=,tag:LCil2tc2J3cIkXBe2EFrwg==,type:str]",
@@ -211,8 +217,8 @@
 		}
 	},
 	"sops": {
-		"lastmodified": "2026-03-06T01:54:55Z",
-		"mac": "ENC[AES256_GCM,data:QIhMFormh85/RI8rukfXd0v217ul3KL+vs34c8eb5RW/VDFL/iNBIU9UWhBa9BU4mqaX0p62imJn368iRyiHNeQD6c56vsVcndMCImT/Qwr6AiLank3Y62MgPC3sVKK9dq0qFe3kQ1D19vPQvEd2Q0pwGCzehFPLghUymE5lp2I=,iv:Y6beRKVP2nouwDFlKjW2uS+yx99p04ErQVZirQX7xIg=,tag:3iu/HCrRECQwzuVAIrVcwA==,type:str]",
+		"lastmodified": "2026-03-15T16:26:10Z",
+		"mac": "ENC[AES256_GCM,data:ku2CrzmdJn1I631uzHGm/GlB4XqHS97nRmUYgmBu7PRAykmPHLEP3XHzYNPTSzAcy3zhXSrDUDC3prFdugjhAut9/lpwlGAcfNOG1A7mwYIhcXUjo3/jwSilAffez51dRmOM4eTq35HJvLGt4kO0X9CT0C2afrPFQ2A2h4cBwbM=,iv:c8Pu1mC3qRqV4zm3Q8pAt17q6u1lN0SPKgJGPFgz+lI=,tag:4jHOU9Q8Lt4DL8wuRMnzeQ==,type:str]",
 		"pgp": [
 			{
 				"created_at": "2026-01-15T00:51:44Z",
