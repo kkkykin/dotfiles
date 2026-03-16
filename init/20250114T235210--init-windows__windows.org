@@ -80,6 +80,7 @@ if errorlevel 1 (
 #+begin_src bat :var initd=(expand-file-name "../../.emacs.d") profileel=(zr-org-by-tangle-dir "profile.el")
 cd %USERPROFILE%
 del "%APPDATA%\.emacs.d\server\server"
+set "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--proxy-server=%local_proxy%"
 start /b emacs.exe --daemon "--init-directory=%initd%" -l "%profileel%" -l "org-protocol"
 #+end_src
 
@@ -105,7 +106,7 @@ start /b gpgconf.exe --launch gpg-agent
 #+name: run_aria2c
 #+begin_src bat :var dir=(expand-file-name "../aria2/_tangle")
 <<check-prog(program="aria2c")>>
-all_proxy=http://127.0.0.1:10807
+set "all_proxy=http://%local_proxy%"
 start /b /d "%dir%" /abovenormal aria2c.exe --conf-path aria2.conf
 #+end_src
 
@@ -176,6 +177,7 @@ start /b /abovenormal /d "%trojan-dir%" trojan-go.exe -config "%config%"
 :CUSTOM_ID: 9376588a-03e6-48d7-b125-fe4025b5d1f5
 :END:
 #+name: profile_main
+#+header: :var local_proxy=(let ((proxy (gethash "proxy" (zr-sops-parse-json "../global.json")))) (format "%s:%d" (gethash "host" proxy) (gethash "port" proxy)))
 #+begin_src bat :prologue (format ":%s\nSETLOCAL" (org-element-property :name (org-element-at-point-no-context))) :epilogue :var git_pull_dir_1=(expand-file-name "../../.emacs.d") git_pull_dir_2=(expand-file-name "../../.config")
 set "arg=%1"
 
@@ -478,6 +480,9 @@ reg add HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\OOBE /v BypassNRO /t REG_
 #+end_src
 
 ** Debug-Firewall
+:PROPERTIES:
+:CUSTOM_ID: 7caa8cb2-cf9f-4e96-90a7-fa3a66ec04a0
+:END:
 https://superuser.com/a/1141671
 #+begin_src powershell :tangle (zr-org-by-tangle-dir "debug-firewall.ps1")
 #Requires -RunAsAdministrator
