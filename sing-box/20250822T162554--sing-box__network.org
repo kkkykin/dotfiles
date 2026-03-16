@@ -170,10 +170,7 @@
       (when-let* ((ip (extract-ip (format fmt 6))))
         (setq cf-6 ip))))
 
-  (let* ((dns-remote-server (string-trim (or (org-file-contents "_dns-remote-server" t t)
-                                             "127.0.0.1")))
-         (dns-remote-ipv6-p (string-match-p ":" dns-remote-server))
-         (coding-system-for-write 'utf-8))
+  (let* ((coding-system-for-write 'utf-8))
     (org-babel-tangle))
 
   (dolist (f (directory-files "." t "^_.+\\.json$" t))
@@ -235,7 +232,6 @@
 #+header: :var cache_path=(expand-file-name "cache.db" zr-org-tangle-default-dir)
 #+header: :var jsdelivr="https://fastly.jsdelivr.net"
 #+header: :var dns_default="ld-neo"
-#+header: :var dns_remote_answer=(format "localhost. IN %s %s" (if dns-remote-ipv6-p "AAAA" "A") dns-remote-server)
 #+header: :var clash_secret=(substring (json-serialize (auth-source-pick-first-password :host "clash" :user "secret")) 1 -1)
 #+name: client-config
 #+begin_src json :tangle (zr-org-by-tangle-dir "_500-main.json") :mkdirp t
@@ -251,15 +247,6 @@
         "ip_accept_any": true,
         "rcode": "NOERROR",
         "rule_set": "dns-local-rules"
-      },
-      {
-        "action": "predefined",
-        "answer": [
-          "$dns_remote_answer"
-        ],
-        "ip_accept_any": true,
-        "rcode": "NOERROR",
-        "rule_set": "dns-remote-rules"
       },
       {
         "ip_accept_any": true,
@@ -1440,9 +1427,7 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
 
 #+name: gen-direct-rule-set
 #+begin_src elisp
-(let* ((default `(((ip_cidr
-                    . ,(vector (format "%s/%s" dns-remote-server (if dns-remote-ipv6-p "128" "32")))))
-                  ((domain_suffix
+(let* ((default `(((domain_suffix
                     . [".steamcontent.com"
                        ".weyolo.com"]))
                   ((process_name
