@@ -152,23 +152,10 @@
          (json-end-of-file (message "Sub: %s json not valid." name)))))
    clash-subscribes)
 
-  (cl-letf
-      (((symbol-function 'extract-ip)
-        (lambda (dir)
-          (mkdir dir t)
-          (when-let* ((file (car (last (directory-files dir t "^[^.]+\\.csv$")))))
-            (with-temp-buffer
-              (insert-file-contents file)
-              (goto-char (point-min))
-              (forward-line)
-              (let ((pos (point)))
-                (search-forward "," (pos-eol))
-                (buffer-substring pos (1- (point)))))))))
-    (let ((fmt "../cloudflarest/_results/cf-%d/"))
-      (when-let* ((ip (extract-ip (format fmt 4))))
-        (setq cf-4 ip))
-      (when-let* ((ip (extract-ip (format fmt 6))))
-        (setq cf-6 ip))))
+  (dolist (ip cf-ips)
+    (pcase (split-string ip)
+      (`("AAAA" ,addr) (setq cf-6 addr))
+      (`("A" ,addr) (setq cf-4 addr))))
 
   (let* ((coding-system-for-write 'utf-8))
     (org-babel-tangle))
@@ -1683,60 +1670,73 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
 #+name: dns-query
 #+header: :results output
 #+header: :var cf_domain="youxuan.cf.090227.xyz"
-#+header: :python "uv run -qw dnspython python"
 #+begin_src python
 import argparse
 import sys
-
-try:
-    import dns.resolver
-except ImportError:
-    print("错误: 缺少 'dnspython' 库。")
-    print("请运行以下命令安装: pip install dnspython")
-    sys.exit(1)
+import socket
 
 def query_dns(domain, record_type):
     """
-    查询指定域名的 DNS 记录
+    查询指定域名的 DNS 记录，使用 socket.getaddrinfo 实现
     """
     try:
-        # 使用默认系统 DNS 进行查询
-        resolver = dns.resolver.Resolver()
-        # 可选：设置超时时间
-        resolver.timeout = 5
-        resolver.lifetime = 5
-        
-        answers = resolver.resolve(domain, record_type)
-        
-        for rdata in answers:
-            print(f"{record_type} {rdata}")
-            
-    except dns.resolver.NoAnswer:
-        print(f"[-] {record_type} 记录: 服务器返回空响应 (无记录)")
-    except dns.resolver.NXDOMAIN:
-        print(f"[-] 错误: 域名 '{domain}' 不存在 (NXDOMAIN)")
-        return False # 域名不存在，停止后续查询
-    except dns.resolver.NoNameservers:
-        print(f"[-] {record_type} 记录: 所有名称服务器都无响应")
+        if record_type == "A":
+            # IPv4 地址查询
+            results = socket.getaddrinfo(domain, None, family=socket.AF_INET)
+            for result in results:
+                addr = result[4][0]
+                print(f"A {addr}")
+            return True
+
+        elif record_type == "AAAA":
+            # IPv6 地址查询
+            results = socket.getaddrinfo(domain, None, family=socket.AF_INET6)
+            for result in results:
+                addr = result[4][0]
+                print(f"AAAA {addr}")
+            return True
+
+        else:
+            print(f"[-] 不支持的记录类型: {record_type} (当前仅支持 A 和 AAAA)")
+            return False
+
+    except socket.gaierror as e:
+        if e.errno == socket.EAI_NONAME:
+            # print(f"[-] 错误: 域名 '{domain}' 不存在 (NXDOMAIN)")
+            return False  # 域名不存在，停止后续查询
+        elif e.errno == socket.EAI_NODATA or e.errno == socket.EAI_NONAME:
+            # print(f"[-] {record_type} 记录: 无响应或无记录")
+            return True
+        else:
+            # print(f"[-] 查询 {record_type} 时发生错误: {e}")
+            return False
     except Exception as e:
-        print(f"[-] 查询 {record_type} 时发生错误: {e}")
-        
-    return True
+        # print(f"[-] 查询 {record_type} 时发生未知错误: {e}")
+        return False
 
 def main():
-    parser = argparse.ArgumentParser(description="Python DNS 记录查询工具")
+    parser = argparse.ArgumentParser(description="Python DNS 记录查询工具 (基于 socket)")
     parser.add_argument("domain", help="要查询的域名 (例如: google.com)", nargs='?', default=cf_domain)
-    parser.add_argument("-t", "--type", help="指定的记录类型 (如 A, MX, NS, TXT)。如果不指定，则查询常用记录。", default=None)
-    
+    parser.add_argument("-t", "--type", help="指定的记录类型 (目前仅支持 A, AAAA)", default=None)
+
     args = parser.parse_args()
-    
+
+    # 检查是否提供了域名
+    if not args.domain:
+        print("错误: 必须提供一个域名进行查询。")
+        parser.print_help()
+        sys.exit(1)
+
     if args.type:
         # 如果指定了类型，只查询该类型（转为大写）
-        query_dns(args.domain, args.type.upper())
+        r_type = args.type.upper()
+        if r_type not in ['A', 'AAAA']:
+            print(f"[-] 不支持的记录类型: {r_type}。当前仅支持 A 和 AAAA。")
+            sys.exit(1)
+        query_dns(args.domain, r_type)
     else:
         # 默认查询列表
         default_types = ['A', 'AAAA']
-        
         for r_type in default_types:
             # 如果查询过程中发现域名不存在（NXDOMAIN），则中断循环
             if not query_dns(args.domain, r_type):
