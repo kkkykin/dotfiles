@@ -836,6 +836,13 @@ SEP defaults to \"/\"."
 #+name: server-config
 #+begin_src json :tangle (zr-org-by-tangle-dir "500-main.json") :mkdirp t
 {
+  "experimental": {
+    "cache_file": {
+      "enabled": true,
+      "rdrc_timeout": "1h",
+      "store_rdrc": true
+    }
+  },
   "log": {
     "level": "info"
   },
@@ -864,7 +871,7 @@ SEP defaults to \"/\"."
 
 #+name: gen-server-dns
 #+begin_src elisp
-(let* ((cf-dns-tag "cf-dot")
+(let* ((gg-dns-tag "gg-dns")
        (hosts-tag "local-hosts")
        (mydomain (auth-source-pick-first-password :host "mydomain" :user "main"))
        (server-hosts-map (gethash "server-hosts-map" box-secrets))
@@ -872,9 +879,9 @@ SEP defaults to \"/\"."
                        (endpoint . "s[tailscale]")
                        (tag . "tailscale-dns")
                        (type . "tailscale"))
-                      ((server . "1.1.1.1")
-                       (tag . ,cf-dns-tag)
-                       (type . "tls"))
+                      ((server . "8.8.8.8")
+                       (tag . ,gg-dns-tag)
+                       (type . "udp"))
                       ((type . "hosts")
                        (tag . ,hosts-tag)
                        (predefined . ,server-hosts-map))))
@@ -884,14 +891,15 @@ SEP defaults to \"/\"."
                      (action . "predefined")
                      (answer . ,(cl-map 'vector (lambda (s) (format "*.%s. IN %s" mydomain s)) cf-ips)))
                     ((network . "tcp")
-                     (server . ,cf-dns-tag)
+                     (server . ,gg-dns-tag)
+                     (rewrite_ttl . 1800)
                      (client_subnet . "114.114.114.114/24")))))
   (json-serialize
-   `((dns . ((final . ,cf-dns-tag)
+   `((dns . ((final . ,gg-dns-tag)
              (strategy . "prefer_ipv6")
              (servers . ,(vconcat dns-servers))
              (rules . ,(vconcat dns-rules))))
-     (route . ((default_domain_resolver . ,cf-dns-tag)
+     (route . ((default_domain_resolver . ,gg-dns-tag)
                (rules
                 . [((action . "sniff")
                     (sniffer . "dns"))
