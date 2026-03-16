@@ -360,11 +360,6 @@
         "type": "local"
       },
       {
-        "path": "$rule_sets_dir/dns-remote.srs",
-        "tag": "dns-remote-rules",
-        "type": "local"
-      },
-      {
         "path": "$rule_sets_dir/proxy.srs",
         "tag": "proxy-rules",
         "type": "local"
@@ -1636,26 +1631,6 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
      (rules . ,(vconcat local default)))))
 #+end_src
 
-*** dns-remote
-:PROPERTIES:
-:CUSTOM_ID: c4683997-5c7f-4181-bed1-743ffc858cb6
-:END:
-#+begin_src json :tangle (zr-org-by-tangle-dir "dns-remote.json") :mkdirp t
-<<gen-dns-remote-rules()>>
-#+end_src
-
-#+name: gen-dns-remote-rules
-#+begin_src elisp
-(let* ((default [((domain_suffix . [".it-just-a-dns-remote-placeholder"]))])
-       (local-file "_dns-remote.eld")
-       (local (and (file-exists-p local-file)
-                   (with-temp-buffer
-                     (insert-file-contents local-file)
-                     (read (current-buffer))))))
-  (json-serialize
-   `((version . 3)
-     (rules . ,(vconcat local default)))))
-#+end_src
 * dns
 #+begin_src python :shebang "#!/usr/bin/env -S uv run -qw dnspython"
 # /// script
