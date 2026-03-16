@@ -1,0 +1,27 @@
+#+title:      crate
+#+date:       [2026-03-16 Mon 13:33]
+#+filetags:   :base:
+#+identifier: 20260316T133308
+* tangle
+#+begin_src elisp
+(let ((cargo-home (expand-file-name ".cargo/" (pcase system-type
+                                               ('windows-nt (getenv "USERPROFILE"))
+                                               (_ "~")))))
+  (mkdir cargo-home t)
+  (dolist (f (org-babel-tangle))
+    (make-symbolic-link f cargo-home t)))
+#+end_src
+* config
+:PROPERTIES:
+:CUSTOM_ID: 6f45e6f9-bbb0-4992-b9f9-f977175a34ed
+:END:
+#+begin_src toml :mkdirp t :tangle (zr-org-by-tangle-dir "config.toml")
+[source.crates-io]
+replace-with = 'ustc'
+
+[source.ustc]
+registry = "sparse+https://mirrors.ustc.edu.cn/crates.io-index/"
+
+[registries.ustc]
+index = "sparse+https://mirrors.ustc.edu.cn/crates.io-index/"
+#+end_src
