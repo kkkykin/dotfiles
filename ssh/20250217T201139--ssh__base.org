@@ -15,10 +15,9 @@
                    ((executable-find "nc")
                     "ProxyCommand nc -X connect -x %s %%h %%p")))
        (sshd-port (plist-get (cdr (plstore-get zr-local-pls "sshd")) :port))
-       (zr-local-pls (plstore-open "../.global.pls"))
-       (main-user (plist-get (cdr (plstore-get zr-local-pls "users")) :main))
+       (zr-local-pls (zr-sops-parse-json "../global.json"))
+       (main-user (gethash "main" (gethash "users" zr-local-pls)))
        (proxy-cmd (if (and proxy proxy-fmt) (format proxy-fmt proxy) "")))
-  (plstore-close zr-local-pls)
   (org-babel-tangle))
 #+end_src
 

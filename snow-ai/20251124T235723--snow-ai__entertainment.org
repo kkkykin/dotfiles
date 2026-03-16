@@ -5,11 +5,10 @@
 
 * tangle
 #+begin_src elisp
-(let* ((zr-local-pls (plstore-open "../.global.pls"))
-       (host (concat "litellm." (plist-get (cdr (plstore-get zr-local-pls "host")) :main)))
+(let* ((zr-local-pls (zr-sops-parse-json "../global.json"))
+       (host (concat "litellm." (auth-source-pick-first-password :host "mydomain" :user "main")))
        (proxy `((enabled . t)
-                (port . ,(plist-get (cdr (plstore-get zr-local-pls "proxy"))
-                                    :port))))
+                (port . ,(gethash "port" (gethash "proxy" zr-local-pls)))))
        (conf-dir (pcase system-type
                    ('windows-nt (substitute-in-file-name "$userprofile/.snow"))
                    (_ (expand-file-name "~/.snow"))))

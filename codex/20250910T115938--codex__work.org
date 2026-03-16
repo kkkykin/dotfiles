@@ -8,8 +8,7 @@
 (let* ((conf-dir (pcase system-type
                    ('windows-nt (substitute-in-file-name "$userprofile/.codex/"))
                    (_ (expand-file-name "~/.codex/"))))
-       (zr-local-pls (plstore-open "../.global.pls"))
-       (host (concat "litellm." (plist-get (cdr (plstore-get zr-local-pls "host")) :main)))
+       (host (concat "litellm." (auth-source-pick-first-password :host "mydomain" :user "main")))
        (key (auth-source-pick-first-password :host host :user "codex")))
   (mkdir conf-dir t)
   (dolist (f (org-babel-tangle))

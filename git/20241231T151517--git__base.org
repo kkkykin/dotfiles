@@ -8,17 +8,16 @@
 (let* ((conf (expand-file-name "~/.gitconfig"))
        (coding-system-for-write 'utf-8-unix)
        (attr-path (expand-file-name "gitattributes" "_tangle"))
-       (zr-local-pls (plstore-open "../.global.pls"))
-       (proxy (cdr (plstore-get zr-local-pls "proxy")))
+       (zr-local-pls (zr-sops-parse-json "../global.json"))
+       (proxy (gethash "proxy" zr-local-pls))
        (proxy-server (format "socks5h://%s:%d"
-                             (plist-get proxy :host)
-                             (plist-get proxy :port))))
+                             (gethash "host" proxy)
+                             (gethash "port" proxy))))
   (org-babel-tangle)
   (when (file-exists-p conf)
     (unless (file-symlink-p conf)
       (rename-file conf (concat conf ".bak"))))
-  (make-symbolic-link (expand-file-name "_tangle/gitconfig") conf t)
-  (plstore-close zr-local-pls))
+  (make-symbolic-link (expand-file-name "_tangle/gitconfig") conf t))
 #+end_src
 
 * config
