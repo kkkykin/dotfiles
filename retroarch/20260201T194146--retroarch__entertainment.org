@@ -86,3 +86,6 @@ video_font_size = "20.000000"
 
 * db
 https://github.com/libretro/libretro-database
+
+* core
+https://buildbot.libretro.com/nightly/
