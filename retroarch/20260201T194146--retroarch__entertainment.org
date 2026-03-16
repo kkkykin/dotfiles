@@ -4,11 +4,10 @@
 #+identifier: 20260201T194146
 * tangle
 #+begin_src elisp
-(let* ((webdav-username "retroarch")
-       (webdav-url (string-trim (or (org-file-contents "_local-openlist-url.txt" t t)
-                                    (format "https://openlist.%s/dav" (auth-source-pick-first-password :host "mydomain" :user "main")))))
-       (url-obj (url-generic-parse-url webdav-url))
-       (webdav-password (auth-source-pick-first-password :host (url-host url-obj) :port (url-port url-obj) :user webdav-username))
+(let* ((webdav-url "https://dav.jianguoyun.com/dav/")
+       (secret (car (auth-source-search :host webdav-url :max 1)))
+       (webdav-username (plist-get secret :user))
+       (webdav-password (auth-info-password secret))
        (zr-org-tangle-default-dir (pcase system-type
                                     ('android "/storage/emulated/0/RetroArch/")
                                     (_ "_tangle")))
