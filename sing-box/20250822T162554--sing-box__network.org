@@ -352,7 +352,7 @@
     "default_domain_resolver": {
       "server": "$dns_default"
     },
-    "final": "direct",
+    "final": "s[direct]",
     "rule_set": [
       {
         "path": "$rule_sets_dir/dns-local.srs",
@@ -410,91 +410,91 @@
         "type": "local"
       },
       {
-        "download_detour": "direct",
+        "download_detour": "s[direct]",
         "tag": "geoip-telegram",
         "type": "remote",
         "url": "$jsdelivr/gh/chocolate4u/Iran-sing-box-rules@rule-set/geoip-telegram.srs"
       },
       {
-        "download_detour": "direct",
+        "download_detour": "s[direct]",
         "tag": "geoip-microsoft",
         "type": "remote",
         "url": "$jsdelivr/gh/chocolate4u/Iran-sing-box-rules@rule-set/geoip-microsoft.srs"
       },
       {
-        "download_detour": "direct",
+        "download_detour": "s[direct]",
         "tag": "geoip-cloudflare",
         "type": "remote",
         "url": "$jsdelivr/gh/chocolate4u/Iran-sing-box-rules@rule-set/geoip-cloudflare.srs"
       },
       {
-        "download_detour": "direct",
+        "download_detour": "s[direct]",
         "tag": "geoip-cn",
         "type": "remote",
         "url": "$jsdelivr/gh/SagerNet/sing-geoip@rule-set/geoip-cn.srs"
       },
       {
-        "download_detour": "direct",
+        "download_detour": "s[direct]",
         "tag": "geosite-cn",
         "type": "remote",
         "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-cn.srs"
       },
       {
-        "download_detour": "direct",
+        "download_detour": "s[direct]",
         "tag": "geosite-geolocation-cn",
         "type": "remote",
         "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-geolocation-cn.srs"
       },
       {
-        "download_detour": "direct",
+        "download_detour": "s[direct]",
         "tag": "geosite-geolocation-!cn",
         "type": "remote",
         "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-geolocation-!cn.srs"
       },
       {
-        "download_detour": "direct",
+        "download_detour": "s[direct]",
         "tag": "geosite-category-porn",
         "type": "remote",
         "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-category-porn.srs"
       },
       {
-        "download_detour": "direct",
+        "download_detour": "s[direct]",
         "tag": "geosite-category-ai-!cn",
         "type": "remote",
         "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-category-ai-!cn.srs"
       },
       {
-        "download_detour": "direct",
+        "download_detour": "s[direct]",
         "tag": "geosite-google",
         "type": "remote",
         "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-google.srs"
       },
       {
-        "download_detour": "direct",
+        "download_detour": "s[direct]",
         "tag": "geosite-microsoft",
         "type": "remote",
         "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-microsoft.srs"
       },
       {
-        "download_detour": "direct",
+        "download_detour": "s[direct]",
         "tag": "geosite-telegram",
         "type": "remote",
         "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-telegram.srs"
       },
       {
-        "download_detour": "direct",
+        "download_detour": "s[direct]",
         "tag": "geosite-talkatone",
         "type": "remote",
         "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-talkatone.srs"
       },
       {
-        "download_detour": "direct",
+        "download_detour": "s[direct]",
         "tag": "geosite-ebay",
         "type": "remote",
         "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-ebay.srs"
       },
       {
-        "download_detour": "direct",
+        "download_detour": "s[direct]",
         "tag": "geosite-adblockplus",
         "type": "remote",
         "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-adblockplus.srs"
@@ -539,7 +539,7 @@
                     ((action . "reject")
                      (rule_set . "block-rules"))
                     ((mode . "or")
-                     (outbound . "direct")
+                     (outbound . "s[direct]")
                      (rules . [((rule_set . ["direct-rules"
                                              "geosite-ebay"]))
                                ((process_name
@@ -549,11 +549,11 @@
                                              "stun"]))])
                      (type . "logical"))
                     ((mode . "and")
-                     (outbound . "direct")
+                     (outbound . "s[direct]")
                      (rules . [((rule_set . "geoip-microsoft"))
                                ((rule_set . "download-rules"))])
                      (type . "logical"))
-                    ((outbound . "direct")
+                    ((outbound . "s[direct]")
                      (rule_set . "tls-record-frag-rules")
                      (tls_record_fragment . t))
                     ((mode . "and")
@@ -585,7 +585,7 @@
                                    (_ (format "s[%s]" u))))))
                 client-proxy-users))
        (post-rules '(((ip_is_private . t)
-                      (outbound . "direct")
+                      (outbound . "s[direct]")
                       (rule_set . ["geosite-geolocation-cn"
                                    "geosite-cn"
                                    "geoip-cn"]))
@@ -596,14 +596,14 @@
                                  (rule_set . "geoip-cn"))])
                       (type . "logical"))))
        (cf-group-rules `(((clash_mode . "cf-direct")
-                          (outbound . "direct")
+                          (outbound . "s[direct]")
                           (rule_set . "geoip-cloudflare"))
                          ((clash_mode . "cf-v4")
-                          (outbound . "direct")
+                          (outbound . "s[direct]")
                           (override_address . ,cf-4)
                           (rule_set . "geoip-cloudflare"))
                          ((clash_mode . "cf-v6")
-                          (outbound . "direct")
+                          (outbound . "s[direct]")
                           (override_address . ,cf-6)
                           (rule_set . "geoip-cloudflare"))))
        (default-mode (cond
@@ -803,7 +803,7 @@ SEP defaults to \"/\"."
         "rules": [
             {
                 "inbound": "tun-in",
-                "outbound": "direct",
+                "outbound": "s[direct]",
                 "process_name": [
                     "sing-box",
                     "ssh"
@@ -846,10 +846,10 @@ SEP defaults to \"/\"."
   },
   "route": {
     "auto_detect_interface": true,
-    "final": "direct",
+    "final": "s[direct]",
     "rule_set": [
       {
-        "download_detour": "direct",
+        "download_detour": "s[direct]",
         "tag": "geoip-cn",
         "type": "remote",
         "url": "https://github.com/SagerNet/sing-geoip/raw/refs/heads/rule-set/geoip-cn.srs"
@@ -931,14 +931,14 @@ SEP defaults to \"/\"."
 
 * bounds
 :PROPERTIES:
-:header-args:elisp: :var vps-secrets=(gethash "vps" box-secrets) wg-clients=(gethash "wg" box-secrets) ts-ep='((tag . "s[tailscale]") (type . "tailscale")) obds='(((tag . "direct") (type . "direct"))) ibds='() ep='() conf='() dns-rules='()
+:header-args:elisp: :var vps-secrets=(gethash "vps" box-secrets) wg-clients=(gethash "wg" box-secrets) ts-ep='((tag . "s[tailscale]") (type . "tailscale")) obds='(((tag . "s[direct]") (type . "direct"))) ibds='() ep='() conf='() dns-rules='()
 :END:
 *** client
 #+name: gen-client-bounds
 #+begin_src elisp
 (let ((tailscale-state-dir (expand-file-name "tailscale_state" zr-org-tangle-default-dir))
-      (download-tags '("s[this-way]" "direct"))
-      (browse-tags '("s[this-way]" "direct" "s[relay]"))
+      (download-tags '("s[this-way]" "s[direct]"))
+      (browse-tags '("s[this-way]" "s[direct]" "s[relay]"))
       relay-tags
       wg-rules-group
       s-tags)
@@ -1116,7 +1116,7 @@ SEP defaults to \"/\"."
          (u-us "u{us}")
          (s-us (cons u-us us-outbounds))
          (u-dns "u[dns]")
-         (s-dns (cons u-dns '("s[this-way]" "s[self]" "direct")))
+         (s-dns (cons u-dns '("s[this-way]" "s[self]" "s[direct]")))
          pre-obds
          s-region
          region-obds)
@@ -1196,7 +1196,7 @@ SEP defaults to \"/\"."
              (default . ,u-dns))
             ((type . "urltest")
              (tag . ,u-dns)
-             (outbounds . ,(vconcat (seq-difference s-dns `(,u-dns "direct"))))))
+             (outbounds . ,(vconcat (seq-difference s-dns `(,u-dns "s[direct]"))))))
           pre-obds)
     (setq obds (append (apply #'append pre-obds) obds)))
 
