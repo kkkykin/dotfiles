@@ -4,10 +4,10 @@
 #+identifier: 20260201T194146
 * tangle
 #+begin_src elisp
-(let* ((webdav-url "https://dav.jianguoyun.com/dav/")
-       (secret (car (auth-source-search :host webdav-url :max 1)))
-       (webdav-username (plist-get secret :user))
-       (webdav-password (auth-info-password secret))
+(let* ((webdav-url (format "https://openlist.%s/dav" (auth-source-pick-first-password :host "mydomain" :user "main")))
+       (webdav-username "retroarch")
+       (webdav-password (auth-source-pick-first-password :host webdav-url :user webdav-username))
+       (local-webdav-url (org-file-contents "_local-openlist-url.txt" t t))
        (zr-org-tangle-default-dir (pcase system-type
                                     ('android "/storage/emulated/0/RetroArch/")
                                     (_ "_tangle")))
@@ -33,7 +33,7 @@
 :PROPERTIES:
 :CUSTOM_ID: ebec603c-eb14-4d8a-9149-00805139a369
 :END:
-#+header: :var webdav-url=(identity webdav-url)
+#+header: :var webdav-url=(string-trim (or local-webdav-url webdav-url))
 #+header: :var webdav-username=(identity webdav-username)
 #+header: :var webdav-password=(identity webdav-password)
 #+begin_src conf-unix :mkdirp t :tangle (identity cfg-path)
@@ -50,6 +50,10 @@ rewind_enable = "true"
 savestate_auto_index = "true"
 savestate_auto_load = "true"
 savestate_auto_save = "true"
+sort_savefiles_by_content_enable = "true"
+sort_savefiles_enable = "false"
+sort_savestates_by_content_enable = "true"
+sort_savestates_enable = "false"
 user_language = "12"
 video_notch_write_over_enable = "true"
 webdav_password = "$webdav-password"
