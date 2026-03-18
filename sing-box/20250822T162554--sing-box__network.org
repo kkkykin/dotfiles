@@ -51,7 +51,8 @@
        (main-file (expand-file-name "500-main.json" client-dir))
        (tun-file (expand-file-name "500-tun.json" client-dir))
        (rule-sets-dir (expand-file-name "rule-sets/" zr-org-tangle-default-dir))
-       (cf-ips (split-string (zr-org-babel-execute-named-src-block "dns-query") "\n" t))
+       (cf-ips (cl-remove-duplicates (split-string (zr-org-babel-execute-named-src-block "dns-query") "\n" t)
+                                     :test #'string=))
        (cf-4 "104.19.148.8")
        (cf-6 "2606:4700:e:5b:b68a:ec78:f652:5e89")
        (client-proxy-users '("download"
