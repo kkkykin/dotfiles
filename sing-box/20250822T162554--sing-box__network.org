@@ -61,6 +61,15 @@
                              "relay"
                              "tailscale"
                              "this-way"))
+       (mydomain (auth-source-pick-first-password :host "mydomain" :user "main"))
+       (hosts-array (gethash "hosts-array" box-secrets))
+       (extra-dns-servers `(((accept_default_resolvers . :false)
+                             (endpoint . "s[tailscale]")
+                             (tag . "tailscale-dns")
+                             (type . "tailscale"))))
+       (pre-dns-rules `(((domain_suffix . ,(concat "." mydomain))
+                         (action . "predefined")
+                         (answer . ,(cl-map 'vector (lambda (s) (format "*.%s. IN %s" mydomain s)) cf-ips)))))
        (delete-by-moving-to-trash))
   (delete-directory client-tmp-dir t)
   (mkdir hosts-dir t)
@@ -157,6 +166,23 @@
       (`("AAAA" ,addr) (setq cf-6 addr))
       (`("A" ,addr) (setq cf-4 addr))))
 
+  (let ((pre-hosts-tag "pre-hosts-dns")
+        hosts
+        domains)
+    (mapc
+     (lambda (host)
+       (let ((domain (gethash "domain" host)))
+         (push (cons (intern domain) (gethash "ips" host)) hosts)
+         (push domain domains)))
+     hosts-array)
+    (push `((type . "hosts")
+            (tag . ,pre-hosts-tag)
+            (predefined . ,hosts))
+          extra-dns-servers)
+    (push `((domain . ,(vconcat domains))
+            (server . ,pre-hosts-tag))
+          pre-dns-rules))
+
   (let* ((coding-system-for-write 'utf-8))
     (org-babel-tangle))
 
@@ -223,112 +249,6 @@
 #+name: client-config
 #+begin_src json :tangle (zr-org-by-tangle-dir "_500-main.json") :mkdirp t
 {
-  "dns": {
-    "final": "$dns_default",
-    "rules": [
-      {
-        "action": "predefined",
-        "answer": [
-          "localhost. IN A 127.0.0.1"
-        ],
-        "ip_accept_any": true,
-        "rcode": "NOERROR",
-        "rule_set": "dns-local-rules"
-      },
-      {
-        "ip_accept_any": true,
-        "rule_set": "tailscale-rules",
-        "server": "tailscale-dns"
-      },
-      {
-        "action": "reject",
-        "rule_set": "geosite-adblockplus"
-      },
-      {
-        "rule_set": "geosite-geolocation-cn",
-        "server": "ali-doh"
-      },
-      {
-        "client_subnet": "114.114.114.114/24",
-        "mode": "and",
-        "rules": [
-          {
-            "invert": true,
-            "rule_set": "geosite-geolocation-!cn"
-          },
-          {
-            "rule_set": "geoip-cn"
-          }
-        ],
-        "server": "$dns_default",
-        "type": "logical"
-      },
-      {
-        "rule_set": "geosite-geolocation-!cn",
-        "server": "$dns_default"
-      }
-    ],
-    "servers": [
-      {
-        "domain_resolver": "ali-quic",
-        "path": "/dohgo",
-        "server": "hk.alpha.abrdns.com",
-        "tag": "ld-tuso-hk",
-        "type": "https"
-      },
-      {
-        "domain_resolver": "ali-quic",
-        "path": "/dnsgo",
-        "server": "runtime.webn.cc",
-        "server_port": 2083,
-        "tag": "ld-tuso-us1",
-        "type": "https"
-      },
-      {
-        "domain_resolver": "ali-quic",
-        "path": "/dohgo",
-        "server": "us.alpha.abrdns.com",
-        "tag": "ld-tuso-us2",
-        "type": "https"
-      },
-      {
-        "domain_resolver": "ali-quic",
-        "path": "/query-dns",
-        "server": "ld.ddd.oaifree.com",
-        "tag": "ld-neo",
-        "type": "https"
-      },
-      {
-        "accept_default_resolvers": false,
-        "endpoint": "s[tailscale]",
-        "tag": "tailscale-dns",
-        "type": "tailscale"
-      },
-      {
-        "detour": "s[dns]",
-        "server": "1.1.1.1",
-        "tag": "cf-dot",
-        "type": "tls"
-      },
-      {
-        "detour": "s[dns]",
-        "server": "8.8.8.8",
-        "tag": "google-doh",
-        "type": "https"
-      },
-      {
-        "server": "223.5.5.5",
-        "tag": "ali-doh",
-        "type": "https"
-      },
-      {
-        "server": "223.5.5.5",
-        "tag": "ali-quic",
-        "type": "quic"
-      }
-    ],
-    "strategy": "prefer_ipv6"
-  },
   "experimental": {
     "cache_file": {
       "enabled": true,
@@ -349,9 +269,6 @@
     "level": "info"
   },
   "route": {
-    "default_domain_resolver": {
-      "server": "$dns_default"
-    },
     "final": "s[direct]",
     "rule_set": [
       {
@@ -505,6 +422,14 @@
 :END:
 #+begin_src json :tangle (zr-org-by-tangle-dir "_500-bounds.json")
 <<gen-client-bounds()>>
+#+end_src
+
+***** dns
+:PROPERTIES:
+:CUSTOM_ID: dede1c28-634e-4d83-ac7c-676a032f3b8c
+:END:
+#+begin_src json :tangle (zr-org-by-tangle-dir "_500-dns.json")
+<<gen-client-dns()>>
 #+end_src
 
 ***** route
@@ -867,44 +792,6 @@ SEP defaults to \"/\"."
 :END:
 #+begin_src json :tangle (zr-org-by-tangle-dir "500-dns.json") :mkdirp t
 <<gen-server-dns()>>
-#+end_src
-
-#+name: gen-server-dns
-#+begin_src elisp
-(let* ((gg-dns-tag "gg-dns")
-       (hosts-tag "local-hosts")
-       (mydomain (auth-source-pick-first-password :host "mydomain" :user "main"))
-       (server-hosts-map (gethash "server-hosts-map" box-secrets))
-       (dns-servers `(((accept_default_resolvers . :false)
-                       (endpoint . "s[tailscale]")
-                       (tag . "tailscale-dns")
-                       (type . "tailscale"))
-                      ((server . "8.8.8.8")
-                       (tag . ,gg-dns-tag)
-                       (type . "udp"))
-                      ((type . "hosts")
-                       (tag . ,hosts-tag)
-                       (predefined . ,server-hosts-map))))
-       (dns-rules `(((domain . ,(vconcat (hash-table-keys server-hosts-map)))
-                     (server . ,hosts-tag))
-                    ((domain_suffix . ,(concat "." mydomain))
-                     (action . "predefined")
-                     (answer . ,(cl-map 'vector (lambda (s) (format "*.%s. IN %s" mydomain s)) cf-ips)))
-                    ((network . "tcp")
-                     (server . ,gg-dns-tag)
-                     (rewrite_ttl . 1800)
-                     (client_subnet . "114.114.114.114/24")))))
-  (json-serialize
-   `((dns . ((final . ,gg-dns-tag)
-             (strategy . "prefer_ipv6")
-             (servers . ,(vconcat dns-servers))
-             (rules . ,(vconcat dns-rules))))
-     (route . ((default_domain_resolver . ,gg-dns-tag)
-               (rules
-                . [((action . "sniff")
-                    (sniffer . "dns"))
-                   ((action . "hijack-dns")
-                    (protocol . "dns"))]))))))
 #+end_src
 
 ***** server0
@@ -1360,6 +1247,184 @@ SEP defaults to \"/\"."
 (when ibds (push `(inbounds . ,(vconcat ibds)) conf))
 (json-serialize conf)
 #+end_src
+
+* dns
+
+*** client
+#+name: gen-client-dns
+#+begin_src elisp
+(let* ((final-dns "ld-neo")
+       (cn-dns "ali-quic")
+       (dns-servers `(((domain_resolver . ,cn-dns)
+                       (path . "/dohgo")
+                       (server . "hk.alpha.abrdns.com")
+                       (tag . "ld-tuso-hk")
+                       (type . "https"))
+                      ((domain_resolver . ,cn-dns)
+                       (path . "/dnsgo")
+                       (server . "runtime.webn.cc")
+                       (server_port . 2083)
+                       (tag . "ld-tuso-us1")
+                       (type . "https"))
+                      ((domain_resolver . ,cn-dns)
+                       (path . "/dohgo")
+                       (server . "us.alpha.abrdns.com")
+                       (tag . "ld-tuso-us2")
+                       (type . "https"))
+                      ((domain_resolver . ,cn-dns)
+                       (path . "/query-dns")
+                       (server . "ld.ddd.oaifree.com")
+                       (tag . "ld-neo")
+                       (type . "https"))
+                      ((detour . "s[dns]")
+                       (server . "1.1.1.1")
+                       (tag . "cf-dot")
+                       (type . "tls"))
+                      ((detour . "s[dns]")
+                       (server . "8.8.8.8")
+                       (tag . "google-doh")
+                       (type . "https"))
+                      ((server . "223.5.5.5")
+                       (tag . "ali-doh")
+                       (type . "https"))
+                      ((server . "223.5.5.5")
+                       (tag . "ali-quic")
+                       (type . "quic"))))
+       (dns-rules `(((action . "predefined")
+                     (answer . "localhost. IN A 127.0.0.1")
+                     (ip_accept_any . t)
+                     (rule_set . "dns-local-rules"))
+                    ((ip_accept_any . t)
+                     (rule_set . "tailscale-rules")
+                     (server . "tailscale-dns"))
+                    ((action . "reject")
+                     (rule_set . "geosite-adblockplus"))
+                    ((rule_set . "geosite-geolocation-cn")
+                     (server . "ali-doh"))
+                    ((client_subnet . "114.114.114.114/24")
+                     (mode . "and")
+                     (rules . [((invert . t)
+                                (rule_set . "geosite-geolocation-!cn"))
+                               ((rule_set . "geoip-cn"))])
+                     (server . ,final-dns)
+                     (type . "logical"))
+                    ((rule_set . "geosite-geolocation-!cn")
+                     (server . ,final-dns)))))
+  (json-serialize
+   `((dns . ((final . ,final-dns)
+             (strategy . ,(if (zr-net-has-public-ipv6-addr-p)
+                              "prefer_ipv6"
+                            "ipv4_only"))
+             (servers . ,(vconcat extra-dns-servers dns-servers))
+             (rules . ,(vconcat pre-dns-rules dns-rules))))
+     (route . ((default_domain_resolver . ,final-dns))))))
+#+end_src
+
+*** server
+#+name: gen-server-dns
+#+begin_src elisp
+(let* ((gg-dns-tag "gg-dns")
+       (dns-servers `(((server . "8.8.8.8")
+                       (tag . ,gg-dns-tag)
+                       (type . "udp"))))
+       (dns-rules `(((network . "tcp")
+                     (server . ,gg-dns-tag)
+                     (rewrite_ttl . 1800)
+                     (client_subnet . "114.114.114.114/24")))))
+  (json-serialize
+   `((dns . ((final . ,gg-dns-tag)
+             (strategy . "prefer_ipv6")
+             (servers . ,(vconcat extra-dns-servers dns-servers))
+             (rules . ,(vconcat pre-dns-rules dns-rules))))
+     (route . ((default_domain_resolver . ,gg-dns-tag)
+               (rules
+                . [((action . "sniff")
+                    (sniffer . "dns"))
+                   ((action . "hijack-dns")
+                    (protocol . "dns"))]))))))
+#+end_src
+
+*** script
+#+name: dns-query
+#+header: :results output
+#+header: :var cf_domain="youxuan.cf.090227.xyz"
+#+begin_src python
+import argparse
+import sys
+import socket
+
+def query_dns(domain, record_type):
+    """
+    查询指定域名的 DNS 记录，使用 socket.getaddrinfo 实现
+    """
+    try:
+        if record_type == "A":
+            # IPv4 地址查询
+            results = socket.getaddrinfo(domain, None, family=socket.AF_INET)
+            for result in results:
+                addr = result[4][0]
+                print(f"A {addr}")
+            return True
+
+        elif record_type == "AAAA":
+            # IPv6 地址查询
+            results = socket.getaddrinfo(domain, None, family=socket.AF_INET6)
+            for result in results:
+                addr = result[4][0]
+                print(f"AAAA {addr}")
+            return True
+
+        else:
+            print(f"[-] 不支持的记录类型: {record_type} (当前仅支持 A 和 AAAA)")
+            return False
+
+    except socket.gaierror as e:
+        if e.errno == socket.EAI_NONAME:
+            # print(f"[-] 错误: 域名 '{domain}' 不存在 (NXDOMAIN)")
+            return False  # 域名不存在，停止后续查询
+        elif e.errno == socket.EAI_NODATA or e.errno == socket.EAI_NONAME:
+            # print(f"[-] {record_type} 记录: 无响应或无记录")
+            return True
+        else:
+            # print(f"[-] 查询 {record_type} 时发生错误: {e}")
+            return False
+    except Exception as e:
+        # print(f"[-] 查询 {record_type} 时发生未知错误: {e}")
+        return False
+
+def main():
+    parser = argparse.ArgumentParser(description="Python DNS 记录查询工具 (基于 socket)")
+    parser.add_argument("domain", help="要查询的域名 (例如: google.com)", nargs='?', default=cf_domain)
+    parser.add_argument("-t", "--type", help="指定的记录类型 (目前仅支持 A, AAAA)", default=None)
+
+    args = parser.parse_args()
+
+    # 检查是否提供了域名
+    if not args.domain:
+        print("错误: 必须提供一个域名进行查询。")
+        parser.print_help()
+        sys.exit(1)
+
+    if args.type:
+        # 如果指定了类型，只查询该类型（转为大写）
+        r_type = args.type.upper()
+        if r_type not in ['A', 'AAAA']:
+            print(f"[-] 不支持的记录类型: {r_type}。当前仅支持 A 和 AAAA。")
+            sys.exit(1)
+        query_dns(args.domain, r_type)
+    else:
+        # 默认查询列表
+        default_types = ['A', 'AAAA']
+        for r_type in default_types:
+            # 如果查询过程中发现域名不存在（NXDOMAIN），则中断循环
+            if not query_dns(args.domain, r_type):
+                break
+
+if __name__ == "__main__":
+    main()
+#+end_src
+
+
 * rule-sets
 :PROPERTIES:
 :tangle-dir: (expand-file-name rule-sets-dir)
@@ -1639,92 +1704,3 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
      (rules . ,(vconcat local default)))))
 #+end_src
 
-* dns
-#+begin_src python :shebang "#!/usr/bin/env -S uv run -qw dnspython"
-# /// script
-# dependencies = [
-#   "dnspython",
-# ]
-# [[tool.uv.index]]
-# url = "https://mirrors.cloud.tencent.com/pypi/simple/"
-# ///
-#+end_src
-
-#+name: dns-query
-#+header: :results output
-#+header: :var cf_domain="youxuan.cf.090227.xyz"
-#+begin_src python
-import argparse
-import sys
-import socket
-
-def query_dns(domain, record_type):
-    """
-    查询指定域名的 DNS 记录，使用 socket.getaddrinfo 实现
-    """
-    try:
-        if record_type == "A":
-            # IPv4 地址查询
-            results = socket.getaddrinfo(domain, None, family=socket.AF_INET)
-            for result in results:
-                addr = result[4][0]
-                print(f"A {addr}")
-            return True
-
-        elif record_type == "AAAA":
-            # IPv6 地址查询
-            results = socket.getaddrinfo(domain, None, family=socket.AF_INET6)
-            for result in results:
-                addr = result[4][0]
-                print(f"AAAA {addr}")
-            return True
-
-        else:
-            print(f"[-] 不支持的记录类型: {record_type} (当前仅支持 A 和 AAAA)")
-            return False
-
-    except socket.gaierror as e:
-        if e.errno == socket.EAI_NONAME:
-            # print(f"[-] 错误: 域名 '{domain}' 不存在 (NXDOMAIN)")
-            return False  # 域名不存在，停止后续查询
-        elif e.errno == socket.EAI_NODATA or e.errno == socket.EAI_NONAME:
-            # print(f"[-] {record_type} 记录: 无响应或无记录")
-            return True
-        else:
-            # print(f"[-] 查询 {record_type} 时发生错误: {e}")
-            return False
-    except Exception as e:
-        # print(f"[-] 查询 {record_type} 时发生未知错误: {e}")
-        return False
-
-def main():
-    parser = argparse.ArgumentParser(description="Python DNS 记录查询工具 (基于 socket)")
-    parser.add_argument("domain", help="要查询的域名 (例如: google.com)", nargs='?', default=cf_domain)
-    parser.add_argument("-t", "--type", help="指定的记录类型 (目前仅支持 A, AAAA)", default=None)
-
-    args = parser.parse_args()
-
-    # 检查是否提供了域名
-    if not args.domain:
-        print("错误: 必须提供一个域名进行查询。")
-        parser.print_help()
-        sys.exit(1)
-
-    if args.type:
-        # 如果指定了类型，只查询该类型（转为大写）
-        r_type = args.type.upper()
-        if r_type not in ['A', 'AAAA']:
-            print(f"[-] 不支持的记录类型: {r_type}。当前仅支持 A 和 AAAA。")
-            sys.exit(1)
-        query_dns(args.domain, r_type)
-    else:
-        # 默认查询列表
-        default_types = ['A', 'AAAA']
-        for r_type in default_types:
-            # 如果查询过程中发现域名不存在（NXDOMAIN），则中断循环
-            if not query_dns(args.domain, r_type):
-                break
-
-if __name__ == "__main__":
-    main()
-#+end_src
