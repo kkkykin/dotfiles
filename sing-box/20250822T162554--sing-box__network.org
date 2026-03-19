@@ -51,6 +51,9 @@
        (main-file (expand-file-name "500-main.json" client-dir))
        (tun-file (expand-file-name "500-tun.json" client-dir))
        (rule-sets-dir (expand-file-name "rule-sets/" zr-org-tangle-default-dir))
+       (cf-domain "youxuan.cf.090227.xyz")
+       (cf-dns (gethash "dns" box-secrets))
+       (cf-dns-domain (gethash "domain" cf-dns))
        (cf-ips (cl-remove-duplicates (split-string (zr-org-babel-execute-named-src-block "dns-query") "\n" t)
                                      :test #'string=))
        (cf-4 "104.19.148.8")
@@ -68,9 +71,7 @@
                              (endpoint . "s[tailscale]")
                              (tag . "tailscale-dns")
                              (type . "tailscale"))))
-       (pre-dns-rules `(((domain_suffix . ,(concat "." mydomain))
-                         (action . "predefined")
-                         (answer . ,(cl-map 'vector (lambda (s) (format "*.%s. IN %s" mydomain s)) cf-ips)))))
+       (pre-dns-rules `())
        (delete-by-moving-to-trash))
   (delete-directory client-tmp-dir t)
   (mkdir hosts-dir t)
@@ -1295,6 +1296,9 @@ SEP defaults to \"/\"."
                      (answer . "localhost. IN A 127.0.0.1")
                      (ip_accept_any . t)
                      (rule_set . "dns-local-rules"))
+                    ((domain_suffix . ,(concat "." mydomain))
+                     (action . "predefined")
+                     (answer . ,(cl-map 'vector (lambda (s) (format "*.%s. IN %s" mydomain s)) cf-ips)))
                     ((ip_accept_any . t)
                      (rule_set . "tailscale-rules")
                      (server . "tailscale-dns"))
@@ -1324,20 +1328,28 @@ SEP defaults to \"/\"."
 *** server
 #+name: gen-server-dns
 #+begin_src elisp
-(let* ((gg-dns-tag "gg-dns")
-       (dns-servers `(((server . "8.8.8.8")
-                       (tag . ,gg-dns-tag)
-                       (type . "udp"))))
+(let* ((final-dns "cf-doh")
+       (tls-dns "cf-self-doh")
+       (dns-servers `(((server . ,"1.1.1.1")
+                       (tag . ,final-dns)
+                       (type . "https"))
+                      ((server . ,cf-dns-domain)
+                       (domain_resolver . ,final-dns)
+                       (tag . ,tls-dns)
+                       (path . ,(gethash "path" cf-dns))
+                       (headers . ,(list (cons (intern (gethash "header-name" cf-dns))
+                                               (gethash "header-value" cf-dns))))
+                       (type . "https"))))
        (dns-rules `(((network . "tcp")
-                     (server . ,gg-dns-tag)
+                     (server . ,tls-dns)
                      (rewrite_ttl . 1800)
                      (client_subnet . "114.114.114.114/24")))))
   (json-serialize
-   `((dns . ((final . ,gg-dns-tag)
+   `((dns . ((final . ,final-dns)
              (strategy . "prefer_ipv6")
-             (servers . ,(vconcat extra-dns-servers dns-servers))
+             (servers . ,(vconcat dns-servers extra-dns-servers))
              (rules . ,(vconcat pre-dns-rules dns-rules))))
-     (route . ((default_domain_resolver . ,gg-dns-tag)
+     (route . ((default_domain_resolver . ,final-dns)
                (rules
                 . [((action . "sniff")
                     (sniffer . "dns"))
@@ -1345,10 +1357,79 @@ SEP defaults to \"/\"."
                     (protocol . "dns"))]))))))
 #+end_src
 
+*** doh
+:PROPERTIES:
+:tangle-dir: (expand-file-name "doh/" zr-org-tangle-default-dir)
+:END:
+
+***** servers
+:PROPERTIES:
+:CUSTOM_ID: 3849cf51-5ab4-4229-8aed-495d5b9281c2
+:END:
+#+begin_src json :mkdirp t :tangle (zr-org-by-tangle-dir "servers.json")
+<<gen-doh-servers()>>
+#+end_src
+
+#+name: gen-doh-servers
+#+begin_src elisp
+(let ((dns-servers '(((type . "https")
+                      (tag . "cloudflare")
+                      (server . "1.1.1.1"))
+                     ((type . "https")
+                      (tag . "quad9")
+                      (server . "dns11.quad9.net"))
+                     ((type . "https")
+                      (tag . "adguard")
+                      (server . "dns.adguard-dns.com")))))
+  (json-serialize (cl-remove-if
+                   (lambda (s)
+                     (not (member (alist-get 'type s) '("https" "hosts"))))
+                   (vconcat dns-servers extra-dns-servers))))
+#+end_src
+
+***** rules
+:PROPERTIES:
+:CUSTOM_ID: e2de8371-7c74-470b-9423-0d9f66dfab10
+:END:
+#+begin_src json :mkdirp t :tangle (zr-org-by-tangle-dir "rules.json")
+<<gen-doh-rules()>>
+#+end_src
+
+#+name: gen-doh-rules
+#+begin_src elisp
+(let* ((cf-api (org-file-contents "https://api.cloudflare.com/client/v4/ips" t))
+       (cf-obj (and cf-api (json-parse-string cf-api)))
+       (cf-cidr (if-let* (((not (null cf-obj)))
+                          ((eq t (gethash "success" cf-obj)))
+                          (result (gethash "result" cf-obj)))
+                    (vconcat (gethash "ipv4_cidrs" result)
+                             (gethash "ipv6_cidrs" result))
+                  []))
+       (dns-servers ["cloudflare" "quad9" "adguard"])
+       (dns-rules `(((client_subnet . "114.114.114.0/24")
+                     ,(cons (intern (format "header-%s" (gethash "header-name" cf-dns)))
+                            (gethash "header-value" cf-dns))
+                     (server . ,dns-servers)
+                     (answer_rules
+                      . [((ip_cidr . ,cf-cidr)
+                          (action . "cname")
+                          (query . ,cf-domain)
+                          (server . ,dns-servers))]))
+                    ((client_subnet . "header:cf-connecting-ip")
+                     (cf-ipcountry . "CN")
+                     (server . ,dns-servers)
+                     (answer_rules
+                      . [((ip_cidr . ,cf-cidr)
+                          (action . "cname")
+                          (query . ,cf-domain)
+                          (server . ,dns-servers))])))))
+  (json-serialize (vconcat pre-dns-rules dns-rules)))
+#+end_src
+
 *** script
 #+name: dns-query
 #+header: :results output
-#+header: :var cf_domain="youxuan.cf.090227.xyz"
+#+header: :var cf_domain=(identity cf-domain)
 #+begin_src python
 import argparse
 import sys

@@ -57,6 +57,12 @@
 			}
 		]
 	},
+	"dns": {
+		"domain": "ENC[AES256_GCM,data:ZfHyPxQ3KDf3bL7wmfyN,iv:jdwr0LoPRJThrsvHsHNrMOmW906RBwGo/1gkvr1GLjo=,tag:4Nb2HV67hl9R/lMnfMegqA==,type:str]",
+		"path": "ENC[AES256_GCM,data:Cr5l7dNldayX3zF6ww==,iv:Ik0XAkFMjL6l3P208X94K0Luxfkn942iB7ADWqc5r/E=,tag:vnG1OT60XsdbktqXAiisLA==,type:str]",
+		"header-name": "ENC[AES256_GCM,data:FYrzW19By4Is4nAd,iv:eV+Q4L1ZMXkiQlGiC9sB1FfSU9jNeLvft1+CtJV0hWQ=,tag:m/oQps0/RShi3u7LL/k4mA==,type:str]",
+		"header-value": "ENC[AES256_GCM,data:0tO5m/iGhVdBsfeW,iv:tZsHyyeEuvpWGJbi8L0UlzI//D2BqKAc2msbQ2BufMk=,tag:4FyAHBCpu4a9iwFf6qp9qw==,type:str]"
+	},
 	"hosts-array": [
 		{
 			"domain": "ENC[AES256_GCM,data:geznZj2uYTe0or/WZKCshNo=,iv:tFnjGpbttaUSvOKmr+qqrlyaWmv4yhWk19kolHP0LNk=,tag:7PJjhtzxKtmi7nQ2Lzb03A==,type:str]",
@@ -220,8 +226,8 @@
 		}
 	},
 	"sops": {
-		"lastmodified": "2026-03-18T13:49:37Z",
-		"mac": "ENC[AES256_GCM,data:QylOzVp6JnXYY08w7XoiSzs6ZNU2AjfvfgfAtvbvynyyxB1WOxSfGpof6gS7U2xFLqnf85Zl/veqlUAPRr/T8dej1b0FlCqsrCsiWKlHiITN4H2AsGVWhgMxbE+tpY4n02xQ7qRFMbqsC8rr+RH8fU0XRMRr4E8lkUmP//NUC6g=,iv:dMRF8iR9uXiGCOvH9gBMrD2it1UV97G9xxSi2shPq8o=,tag:vjc1vvRYTdioqvBpRskzng==,type:str]",
+		"lastmodified": "2026-03-19T08:19:48Z",
+		"mac": "ENC[AES256_GCM,data:NUviT+7XIoyp5lyyEjky46AN4KPJ+gOlCCY7r/PzOiYpy6kbdA/OihxIMr0gWDQE47PNJOAOKbyVotCf/PO66OFOezLDuxWdD995to7+xxwVn9N9s2GjeY4Cp1AWh1Jd4TEUQDANZw9X5iE+tCXuX9W++eVOFePN7D9ViKdKo20=,iv:Rx1OvfywHGg2HWFQIsNBsjuctsCb2Rd5S3Esj+T4v6E=,tag:SE+3/2zfFpPjjYvvUC2idw==,type:str]",
 		"pgp": [
 			{
 				"created_at": "2026-01-15T00:51:44Z",
