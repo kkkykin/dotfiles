@@ -1328,11 +1328,11 @@ SEP defaults to \"/\"."
 *** server
 #+name: gen-server-dns
 #+begin_src elisp
-(let* ((final-dns "cf-doh")
+(let* ((final-dns "cf-dot")
        (tls-dns "cf-self-doh")
        (dns-servers `(((server . ,"1.1.1.1")
                        (tag . ,final-dns)
-                       (type . "https"))
+                       (type . "tls"))
                       ((server . ,cf-dns-domain)
                        (domain_resolver . ,final-dns)
                        (tag . ,tls-dns)
