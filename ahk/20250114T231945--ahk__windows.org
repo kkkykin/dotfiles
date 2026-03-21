@@ -253,10 +253,8 @@ ToggleQuake(cfg) {
 
     ; 4) toggle off：只有“开始就存在且当时激活”才隐藏
     if (existedAtStart && WinActive("ahk_id " hwnd)) {
-      Send("!{Esc}")
-      if (hideMode = "Minimize")
-        WinMinimize("ahk_id " hwnd)
-      else
+      WinMinimize("ahk_id " hwnd)
+      if (hideMode = "Hide")
         WinHide("ahk_id " hwnd)
       return
     }
