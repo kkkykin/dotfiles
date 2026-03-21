@@ -72,6 +72,7 @@
                              (tag . "tailscale-dns")
                              (type . "tailscale"))))
        (pre-dns-rules `())
+       (pre-hosts-tag "pre-hosts-dns")
        (delete-by-moving-to-trash))
   (delete-directory client-tmp-dir t)
   (mkdir hosts-dir t)
@@ -168,9 +169,7 @@
       (`("AAAA" ,addr) (setq cf-6 addr))
       (`("A" ,addr) (setq cf-4 addr))))
 
-  (let ((pre-hosts-tag "pre-hosts-dns")
-        hosts
-        domains)
+  (let (hosts domains)
     (mapc
      (lambda (host)
        (let ((domain (gethash "domain" host)))
@@ -1164,6 +1163,7 @@ SEP defaults to \"/\"."
 
   (when-let* ((port (gethash "vl-port" attr))
               (host (gethash "vl-host" attr))
+              (ip (seq-first (gethash "ips" attr)))
               (tag (format "vl[%s]" name)))
     (push `((listen . "::")
             (listen_port . ,port)
@@ -1171,6 +1171,9 @@ SEP defaults to \"/\"."
             (tls . ((enabled . t)
                     (reality . ((enabled . t)
                                 (handshake . ((server . ,host)
+                                              ,(cons (intern (format "inet%d_bind_address" (gethash "type" ip)))
+                                                     (gethash "addr" ip))
+                                              (domain_resolver . ,pre-hosts-tag)
                                               (server_port . 443)))
                                 (private_key . ,(gethash "priv-key" attr))
                                 (short_id . [,(gethash "short-id" attr)])))
