@@ -35,6 +35,7 @@ config.unix_domains = {
 config.mux_enable_ssh_agent = false
 config.ssh_backend = "Ssh2"
 config.enable_kitty_keyboard = true
+config.enable_kitty_graphics = true
 config.enable_tab_bar = false
 config.window_padding = {
   left = 0,
