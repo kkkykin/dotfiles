@@ -298,7 +298,7 @@ route /browse-url/ {
 :END:
 #+begin_src caddy :mkdirp t :tangle (zr-org-by-tangle-dir "rsshub.Caddyfile")
 handle_path /rsshub/* {
-    reverse_proxy <<rsshub-upstreams()>> https://rsshub-vercel-rss3.vercel.app https://rsshub-vercel-wine.vercel.app {
+    reverse_proxy <<rsshub-upstreams()>> https://kayin.zeabur.app {
         header_up Host {upstream_hostport}
         header_up -X-Forwarded-*
         header_up -via
@@ -489,9 +489,18 @@ http://127.0.0.1:9123 {
           ;; 每行第一个 <td>
           (when-let* ((first-td (car (dom-by-tag tr 'td)))
                       (a        (car (dom-by-tag first-td 'a)))
-                      (href     (dom-attr a 'href)))
-            (when (string-match-p "^https?://[^/]+/?$" href)
-              (push href urls)))))
+                      (href     (dom-attr a 'href))
+                      ((not (member href '("https://rsshub.app"
+                                           "https://rsshub.rss.tips"
+                                           "https://rss.owo.nz"
+                                           "https://rss.wudifeixue.com"
+                                           "https://rss.littlebaby.life/rsshub"
+                                           "https://rsshub.henry.wang"
+                                           "https://holoxx.f5.si/"
+                                           "https://rsshub.email-once.com"
+                                           "https://rss.datuan.dev"))))
+                      ((string-match-p "^https?://[^/]+/?$" href)))
+            (push href urls))))
       urls)))
 #+end_src
 
