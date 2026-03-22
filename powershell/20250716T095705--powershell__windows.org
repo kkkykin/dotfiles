@@ -107,7 +107,7 @@ $loc = $($executionContext.SessionState.Path.CurrentLocation);
   $out += "$([char]27)]1337;CurrentDir=$loc$([char]07)";
 
 # (your prompt here)
-  $out += "PS $loc$('>' * ($nestedPromptLevel + 1)) ";
+  $out += "🤣👉 $loc$('>' * ($nestedPromptLevel + 1)) ";
 
 # Prompt ended, Command started
   $out += "$([char]27)]133;B$([char]07)";
