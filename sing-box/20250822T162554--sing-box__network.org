@@ -1343,7 +1343,7 @@ SEP defaults to \"/\"."
                        (headers . ,(list (cons (intern (gethash "header-name" cf-dns))
                                                (gethash "header-value" cf-dns))))
                        (type . "https"))))
-       (dns-rules `(((network . "tcp")
+       (dot-rules `(((network . "tcp")
                      (server . ,tls-dns)
                      (rewrite_ttl . 1800)
                      (client_subnet . "114.114.114.114/24")))))
@@ -1351,7 +1351,7 @@ SEP defaults to \"/\"."
    `((dns . ((final . ,final-dns)
              (strategy . "prefer_ipv6")
              (servers . ,(vconcat dns-servers extra-dns-servers))
-             (rules . ,(vconcat pre-dns-rules dns-rules))))
+             (rules . ,(vconcat dot-rules pre-dns-rules))))
      (route . ((default_domain_resolver . ,final-dns)
                (rules
                 . [((action . "sniff")
