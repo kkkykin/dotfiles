@@ -71,7 +71,8 @@
                              (endpoint . "s[tailscale]")
                              (tag . "tailscale-dns")
                              (type . "tailscale"))))
-       (pre-dns-rules `())
+       pre-dns-client-rules
+       pre-dns-server-rules
        (pre-hosts-tag "pre-hosts-dns")
        (delete-by-moving-to-trash))
   (delete-directory client-tmp-dir t)
@@ -169,20 +170,26 @@
       (`("AAAA" ,addr) (setq cf-6 addr))
       (`("A" ,addr) (setq cf-4 addr))))
 
-  (let (hosts domains)
+  (let (hosts client-domains server-domains all-domains)
     (mapc
      (lambda (host)
        (let ((domain (gethash "domain" host)))
          (push (cons (intern domain) (gethash "ips" host)) hosts)
-         (push domain domains)))
+         (push domain (pcase (gethash "type" host)
+                        ("client" client-domains)
+                        ("server" server-domains)
+                        (_ all-domains)))))
      hosts-array)
     (push `((type . "hosts")
             (tag . ,pre-hosts-tag)
             (predefined . ,hosts))
           extra-dns-servers)
-    (push `((domain . ,(vconcat domains))
+    (push `((domain . ,(vconcat server-domains all-domains))
             (server . ,pre-hosts-tag))
-          pre-dns-rules))
+          pre-dns-server-rules)
+    (push `((domain . ,(vconcat client-domains all-domains))
+            (server . ,pre-hosts-tag))
+          pre-dns-client-rules))
 
   (let* ((coding-system-for-write 'utf-8))
     (org-babel-tangle))
@@ -1324,7 +1331,7 @@ SEP defaults to \"/\"."
                               "prefer_ipv6"
                             "ipv4_only"))
              (servers . ,(vconcat extra-dns-servers dns-servers))
-             (rules . ,(vconcat pre-dns-rules dns-rules))))
+             (rules . ,(vconcat pre-dns-client-rules dns-rules))))
      (route . ((default_domain_resolver . ,final-dns))))))
 #+end_src
 
@@ -1351,7 +1358,7 @@ SEP defaults to \"/\"."
    `((dns . ((final . ,final-dns)
              (strategy . "prefer_ipv6")
              (servers . ,(vconcat dns-servers extra-dns-servers))
-             (rules . ,(vconcat dot-rules pre-dns-rules))))
+             (rules . ,(vconcat dot-rules pre-dns-server-rules))))
      (route . ((default_domain_resolver . ,final-dns)
                (rules
                 . [((action . "sniff")
@@ -1426,7 +1433,7 @@ SEP defaults to \"/\"."
                           (action . "cname")
                           (query . ,cf-domain)
                           (server . ,dns-servers))])))))
-  (json-serialize (vconcat pre-dns-rules dns-rules)))
+  (json-serialize (vconcat pre-dns-client-rules dns-rules)))
 #+end_src
 
 *** script
