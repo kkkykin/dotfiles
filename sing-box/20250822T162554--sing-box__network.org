@@ -37,11 +37,7 @@
                           (with-temp-buffer
                             (insert-file-contents disabled-sub-file)
                             (read (current-buffer)))))
-       (relays '((((type . "socks")
-                   (tag . "warp")
-                   (server . "127.0.0.1")
-                   (server_port . 40000)
-                   (version . "5")))))
+       relays
        nodes
        sub-outbounds
        us-outbounds
@@ -58,6 +54,7 @@
                                      :test #'string=))
        (cf-4 "104.19.148.8")
        (cf-6 "2606:4700:e:5b:b68a:ec78:f652:5e89")
+       server-route-users
        (client-proxy-users '("download"
                              "direct"
                              "browse"
@@ -238,6 +235,78 @@
 :PROPERTIES:
 :CUSTOM_ID: 3aeea361-850d-4cc8-b292-065568c194d3
 :END:
+
+*** server
+:PROPERTIES:
+:tangle-dir: (concat server-dir)
+:END:
+
+***** main
+:PROPERTIES:
+:CUSTOM_ID: b85ab91b-1175-4b51-9f3c-f37a0b589979
+:END:
+
+#+header: :var rule_sets_dir="/etc/sing-box"
+#+name: server-config
+#+begin_src json :tangle (zr-org-by-tangle-dir "500-main.json") :mkdirp t
+{
+  "experimental": {
+    "cache_file": {
+      "enabled": true,
+      "rdrc_timeout": "1h",
+      "store_rdrc": true
+    }
+  },
+  "log": {
+    "level": "info"
+  },
+  "route": {
+    "auto_detect_interface": true,
+    "final": "s[direct]",
+    "rule_set": [
+      {
+        "download_detour": "s[direct]",
+        "tag": "geoip-cn",
+        "type": "remote",
+        "url": "https://github.com/SagerNet/sing-geoip/raw/refs/heads/rule-set/geoip-cn.srs"
+      }
+    ]
+  }
+}
+#+end_src
+
+***** dns
+:PROPERTIES:
+:CUSTOM_ID: 6e7026d8-9395-4dd9-9a60-b3b9a3edc5d1
+:END:
+#+begin_src json :tangle (zr-org-by-tangle-dir "500-dns.json") :mkdirp t
+<<gen-server-dns()>>
+#+end_src
+
+***** server0
+:PROPERTIES:
+:CUSTOM_ID: bc0f24ed-8894-45b6-9008-4a5f1879b0f1
+:END:
+#+begin_src json :tangle (zr-org-by-tangle-dir "500-s0.json")
+<<gen-server-bounds(name="vps0")>>
+#+end_src
+
+***** server1
+:PROPERTIES:
+:CUSTOM_ID: 24c5c785-b594-4987-b947-a22e63c24f3e
+:END:
+
+#+begin_src json :tangle (zr-org-by-tangle-dir "500-s1.json")
+<<gen-server-bounds(name="vps1")>>
+#+end_src
+
+***** server2
+:PROPERTIES:
+:CUSTOM_ID: dafd128d-c905-49be-a432-42aff4d2159d
+:END:
+#+begin_src json :tangle (zr-org-by-tangle-dir "500-s2.json")
+<<gen-server-bounds(name="vps2")>>
+#+end_src
 
 *** client
 :PROPERTIES:
@@ -755,81 +824,9 @@ SEP defaults to \"/\"."
 }
 #+end_src
 
-*** server
-:PROPERTIES:
-:tangle-dir: (concat server-dir)
-:END:
-
-***** main
-:PROPERTIES:
-:CUSTOM_ID: b85ab91b-1175-4b51-9f3c-f37a0b589979
-:END:
-
-#+header: :var rule_sets_dir="/etc/sing-box"
-#+name: server-config
-#+begin_src json :tangle (zr-org-by-tangle-dir "500-main.json") :mkdirp t
-{
-  "experimental": {
-    "cache_file": {
-      "enabled": true,
-      "rdrc_timeout": "1h",
-      "store_rdrc": true
-    }
-  },
-  "log": {
-    "level": "info"
-  },
-  "route": {
-    "auto_detect_interface": true,
-    "final": "s[direct]",
-    "rule_set": [
-      {
-        "download_detour": "s[direct]",
-        "tag": "geoip-cn",
-        "type": "remote",
-        "url": "https://github.com/SagerNet/sing-geoip/raw/refs/heads/rule-set/geoip-cn.srs"
-      }
-    ]
-  }
-}
-#+end_src
-
-***** dns
-:PROPERTIES:
-:CUSTOM_ID: 6e7026d8-9395-4dd9-9a60-b3b9a3edc5d1
-:END:
-#+begin_src json :tangle (zr-org-by-tangle-dir "500-dns.json") :mkdirp t
-<<gen-server-dns()>>
-#+end_src
-
-***** server0
-:PROPERTIES:
-:CUSTOM_ID: bc0f24ed-8894-45b6-9008-4a5f1879b0f1
-:END:
-#+begin_src json :tangle (zr-org-by-tangle-dir "500-s0.json")
-<<gen-server-bounds(name="vps0")>>
-#+end_src
-
-***** server1
-:PROPERTIES:
-:CUSTOM_ID: 24c5c785-b594-4987-b947-a22e63c24f3e
-:END:
-
-#+begin_src json :tangle (zr-org-by-tangle-dir "500-s1.json")
-<<gen-server-bounds(name="vps1")>>
-#+end_src
-
-***** server2
-:PROPERTIES:
-:CUSTOM_ID: dafd128d-c905-49be-a432-42aff4d2159d
-:END:
-#+begin_src json :tangle (zr-org-by-tangle-dir "500-s2.json")
-<<gen-server-bounds(name="vps2")>>
-#+end_src
-
 * bounds
 :PROPERTIES:
-:header-args:elisp: :var vps-secrets=(gethash "vps" box-secrets) wg-clients=(gethash "wg" box-secrets) ts-ep='((tag . "s[tailscale]") (type . "tailscale")) obds='(((tag . "s[direct]") (type . "direct"))) ibds='() ep='() conf='() dns-rules='()
+:header-args:elisp: :var vps-secrets=(gethash "vps" box-secrets) wg-clients=(gethash "wg" box-secrets) ts-ep='((tag . "s[tailscale]") (type . "tailscale")) obds='(((tag . "s[direct]") (type . "direct"))) ibds='() ep='() conf='() dns-rules='() route-rules='()
 :END:
 *** client
 #+name: gen-client-bounds
@@ -864,7 +861,6 @@ SEP defaults to \"/\"."
             vps-tags)
 
        (push name client-proxy-users)
-       (push (format "warp[%s]" name) client-proxy-users)
 
        (pcase (gethash "type" attr)
          ("download" (push s-tag download-tags))
@@ -1140,15 +1136,22 @@ SEP defaults to \"/\"."
        (email (gethash "email" attr))
        (cf-token (auth-source-pick-first-password :host "dash.cloudflare.com"
                                                   :user (concat "token-" name)))
+       users
        wg-peers)
 
-  (when-let* ((ip (gethash "ip" attr)))
-    (push `((listen . "127.0.0.1")
-            (listen_port . 53)
-            (network . "tcp")
-            (tag . "dns4-in")
-            (type . "direct"))
-          ibds))
+  (mapc
+   (lambda (ip)
+     (let ((addr (gethash "addr" ip)))
+       (push addr users)
+       (push `((auth_user . ,addr)
+               (outbound . ,addr))
+             route-rules)
+       (push `((tag . ,addr)
+               (type . "direct")
+               ,(cons (intern (format "inet%d_bind_address" (gethash "type" ip)))
+                      addr))
+             obds)))
+   (gethash "ips" attr))
 
   (maphash
    (lambda (k v)
@@ -1170,9 +1173,15 @@ SEP defaults to \"/\"."
 
   (when-let* ((warp (gethash "warp" attr))
               (addr (gethash "addr" warp))
-              (priv-key (auth-source-pick-first-password :host "wgcf-warp" :user name)))
+              (priv-key (auth-source-pick-first-password :host "wgcf-warp" :user name))
+              (warp-user (format "warp[%s]" name))
+              (ep-tag "wg-warp"))
+    (push warp-user users)
+    (push `((auth_user . ,warp-user)
+            (outbound . ,ep-tag))
+          route-rules)
     (push `((type . "wireguard")
-            (tag . "wg-warp")
+            (tag . ,ep-tag)
             (system . :false)
             (address . ,addr)
             (private_key . ,priv-key)
@@ -1185,7 +1194,6 @@ SEP defaults to \"/\"."
 
   (when-let* ((port (gethash "vl-port" attr))
               (host (gethash "vl-host" attr))
-              (ip (seq-first (gethash "ips" attr)))
               (tag (format "vl[%s]" name)))
     (push `((listen . "::")
             (listen_port . ,port)
@@ -1193,8 +1201,7 @@ SEP defaults to \"/\"."
             (tls . ((enabled . t)
                     (reality . ((enabled . t)
                                 (handshake . ((server . ,host)
-                                              ,(cons (intern (format "inet%d_bind_address" (gethash "type" ip)))
-                                                     (gethash "addr" ip))
+                                              (detour . ,(alist-get 'tag (car obds)))
                                               (domain_resolver . ,pre-hosts-tag)
                                               (server_port . 443)))
                                 (private_key . ,(gethash "priv-key" attr))
@@ -1260,7 +1267,27 @@ SEP defaults to \"/\"."
             (type . "naive")
             (users . [((password . ,user-pass)
                        (username . ,user-name))]))
-          ibds)))
+          ibds))
+
+  (when users
+    (push `((listen . "127.0.0.1")
+            (listen_port . 53)
+            (network . "tcp")
+            (tag . "dns4-in")
+            (type . "direct"))
+          ibds)
+    (push `((listen . "127.0.0.1")
+            (listen_port . 10807)
+            (set_system_proxy . :false)
+            (tag . "route-in")
+            (type . "mixed")
+            (users . ,(cl-map 'vector
+                              (lambda (n)
+                                `((username . ,n)
+                                  (password . "1")))
+                              users)))
+          ibds)
+    (push (cons name users) server-route-users)))
 <<return-bounds>>
 #+end_src
 
@@ -1269,6 +1296,7 @@ SEP defaults to \"/\"."
 #+begin_src elisp
 (push ts-ep ep)
 (when dns-rules (push `(dns . (rules ,(vconcat dns-rules))) conf))
+(when route-rules (push `(route . (rules ,(vconcat route-rules))) conf))
 (when ep (push `(endpoints . ,(vconcat ep)) conf))
 (when obds (push `(outbounds . ,(vconcat obds)) conf))
 (when ibds (push `(inbounds . ,(vconcat ibds)) conf))
