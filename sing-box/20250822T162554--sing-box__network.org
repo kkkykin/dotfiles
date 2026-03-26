@@ -62,6 +62,9 @@
                              "relay"
                              "tailscale"
                              "this-way"))
+       (local-auth-port 10806)
+       (local-auth-password "1")
+       (local-anony-port 10807)
        (mydomain (auth-source-pick-first-password :host "mydomain" :user "main"))
        (hosts-array (gethash "hosts-array" box-secrets))
        (extra-dns-servers `(((accept_default_resolvers . :false)
@@ -575,12 +578,20 @@
                                   "proxy-rules"]))
                     ((action . "resolve"))))
        (pre-user-rules
-        (mapcar (lambda (u)
-                  `((auth_user . ,u)
-                    (outbound . ,(pcase u
-                                   ((rx bos "warp") u)
-                                   (_ (format "s[%s]" u))))))
-                client-proxy-users))
+        (append
+         (mapcar (lambda (u)
+                   `((auth_user . ,u)
+                     (outbound . ,(format "s[%s]" u))))
+                 client-proxy-users)
+         (mapcan
+          (lambda (vps)
+            (let ((name (car vps)))
+              (mapcar
+               (lambda (u)
+                 `((auth_user . ,u)
+                   (outbound . ,u)))
+               (cdr vps))))
+          server-route-users)))
        (post-rules '(((ip_is_private . t)
                       (outbound . "s[direct]")
                       (rule_set . ["geosite-geolocation-cn"
@@ -832,7 +843,7 @@ SEP defaults to \"/\"."
 #+name: gen-client-bounds
 #+begin_src elisp
 (let ((tailscale-state-dir (expand-file-name "tailscale_state" zr-org-tangle-default-dir))
-      (download-tags '("s[this-way]" "s[direct]"))
+      (download-tags '("s[this-way]" "s[direct]" "s[relay]"))
       (browse-tags '("s[this-way]" "s[direct]" "s[relay]"))
       relay-tags
       wg-rules-group
@@ -945,6 +956,18 @@ SEP defaults to \"/\"."
                obds))
 
        (when vps-tags
+         (dolist (user (alist-get name server-route-users nil nil #'equal))
+           (let ((tag user))
+             (push tag relay-tags)
+             (push `((detour . ,s-tag)
+                     (server . "127.0.0.1")
+                     (server_port . ,local-auth-port)
+                     (tag . ,tag)
+                     (type . "socks")
+                     (version . "5")
+                     (username . ,user)
+                     (password . ,local-auth-password))
+                   obds)))
          (push `((interrupt_exist_connections . :false)
                  (outbounds . ,(vconcat vps-tags))
                  (tag . ,u-tag)
@@ -1094,17 +1117,18 @@ SEP defaults to \"/\"."
           pre-obds)
     (setq obds (append (apply #'append pre-obds) obds)))
 
-  (push `((listen_port . 10806)
+  (push `((listen_port . ,local-auth-port)
           (set_system_proxy . :false)
           (tag . "user-mix")
           (type . "mixed")
           (users . ,(cl-map 'vector
                             (lambda (n)
                               `((username . ,n)
-                                (password . "1")))
-                            client-proxy-users)))
+                                (password . ,local-auth-password)))
+                            (append client-proxy-users
+                                    (mapcan #'cdr server-route-users)))))
         ibds)
-  (push '((listen_port . 10807)
+  (push `((listen_port . ,local-anony-port)
           (set_system_proxy . :false)
           (tag . "anony-mix")
           (type . "mixed"))
@@ -1141,9 +1165,10 @@ SEP defaults to \"/\"."
 
   (mapc
    (lambda (ip)
-     (let ((addr (gethash "addr" ip)))
-       (push addr users)
-       (push `((auth_user . ,addr)
+     (let* ((addr (gethash "addr" ip))
+            (user (format "%s[%s]" name addr)))
+       (push user users)
+       (push `((auth_user . ,user)
                (outbound . ,addr))
              route-rules)
        (push `((tag . ,addr)
@@ -1174,7 +1199,7 @@ SEP defaults to \"/\"."
   (when-let* ((warp (gethash "warp" attr))
               (addr (gethash "addr" warp))
               (priv-key (auth-source-pick-first-password :host "wgcf-warp" :user name))
-              (warp-user (format "warp[%s]" name))
+              (warp-user (format "%s[warp]" name))
               (ep-tag "wg-warp"))
     (push warp-user users)
     (push `((auth_user . ,warp-user)
@@ -1277,14 +1302,14 @@ SEP defaults to \"/\"."
             (type . "direct"))
           ibds)
     (push `((listen . "127.0.0.1")
-            (listen_port . 10807)
+            (listen_port . ,local-auth-port)
             (set_system_proxy . :false)
             (tag . "route-in")
             (type . "mixed")
             (users . ,(cl-map 'vector
                               (lambda (n)
                                 `((username . ,n)
-                                  (password . "1")))
+                                  (password . ,local-auth-password)))
                               users)))
           ibds)
     (push (cons name users) server-route-users)))
