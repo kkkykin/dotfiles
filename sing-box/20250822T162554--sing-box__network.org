@@ -71,6 +71,7 @@
                              (endpoint . "s[tailscale]")
                              (tag . "tailscale-dns")
                              (type . "tailscale"))))
+       (dns4-tag "dns4-in")
        pre-dns-client-rules
        pre-dns-server-rules
        (pre-hosts-tag "pre-hosts-dns")
@@ -269,9 +270,27 @@
     "rule_set": [
       {
         "download_detour": "s[direct]",
-        "tag": "geoip-cn",
+        "tag": "geosite-cn",
         "type": "remote",
-        "url": "https://github.com/SagerNet/sing-geoip/raw/refs/heads/rule-set/geoip-cn.srs"
+        "url": "https://github.com/SagerNet/sing-geosite/raw/refs/heads/rule-set/geosite-cn.srs"
+      },
+      {
+        "download_detour": "s[direct]",
+        "tag": "geosite-geolocation-cn",
+        "type": "remote",
+        "url": "https://github.com/SagerNet/sing-geosite/raw/refs/heads/rule-set/geosite-geolocation-cn.srs"
+      },
+      {
+        "download_detour": "s[direct]",
+        "tag": "geosite-microsoft",
+        "type": "remote",
+        "url": "https://github.com/SagerNet/sing-geosite/raw/refs/heads/rule-set/geosite-microsoft.srs"
+      },
+      {
+        "download_detour": "s[direct]",
+        "tag": "geosite-adblockplus",
+        "type": "remote",
+        "url": "https://github.com/SagerNet/sing-geosite/raw/refs/heads/rule-set/geosite-adblockplus.srs"
       }
     ]
   }
@@ -1297,8 +1316,7 @@ SEP defaults to \"/\"."
   (when users
     (push `((listen . "127.0.0.1")
             (listen_port . 53)
-            (network . "tcp")
-            (tag . "dns4-in")
+            (tag . ,dns4-tag)
             (type . "direct"))
           ibds)
     (push `((listen . "127.0.0.1")
@@ -1419,6 +1437,19 @@ SEP defaults to \"/\"."
                                                (gethash "header-value" cf-dns))))
                        (type . "https"))))
        (dot-rules `(((network . "tcp")
+                     (inbound . ,dns4-tag)
+                     (rule_set . ["geosite-adblockplus"])
+                     (action . "reject"))
+                    ((network . "tcp")
+                     (inbound . ,dns4-tag)
+                     (server . ,final-dns)
+                     (rewrite_ttl . 1800)
+                     (rule_set . ["geosite-cn"
+                                  "geosite-geolocation-cn"
+                                  "geosite-microsoft"])
+                     (client_subnet . "114.114.114.114/24"))
+                    ((network . "tcp")
+                     (inbound . ,dns4-tag)
                      (server . ,tls-dns)
                      (rewrite_ttl . 1800)
                      (client_subnet . "114.114.114.114/24")))))
