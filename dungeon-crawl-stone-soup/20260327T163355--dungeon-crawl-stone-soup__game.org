@@ -1,0 +1,36 @@
+#+title:      dungeon-crawl-stone-soup
+#+date:       [2026-03-27 Fri 16:33]
+#+filetags:   :game:
+#+identifier: 20260327T163355
+
+* tangle
+#+begin_src elisp
+(let ((conf-dir (pcase system-type
+                  ('windows-nt (substitute-in-file-name "$userprofile/scoop/apps/stone-soup/current/settings/"))
+                  (_ (expand-file-name "~/.crawl/")))))
+  (mkdir conf-dir t)
+  (dolist (f (org-babel-tangle))
+    (make-symbolic-link f conf-dir t)))
+#+end_src
+
+* config
+:PROPERTIES:
+:header-args:org: :mkdirp t :tangle (zr-org-by-tangle-dir "init.txt")
+:END:
+
+*** include
+:PROPERTIES:
+:CUSTOM_ID: a02d3b0e-3144-4800-bb29-a35149209ddd
+:END:
+#+begin_src org
+include = advanced_optioneering.txt
+include = safe_move_shift.txt
+#+end_src
+
+*** windows
+:PROPERTIES:
+:CUSTOM_ID: 0fcc7e99-ff5d-4bc1-b058-2a1724ef10ec
+:END:
+#+begin_src org :tangle (pcase system-type ('windows-nt (zr-org-by-tangle-dir "init.txt")) (_ "no"))
+dos_use_background_intensity = true
+#+end_src
