@@ -18,40 +18,30 @@
 * config
 :PROPERTIES:
 :CUSTOM_ID: 4d954b8d-ce41-45c1-8a44-a95c8ec157e4
+:header-args:lua: :mkdirp t :tangle (zr-org-by-tangle-dir "wezterm.lua")
 :END:
-#+header: :var init_windows_script=(expand-file-name "../init/_tangle/profile.cmd")
-#+header: :var default_nvim_server=(identity zr-viper-default-nvim-server)
-#+begin_src lua :mkdirp t :tangle (zr-org-by-tangle-dir "wezterm.lua")
+
+*** init
+:PROPERTIES:
+:CUSTOM_ID: ee26ed40-10af-4748-aaff-b04c84057d85
+:END:
+#+begin_src lua
 local wezterm = require 'wezterm'
 local act = wezterm.action
 local mux = wezterm.mux
 local config = {}
+#+end_src
 
-config.window_decorations = "RESIZE"
-config.hide_tab_bar_if_only_one_tab = true
-config.unix_domains = {
-  { name = 'unix' },
-}
-config.mux_enable_ssh_agent = false
-config.ssh_backend = "Ssh2"
-config.enable_kitty_keyboard = true
-config.enable_kitty_graphics = true
-config.enable_tab_bar = false
-config.window_padding = {
-  left = 0,
-  right = 0,
-  top = 0,
-  bottom = 0,
-}
-config.font_size = 11.0
-config.keys = {
-  {
-    key = '@',
-    mods = 'CTRL',
-    action = act.DisableDefaultAssignment,
-  },
-}
+*** functions
+:PROPERTIES:
+:CUSTOM_ID: 74c656dc-388f-4020-bab0-d22cba524009
+:END:
 
+***** system
+:PROPERTIES:
+:CUSTOM_ID: e9eaf66a-2b04-431e-9eac-849eee02e3bf
+:END:
+#+begin_src lua
 local function is_windows()
   if wezterm.target_triple:find('windows') then
     return true
@@ -59,7 +49,13 @@ local function is_windows()
     return false
   end
 end
+#+end_src
 
+***** port
+:PROPERTIES:
+:CUSTOM_ID: f0a8914a-453b-4e7c-9956-1d97dc1d4b2b
+:END:
+#+begin_src lua
 -- 返回 true 表示端口已被占用（不可绑定）
 local function port_in_use(port)
   if is_windows then
@@ -95,7 +91,71 @@ PY
     return ok
   end
 end
+#+end_src
 
+***** appearance
+:PROPERTIES:
+:CUSTOM_ID: e443521a-0bbd-4b68-9081-6a2bcc31a546
+:END:
+https://wezterm.org/config/lua/wezterm.gui/get_appearance.html
+#+begin_src lua
+-- wezterm.gui is not available to the mux server, so take care to
+-- do something reasonable when this config is evaluated by the mux
+function get_appearance()
+  if wezterm.gui then
+    return wezterm.gui.get_appearance()
+  end
+  return 'Dark'
+end
+
+function scheme_for_appearance(appearance)
+  if appearance:find 'Dark' then
+    return 'Builtin Solarized Dark'
+  else
+    return 'Builtin Solarized Light'
+  end
+end
+#+end_src
+
+*** vars
+:PROPERTIES:
+:CUSTOM_ID: 266feeb4-922a-449a-86a5-e58d153d8a73
+:END:
+#+begin_src lua
+config.window_decorations = "RESIZE"
+config.hide_tab_bar_if_only_one_tab = true
+config.color_scheme = scheme_for_appearance(get_appearance())
+config.unix_domains = {
+  { name = 'unix' },
+}
+config.mux_enable_ssh_agent = false
+config.ssh_backend = "Ssh2"
+config.enable_kitty_keyboard = true
+config.enable_kitty_graphics = true
+config.enable_tab_bar = false
+config.window_padding = {
+  left = 0,
+  right = 0,
+  top = 0,
+  bottom = 0,
+}
+config.font_size = 11.0
+config.keys = {
+  {
+    key = '@',
+    mods = 'CTRL',
+    action = act.DisableDefaultAssignment,
+  },
+}
+#+end_src
+
+*** hooks
+:PROPERTIES:
+:CUSTOM_ID: 423f69d0-8dad-4e78-b1f2-45ea368e85fe
+:END:
+#+header: :var init_windows_script=(expand-file-name "../init/_tangle/profile.cmd")
+#+header: :var default_nvim_server=(identity zr-viper-default-nvim-server)
+#+begin_src lua
 wezterm.on('mux-startup', function()
   -- local tab, pane, window = mux.spawn_window(cmd or {})
 
@@ -113,6 +173,12 @@ wezterm.on('mux-startup', function()
     })
   end
 end)
+#+end_src
 
+*** return
+:PROPERTIES:
+:CUSTOM_ID: 27b2f631-7a02-44df-a46a-b86b1bbd9a5b
+:END:
+#+begin_src lua
 return config
 #+end_src
