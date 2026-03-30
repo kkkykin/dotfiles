@@ -95,24 +95,92 @@ end
 
 ***** appearance
 :PROPERTIES:
-:CUSTOM_ID: e443521a-0bbd-4b68-9081-6a2bcc31a546
+:CUSTOM_ID: dc410a76-59b0-4250-abaa-d05c9283d769
 :END:
-https://wezterm.org/config/lua/wezterm.gui/get_appearance.html
 #+begin_src lua
+-- 主题缓存和工具函数
+local theme_utils = {}
+
+-- https://wezterm.org/config/lua/wezterm.gui/get_appearance.html
 -- wezterm.gui is not available to the mux server, so take care to
 -- do something reasonable when this config is evaluated by the mux
-function get_appearance()
+function theme_utils.get_appearance()
   if wezterm.gui then
     return wezterm.gui.get_appearance()
   end
-  return 'Dark'
+  return 'dark'
 end
 
-function scheme_for_appearance(appearance)
-  if appearance:find 'Dark' then
-    return 'Builtin Solarized Dark'
-  else
-    return 'Builtin Solarized Light'
+-- 计算主题亮度
+function theme_utils.get_brightness(scheme)
+  local bg = scheme.background or '#000000'
+  if not bg:find('^#%x%x%x%x%x%x$') then
+    return 0
+  end
+
+  local r = tonumber(bg:sub(2, 3), 16)
+  local g = tonumber(bg:sub(4, 5), 16)
+  local b = tonumber(bg:sub(6, 7), 16)
+  return (r + g + b) / 3
+end
+
+-- 获取指定类型的主题（带缓存）
+function theme_utils.get_themes_by_type(theme_type)
+  local cache_key = 'theme_cache_' .. theme_type
+
+  -- 检查缓存
+  if wezterm.GLOBAL[cache_key] then
+    return wezterm.GLOBAL[cache_key]
+  end
+
+  -- 计算并缓存
+  local schemes = wezterm.get_builtin_color_schemes()
+  local themes = {}
+
+  for name, scheme in pairs(schemes) do
+    local brightness = theme_utils.get_brightness(scheme)
+    local is_dark = brightness <= 128
+
+    if (theme_type == 'dark' and is_dark) or
+       (theme_type == 'light' and not is_dark) then
+      table.insert(themes, name)
+    end
+  end
+
+  table.sort(themes)
+  wezterm.GLOBAL[cache_key] = themes
+  return themes
+end
+
+-- 创建主题选择器
+function theme_utils.create_theme_selector(theme_type)
+  local themes = theme_utils.get_themes_by_type(theme_type)
+  local items = {}
+
+  for _, name in ipairs(themes) do
+    table.insert(items, { id = name, label = name })
+  end
+
+  return act.InputSelector {
+    title = 'Select ' .. (theme_type == 'dark' and 'Dark' or 'Light') .. ' Theme',
+    choices = items,
+    fuzzy = true,
+    action = wezterm.action_callback(function(window, pane, id, label)
+      if id then
+        wezterm.emit('user-var-changed', window, pane, 'SetUserTheme', id)
+      end
+    end),
+  }
+end
+
+function theme_utils.set_random_theme_matching_appearance(window, pane)
+  local appearance = theme_utils.get_appearance()
+  local theme_type = appearance:find('Dark') and 'dark' or 'light'
+
+  local themes = theme_utils.get_themes_by_type(theme_type)
+  if #themes > 0 then
+    local random_theme = themes[math.random(#themes)]
+    wezterm.emit('user-var-changed', window, pane, 'SetUserTheme', random_theme)
   end
 end
 #+end_src
@@ -124,7 +192,6 @@ end
 #+begin_src lua
 config.window_decorations = "RESIZE"
 config.hide_tab_bar_if_only_one_tab = true
-config.color_scheme = scheme_for_appearance(get_appearance())
 config.unix_domains = {
   { name = 'unix' },
 }
@@ -150,9 +217,12 @@ config.keys = {
 #+end_src
 
 *** hooks
+
+***** mux-startup
 :PROPERTIES:
-:CUSTOM_ID: 423f69d0-8dad-4e78-b1f2-45ea368e85fe
+:CUSTOM_ID: 231543e2-3a94-491c-b846-85e557cac098
 :END:
+
 #+header: :var init_windows_script=(expand-file-name "../init/_tangle/profile.cmd")
 #+header: :var default_nvim_server=(identity zr-viper-default-nvim-server)
 #+begin_src lua
@@ -172,6 +242,49 @@ wezterm.on('mux-startup', function()
       args = { 'cmd', '/k', init_windows_script, 'init' },
     })
   end
+end)
+#+end_src
+
+***** user-var
+:PROPERTIES:
+:CUSTOM_ID: f5827e60-fd72-4e4a-9c84-9c8d17eeb3b4
+:END:
+#+begin_src lua
+wezterm.on('user-var-changed', function(window, pane, name, value)
+  if name == 'SetUserTheme' then
+    window:set_config_overrides { color_scheme = value }
+    wezterm.log_info('Applied theme: ' .. value)
+  end
+end)
+#+end_src
+
+***** command-palette
+:PROPERTIES:
+:CUSTOM_ID: 121eba52-4ca1-4cca-89be-11b7af2b8fc8
+:END:
+#+begin_src lua
+wezterm.on('augment-command-palette', function(window, pane)
+  return {
+    {
+      brief = 'Random Theme (Match System)',
+      action = wezterm.action_callback(function(window, pane)
+        theme_utils.set_random_theme_matching_appearance(window, pane)
+      end),
+    },
+    {
+      brief = 'Dark Themes',
+      action = wezterm.action_callback(function(window, pane)
+        window:perform_action(theme_utils.create_theme_selector('dark'), pane)
+      end),
+    },
+    {
+      brief = 'Light Themes',
+      -- icon = 'mdi_weather_sunny',
+      action = wezterm.action_callback(function(window, pane)
+        window:perform_action(theme_utils.create_theme_selector('light'), pane)
+      end),
+    },
+  }
 end)
 #+end_src
 
