@@ -27,6 +27,14 @@ include = advanced_optioneering.txt
 include = safe_move_shift.txt
 #+end_src
 
+*** common
+:PROPERTIES:
+:CUSTOM_ID: e013e424-c06b-4aa7-bcb8-6028458f1345
+:END:
+#+begin_src org
+language = zh
+#+end_src
+
 *** windows
 :PROPERTIES:
 :CUSTOM_ID: 0fcc7e99-ff5d-4bc1-b058-2a1724ef10ec
