@@ -218,6 +218,8 @@ end
 :END:
 #+begin_src lua
 config.window_decorations = "RESIZE"
+config.window_background_opacity = 0.6
+config.win32_system_backdrop = 'Tabbed'
 config.hide_tab_bar_if_only_one_tab = true
 config.unix_domains = {
   { name = 'unix' },
