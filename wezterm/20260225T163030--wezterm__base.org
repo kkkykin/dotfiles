@@ -234,6 +234,25 @@ config.window_padding = {
   bottom = 0,
 }
 config.font_size = 11.0
+#+end_src
+
+***** launch menu
+:PROPERTIES:
+:CUSTOM_ID: a0e9c0f6-dbe3-4777-bd29-0dc4743eaf59
+:END:
+#+begin_src lua
+config.launch_menu = {
+  {
+    args = { 'crawl' },
+  },
+}
+#+end_src
+
+***** key binding
+:PROPERTIES:
+:CUSTOM_ID: 52b7e147-750f-40d0-b910-844032b769c2
+:END:
+#+begin_src lua
 config.leader = { key = '`', mods = 'ALT', timeout_milliseconds = 1000 }
 config.keys = {
   {
