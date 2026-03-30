@@ -1167,7 +1167,7 @@ Capslock & r::{
   id: "wezquake",
   win: "ahk_class WezQuake",
   exe: "wezterm-gui.exe",
-  args: 'connect --class WezQuake --position 0,0 unix',
+  args: 'connect --class WezQuake --position main:0,0 unix',
   anchor: "top",
   wPct: 100,
   hPct: 51,
