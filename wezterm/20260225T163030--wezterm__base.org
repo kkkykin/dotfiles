@@ -185,6 +185,33 @@ function theme_utils.set_random_theme_matching_appearance(window, pane)
 end
 #+end_src
 
+***** emacs
+:PROPERTIES:
+:CUSTOM_ID: b8bf5a7e-a771-4d0f-9918-c1740bd82b36
+:END:
+# #+header: :tangle no
+#+begin_src lua
+local emacs_utils = {}
+
+function emacs_utils.escape_elisp_string(s)
+  return (s:gsub("\\", "\\\\"):gsub('"', '\\"'))
+end
+
+function emacs_utils.eval(sexp, cb)
+  cb = cb or function(_) end
+
+  local success, stdout, stderr = wezterm.run_child_process({
+    "emacsclient", "-n", "-e", sexp
+  })
+
+  cb({
+    success = success,
+    stdout = stdout,
+    stderr = stderr
+  })
+end
+#+end_src
+
 *** vars
 :PROPERTIES:
 :CUSTOM_ID: 266feeb4-922a-449a-86a5-e58d153d8a73
@@ -207,7 +234,34 @@ config.window_padding = {
   bottom = 0,
 }
 config.font_size = 11.0
+config.leader = { key = '`', mods = 'ALT', timeout_milliseconds = 1000 }
 config.keys = {
+  {
+    key = 'd',
+    mods = 'LEADER',
+    action = wezterm.action_callback(function(window, pane)
+      -- 获取当前选中的文本或光标下的单词
+      local word = window:get_selection_text_for_pane(pane)
+      if not word or word == "" then
+        -- 如果没有选中文本，使用 QuickSelect 获取单词
+        window:perform_action(
+          wezterm.action.QuickSelectArgs {
+            patterns = { '\\w+' },
+            action = wezterm.action_callback(function(win, pn)
+              local selected_word = win:get_selection_text_for_pane(pn)
+              if selected_word and selected_word ~= "" then
+                wezterm.emit('user-var-changed', win, pn, 'SearchDictionary', selected_word)
+              end
+            end),
+          },
+          pane
+        )
+      else
+        -- 如果已有选中文本，直接触发
+        wezterm.emit('user-var-changed', window, pane, 'SearchDictionary', word)
+      end
+    end),
+  },
   {
     key = '@',
     mods = 'CTRL',
@@ -246,16 +300,44 @@ end)
 #+end_src
 
 ***** user-var
+******* global
 :PROPERTIES:
 :CUSTOM_ID: f5827e60-fd72-4e4a-9c84-9c8d17eeb3b4
 :END:
+
 #+begin_src lua
 wezterm.on('user-var-changed', function(window, pane, name, value)
-  if name == 'SetUserTheme' then
-    window:set_config_overrides { color_scheme = value }
-    wezterm.log_info('Applied theme: ' .. value)
-  end
+  <<set-user-theme>>
+  <<search-dictionary>>
 end)
+#+end_src
+
+******* sub
+:PROPERTIES:
+:header-args:lua: :tangle no
+:END:
+
+#+name: set-user-theme
+#+begin_src lua
+if name == 'SetUserTheme' then
+  window:set_config_overrides { color_scheme = value }
+  wezterm.log_info('Applied theme: ' .. value)
+end
+#+end_src
+
+#+name: search-dictionary
+#+begin_src lua
+if name == 'SearchDictionary' and value and value ~= "" then
+  local sexp = string.format('(dictionary-search "%s")',
+                            emacs_utils.escape_elisp_string(value))
+  emacs_utils.eval(sexp, function(res)
+    if not res.success then
+      local msg = (res.stderr and res.stderr ~= "" and res.stderr)
+        or ("emacsclient exited with error")
+      wezterm.log_error(msg)
+    end
+  end)
+end
 #+end_src
 
 ***** command-palette
