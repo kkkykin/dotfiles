@@ -101,6 +101,7 @@ end
 #+begin_src lua
 -- 主题缓存和工具函数
 local theme_utils = {}
+local tab_theme = {}
 
 -- https://wezterm.org/config/lua/wezterm.gui/get_appearance.html
 -- wezterm.gui is not available to the mux server, so take care to
@@ -153,6 +154,12 @@ function theme_utils.get_themes_by_type(theme_type)
   return themes
 end
 
+function theme_utils.set_theme(window, theme)
+  tab_theme[window:active_tab():tab_id()] = theme
+  window:set_config_overrides { color_scheme = theme }
+  wezterm.log_info('Applied theme: ' .. theme)
+end
+
 -- 创建主题选择器
 function theme_utils.create_theme_selector(theme_type)
   local themes = theme_utils.get_themes_by_type(theme_type)
@@ -168,7 +175,7 @@ function theme_utils.create_theme_selector(theme_type)
     fuzzy = true,
     action = wezterm.action_callback(function(window, pane, id, label)
       if id then
-        wezterm.emit('user-var-changed', window, pane, 'SetUserTheme', id)
+        theme_utils.set_theme(window, id)
       end
     end),
   }
@@ -181,7 +188,7 @@ function theme_utils.set_random_theme_matching_appearance(window, pane)
   local themes = theme_utils.get_themes_by_type(theme_type)
   if #themes > 0 then
     local random_theme = themes[math.random(#themes)]
-    wezterm.emit('user-var-changed', window, pane, 'SetUserTheme', random_theme)
+    theme_utils.set_theme(window, random_theme)
   end
 end
 #+end_src
@@ -320,14 +327,15 @@ end)
 #+end_src
 
 ***** user-var
-******* global
 :PROPERTIES:
 :CUSTOM_ID: f5827e60-fd72-4e4a-9c84-9c8d17eeb3b4
 :END:
 
 #+begin_src lua
 wezterm.on('user-var-changed', function(window, pane, name, value)
-  <<set-user-theme>>
+  if name == 'SetUserTheme' then
+    theme_utils.set_theme(window, value)
+  end
   <<search-dictionary>>
 end)
 #+end_src
@@ -336,14 +344,6 @@ end)
 :PROPERTIES:
 :header-args:lua: :tangle no
 :END:
-
-#+name: set-user-theme
-#+begin_src lua
-if name == 'SetUserTheme' then
-  window:set_config_overrides { color_scheme = value }
-  wezterm.log_info('Applied theme: ' .. value)
-end
-#+end_src
 
 #+name: search-dictionary
 #+begin_src lua
@@ -387,6 +387,24 @@ wezterm.on('augment-command-palette', function(window, pane)
       end),
     },
   }
+end)
+#+end_src
+
+***** update-status
+:PROPERTIES:
+:CUSTOM_ID: aad9384e-912b-4ee1-9551-e32a5a9362a8
+:END:
+#+begin_src lua
+wezterm.on('update-status', function(window, pane)
+  local active_tab = window:active_tab()
+  if active_tab then
+    local saved_theme = tab_theme[active_tab:tab_id()]
+    local current_theme = window:effective_config().color_scheme
+
+    if saved_theme and current_theme and saved_theme ~= current_theme then
+      theme_utils.set_theme(window, saved_theme)
+    end
+  end
 end)
 #+end_src
 
