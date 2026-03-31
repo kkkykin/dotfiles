@@ -105,6 +105,7 @@ local tab_theme = {}
 
 local favorite_themes = {
   'Bluloco Zsh Light (Gogh)',   -- crawl
+  'Atelier Savanna Light (base16)',
 }
 
 -- https://wezterm.org/config/lua/wezterm.gui/get_appearance.html
