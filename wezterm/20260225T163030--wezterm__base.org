@@ -103,6 +103,10 @@ end
 local theme_utils = {}
 local tab_theme = {}
 
+local favorite_themes = {
+  'Bluloco Zsh Light (Gogh)',   -- crawl
+}
+
 -- https://wezterm.org/config/lua/wezterm.gui/get_appearance.html
 -- wezterm.gui is not available to the mux server, so take care to
 -- do something reasonable when this config is evaluated by the mux
@@ -149,7 +153,36 @@ function theme_utils.get_themes_by_type(theme_type)
     end
   end
 
-  table.sort(themes)
+  -- 创建查找表，快速获取主题在喜欢列表中的位置
+  local favorite_index = {}
+  for i, theme in ipairs(favorite_themes) do
+    favorite_index[theme] = i
+  end
+
+  -- 自定义排序：按 favorite_themes 的顺序，然后按字母顺序
+  table.sort(themes, function(a, b)
+    local a_idx = favorite_index[a]
+    local b_idx = favorite_index[b]
+
+    -- 如果都是喜欢的主题，按在 favorite_themes 中的顺序排列
+    if a_idx and b_idx then
+      return a_idx < b_idx
+    end
+
+    -- 如果 a 是喜欢的主题而 b 不是，a 排在前面
+    if a_idx and not b_idx then
+      return true
+    end
+
+    -- 如果 b 是喜欢的主题而 a 不是，b 排在前面
+    if not a_idx and b_idx then
+      return false
+    end
+
+    -- 如果都不是喜欢的主题，按字母顺序排列
+    return a < b
+  end)
+
   wezterm.GLOBAL[cache_key] = themes
   return themes
 end
