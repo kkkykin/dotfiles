@@ -218,6 +218,18 @@ function emacs_utils.eval(sexp, cb)
     stderr = stderr
   })
 end
+
+function emacs_utils.search_dictionary(word)
+  local sexp = string.format('(dictionary-search "%s")',
+                            emacs_utils.escape_elisp_string(word))
+  emacs_utils.eval(sexp, function(res)
+    if not res.success then
+      local msg = (res.stderr and res.stderr ~= "" and res.stderr)
+        or ("emacsclient exited with error")
+      wezterm.log_error(msg)
+    end
+  end)
+end
 #+end_src
 
 *** launcher
@@ -277,7 +289,7 @@ config.keys = {
             action = wezterm.action_callback(function(win, pn)
               local selected_word = win:get_selection_text_for_pane(pn)
               if selected_word and selected_word ~= "" then
-                wezterm.emit('user-var-changed', win, pn, 'SearchDictionary', selected_word)
+                emacs_utils.search_dictionary(selected_word)
               end
             end),
           },
@@ -285,7 +297,7 @@ config.keys = {
         )
       else
         -- 如果已有选中文本，直接触发
-        wezterm.emit('user-var-changed', window, pane, 'SearchDictionary', word)
+        emacs_utils.search_dictionary(word)
       end
     end),
   },
@@ -333,31 +345,12 @@ end)
 
 #+begin_src lua
 wezterm.on('user-var-changed', function(window, pane, name, value)
-  if name == 'SetUserTheme' then
+  if name == 'SetUserTheme' and value and value ~= "" then
     theme_utils.set_theme(window, value)
+  elseif name == 'SearchDictionary' and value and value ~= "" then
+    emacs_utils.search_dictionary(value)
   end
-  <<search-dictionary>>
 end)
-#+end_src
-
-******* sub
-:PROPERTIES:
-:header-args:lua: :tangle no
-:END:
-
-#+name: search-dictionary
-#+begin_src lua
-if name == 'SearchDictionary' and value and value ~= "" then
-  local sexp = string.format('(dictionary-search "%s")',
-                            emacs_utils.escape_elisp_string(value))
-  emacs_utils.eval(sexp, function(res)
-    if not res.success then
-      local msg = (res.stderr and res.stderr ~= "" and res.stderr)
-        or ("emacsclient exited with error")
-      wezterm.log_error(msg)
-    end
-  end)
-end
 #+end_src
 
 ***** command-palette
