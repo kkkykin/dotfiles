@@ -30,6 +30,7 @@ local wezterm = require 'wezterm'
 local act = wezterm.action
 local mux = wezterm.mux
 local config = {}
+local launcher = {}
 #+end_src
 
 *** functions
@@ -212,6 +213,15 @@ function emacs_utils.eval(sexp, cb)
 end
 #+end_src
 
+*** launcher
+:PROPERTIES:
+:CUSTOM_ID: 2b276c48-4a7d-4afc-8419-552fda71ff87
+:END:
+
+#+begin_src lua :tangle (if (executable-find "crawl") (zr-org-by-tangle-dir "wezterm.lua") "no")
+table.insert(launcher, { args = { 'crawl' } })
+#+end_src
+
 *** vars
 :PROPERTIES:
 :CUSTOM_ID: 266feeb4-922a-449a-86a5-e58d153d8a73
@@ -220,6 +230,7 @@ end
 config.window_decorations = "RESIZE"
 config.window_background_opacity = 0.6
 config.win32_system_backdrop = 'Tabbed'
+config.launch_menu = launcher
 config.hide_tab_bar_if_only_one_tab = true
 config.unix_domains = {
   { name = 'unix' },
@@ -236,18 +247,6 @@ config.window_padding = {
   bottom = 0,
 }
 config.font_size = 11.0
-#+end_src
-
-***** launch menu
-:PROPERTIES:
-:CUSTOM_ID: a0e9c0f6-dbe3-4777-bd29-0dc4743eaf59
-:END:
-#+begin_src lua
-config.launch_menu = {
-  {
-    args = { 'crawl' },
-  },
-}
 #+end_src
 
 ***** key binding
