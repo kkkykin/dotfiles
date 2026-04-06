@@ -6,7 +6,14 @@
 * tangle
 #+begin_src elisp
 (let ((conf-dir (pcase system-type
-                  ('windows-nt (substitute-in-file-name "$userprofile/scoop/apps/stone-soup/current/settings/"))
+                  ('windows-nt
+                   (let* ((scoop-apps-dir (substitute-in-file-name "$userprofile/scoop/apps"))
+                          (tiles-dir (expand-file-name "stone-soup-tiles/" scoop-apps-dir))
+                          (console-dir (expand-file-name "stone-soup/" scoop-apps-dir)))
+                     (expand-file-name "current/settings/"
+                                       (if (file-exists-p tiles-dir)
+                                           tiles-dir
+                                         console-dir))))
                   (_ (expand-file-name "~/.crawl/")))))
   (mkdir conf-dir t)
   (dolist (f (org-babel-tangle))
@@ -32,7 +39,8 @@ include = safe_move_shift.txt
 :CUSTOM_ID: e013e424-c06b-4aa7-bcb8-6028458f1345
 :END:
 #+begin_src org
-language = zh
+default_manual_training = true
+default_show_all_skills = true
 #+end_src
 
 *** windows
