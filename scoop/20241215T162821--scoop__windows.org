@@ -28,6 +28,7 @@
 | brian6932      | dank-scoop            |
 | TheCjw         | scoop-retools         |
 | kiennq         | scoop-misc            |
+| uJZk           | Shovel-Koolar         |
 
 #+begin_src elisp :eval no :var buckets=buckets
 (let ((cmd (mapconcat
