@@ -1,0 +1,62 @@
+#+title:      nethack
+#+date:       [2026-04-10 Fri 13:49]
+#+filetags:   :game:
+#+identifier: 20260410T134938
+
+* tangle
+#+begin_src elisp
+(let* ((conf-dir (pcase system-type
+                   ('windows-nt (substitute-in-file-name "$userprofile/NetHack/"))
+                   (_ "~/")))
+       (conf-name ".nethackrc")
+       (rc-target (zr-org-by-tangle-dir conf-name)))
+  (org-babel-tangle)
+  (make-symbolic-link rc-target (expand-file-name conf-name conf-dir) t))
+#+end_src
+
+* rc
+:PROPERTIES:
+:header-args:org: :mkdirp t :tangle (identity rc-target)
+:END:
+
+*** template
+:PROPERTIES:
+:CUSTOM_ID: fc0b2754-0369-4c3f-92cf-2bb7f39c6d49
+:END:
+#+begin_src org
+<<rc-template()>>
+#+end_src
+
+#+name: rc-template
+#+begin_src elisp
+(let ((rc (substitute-in-file-name "$userprofile/scoop/apps/nethack/current/.nethackrc.template")))
+  (if (and (eq 'windows-nt system-type)
+           (file-exists-p rc))
+      (org-file-contents rc)
+    ""))
+#+end_src
+
+*** autopickup
+:PROPERTIES:
+:CUSTOM_ID: 67c1e8c2-baee-46ff-b4fa-93c9b47bc6ee
+:END:
+# https://nethackwiki.com/wiki/Item
+#+begin_src org
+OPTIONS=pickup_types:"%*=+$!?/
+OPTIONS=pickup_burden:unencumbered
+
+AUTOPICKUP_EXCEPTION="< arrow"
+AUTOPICKUP_EXCEPTION="< bolt"
+AUTOPICKUP_EXCEPTION="<magic lamp"
+
+AUTOPICKUP_EXCEPTION="> corpse"
+AUTOPICKUP_EXCEPTION="> cursed "
+#+end_src
+
+*** misc
+:PROPERTIES:
+:CUSTOM_ID: 9fd256ce-498a-4d53-9936-6b9d12297f59
+:END:
+#+begin_src org
+OPTIONS=menustyle:combination
+#+end_src

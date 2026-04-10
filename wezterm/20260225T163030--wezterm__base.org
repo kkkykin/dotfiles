@@ -105,6 +105,7 @@ local tab_theme = {}
 
 local favorite_themes = {
   'Bluloco Zsh Light (Gogh)',   -- crawl
+  'Ef-Tritanopia-Light',
   'Atelier Savanna Light (base16)',
 }
 
@@ -273,6 +274,16 @@ end
 
 #+begin_src lua :tangle (if (executable-find "crawl") (zr-org-by-tangle-dir "wezterm.lua") "no")
 table.insert(launcher, { args = { 'crawl' } })
+table.insert(launcher, {
+  args = { 'nethack' },
+  set_environment_variables = {
+    NETHACKOPTIONS = table.concat({
+      'number_pad:0',
+      'autopickup',
+      'map_mode:tiles_fit_to_screen',
+    }, ',')
+  }
+})
 #+end_src
 
 *** vars
