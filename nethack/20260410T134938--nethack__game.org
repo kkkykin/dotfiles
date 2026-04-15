@@ -42,11 +42,12 @@
 :END:
 # https://nethackwiki.com/wiki/Item
 #+begin_src org
-OPTIONS=pickup_types:"%*=+$!?/
+OPTIONS=pickup_types:"%*=+$!?/(
 OPTIONS=pickup_burden:unencumbered
 
 AUTOPICKUP_EXCEPTION="< arrow"
 AUTOPICKUP_EXCEPTION="< bolt"
+AUTOPICKUP_EXCEPTION="< dart"
 AUTOPICKUP_EXCEPTION="<magic lamp"
 
 AUTOPICKUP_EXCEPTION="> corpse"
