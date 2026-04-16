@@ -300,6 +300,18 @@ end
 :END:
 
 #+begin_src lua :tangle (if (executable-find "crawl") (zr-org-by-tangle-dir "wezterm.lua") "no")
+local ssh_domains = wezterm.default_ssh_domains()
+
+for _, domain in ipairs(ssh_domains) do  
+  if domain.name:match('^SSH:') then  
+    local host = domain.remote_address
+    table.insert(launcher, {  
+      label = string.format('Open:%s', host),  
+      args = { 'ssh', host },  
+    })  
+  end  
+end  
+
 table.insert(launcher, { args = { 'crawl' } })
 table.insert(launcher, {
   args = { 'nethack' },
@@ -350,6 +362,7 @@ config.window_decorations = "RESIZE"
 config.window_background_opacity = 0.6
 config.win32_system_backdrop = 'Tabbed'
 config.launch_menu = launcher
+config.ssh_domains = ssh_domains
 config.wsl_domains = wsl_domains
 config.hide_tab_bar_if_only_one_tab = true
 config.unix_domains = {
