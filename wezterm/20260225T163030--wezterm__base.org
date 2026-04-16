@@ -299,20 +299,28 @@ end
 :CUSTOM_ID: 2b276c48-4a7d-4afc-8419-552fda71ff87
 :END:
 
-#+begin_src lua :tangle (if (executable-find "crawl") (zr-org-by-tangle-dir "wezterm.lua") "no")
-local default_ssh_domains = wezterm.default_ssh_domains()
+#+begin_src lua
 local ssh_domains = {}
 
-for _, domain in ipairs(default_ssh_domains) do  
-  if domain.name:match('^SSH:') then  
-    table.insert(ssh_domains, domain)
+for host, config in pairs(wezterm.enumerate_ssh_hosts()) do  
+  table.insert(ssh_domains, {
+    name = 'SSH:' .. host,
+    remote_address = host,
+    multiplexing = "None",
+    assume_shell = 'Posix',
 
-    local host = domain.remote_address
-    table.insert(launcher, {  
-      label = string.format('Open:%s', host),  
-      args = { 'ssh', host },  
-    })  
-  end  
+    connect_automatically = false,
+    local_echo_threshold_ms = 100,
+    no_agent_auth = false,
+    overlay_lag_indicator = false,
+    ssh_option = config,
+    timeout = 0,
+  })
+
+  table.insert(launcher, {  
+    label = 'Open:' .. host,
+    args = { 'ssh', host },  
+  })  
 end  
 
 table.insert(launcher, { args = { 'crawl' } })
