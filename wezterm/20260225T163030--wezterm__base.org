@@ -300,10 +300,13 @@ end
 :END:
 
 #+begin_src lua :tangle (if (executable-find "crawl") (zr-org-by-tangle-dir "wezterm.lua") "no")
-local ssh_domains = wezterm.default_ssh_domains()
+local default_ssh_domains = wezterm.default_ssh_domains()
+local ssh_domains = {}
 
-for _, domain in ipairs(ssh_domains) do  
+for _, domain in ipairs(default_ssh_domains) do  
   if domain.name:match('^SSH:') then  
+    table.insert(ssh_domains, domain)
+
     local host = domain.remote_address
     table.insert(launcher, {  
       label = string.format('Open:%s', host),  
