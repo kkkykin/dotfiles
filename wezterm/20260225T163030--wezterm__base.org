@@ -101,7 +101,12 @@ end
 #+begin_src lua
 -- 主题缓存和工具函数
 local theme_utils = {}
-local tab_theme = {}
+local pane_themes = {
+  id = {},
+  title = {
+    ['crawl.exe'] = 'Ef-Tritanopia-Light'
+  },
+}
 
 local favorite_themes = {
   'Bluloco Zsh Light (Gogh)',   -- crawl
@@ -189,10 +194,22 @@ function theme_utils.get_themes_by_type(theme_type)
   return themes
 end
 
-function theme_utils.set_theme(window, theme)
-  tab_theme[window:active_tab():tab_id()] = theme
-  window:set_config_overrides { color_scheme = theme }
-  wezterm.log_info('Applied theme: ' .. theme)
+function theme_utils.set_theme(window, pane, theme)
+  local overrides = window:get_config_overrides() or {}
+  local current_override = overrides.color_scheme
+
+  if current_override == theme then
+    return
+  end
+
+  pane_themes.id[pane:pane_id()] = theme
+  if theme then
+    window:set_config_overrides({ color_scheme = theme })
+    wezterm.log_info('Applied theme: ' .. theme)
+  else
+    window:set_config_overrides({ color_scheme = nil })
+    -- wezterm.log_info('Reverted to default theme')
+  end
 end
 
 -- 创建主题选择器
@@ -210,7 +227,7 @@ function theme_utils.create_theme_selector(theme_type)
     fuzzy = true,
     action = wezterm.action_callback(function(window, pane, id, label)
       if id then
-        theme_utils.set_theme(window, id)
+        theme_utils.set_theme(window, pane, id)
       end
     end),
   }
@@ -223,7 +240,7 @@ function theme_utils.set_random_theme_matching_appearance(window, pane)
   local themes = theme_utils.get_themes_by_type(theme_type)
   if #themes > 0 then
     local random_theme = themes[math.random(#themes)]
-    theme_utils.set_theme(window, random_theme)
+    theme_utils.set_theme(window, pane, random_theme)
   end
 end
 #+end_src
@@ -264,6 +281,16 @@ function emacs_utils.search_dictionary(word)
       wezterm.log_error(msg)
     end
   end)
+end
+#+end_src
+
+***** misc
+:PROPERTIES:
+:CUSTOM_ID: 6c209c4f-c2f6-470d-972f-42c555528790
+:END:
+#+begin_src lua
+local function basename(s)
+  return string.gsub(s, '(.*[/\\])(.*)', '%2')
 end
 #+end_src
 
@@ -420,7 +447,7 @@ end)
 #+begin_src lua
 wezterm.on('user-var-changed', function(window, pane, name, value)
   if name == 'SetUserTheme' and value and value ~= "" then
-    theme_utils.set_theme(window, value)
+    theme_utils.set_theme(window, pane, value)
   elseif name == 'SearchDictionary' and value and value ~= "" then
     emacs_utils.search_dictionary(value)
   end
@@ -436,9 +463,11 @@ wezterm.on('augment-command-palette', function(window, pane)
   return {
     {
       brief = 'Random Theme (Match System)',
-      action = wezterm.action_callback(function(window, pane)
-        theme_utils.set_random_theme_matching_appearance(window, pane)
-      end),
+      action = wezterm.action_callback(theme_utils.set_random_theme_matching_appearance),
+    },
+    {
+      brief = 'Restore Theme',
+      action = wezterm.action_callback(theme_utils.set_theme),
     },
     {
       brief = 'Dark Themes',
@@ -463,15 +492,12 @@ end)
 :END:
 #+begin_src lua
 wezterm.on('update-status', function(window, pane)
-  local active_tab = window:active_tab()
-  if active_tab then
-    local saved_theme = tab_theme[active_tab:tab_id()]
-    local current_theme = window:effective_config().color_scheme
-
-    if saved_theme and current_theme and saved_theme ~= current_theme then
-      theme_utils.set_theme(window, saved_theme)
-    end
-  end
+  local pane_id = pane:pane_id()
+  local pane_title = pane:get_title()
+  theme_utils.set_theme(
+    window,
+    pane,
+    pane_themes.id[pane_id] or pane_themes.title[basename(pane_title)])
 end)
 #+end_src
 
