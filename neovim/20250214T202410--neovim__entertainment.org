@@ -17,7 +17,7 @@
 :header-args:lua: :eval no :tangle (zr-org-by-tangle-dir "init.lua") :mkdirp t
 :CUSTOM_ID: b992d316-d1aa-40fe-b968-e00fe0ae4809
 :END:
-** vars
+*** vars
 :PROPERTIES:
 :CUSTOM_ID: c8305f6f-935c-4e99-b737-5c36fb821580
 :END:
@@ -39,7 +39,7 @@ if vim.fn.executable('nvim') == 0 then
   vi_program = vim.v.progpath
 end
 #+end_src
-** global-fn
+*** global-fn
 :PROPERTIES:
 :CUSTOM_ID: 7b8ea0dc-6325-4a16-b39b-ab65c583c1a5
 :END:
@@ -69,7 +69,7 @@ vim.keymap.set('n', '<Leader>c', function()
     vim.fn.chdir(dir)
   end, {  })
 #+end_src
-** options
+*** options
 :PROPERTIES:
 :CUSTOM_ID: a6b6f699-fe15-4794-8396-06f8ab43eead
 :END:
@@ -94,14 +94,14 @@ if vim.fn.executable('ug') == 1 then
   vim.opt.grepprg = 'ug -HIn $* ' .. null_file
 end
 #+end_src
-** theme
+*** theme
 :PROPERTIES:
 :CUSTOM_ID: b8635e66-b5f5-4caf-9f0d-cebbc27c6a9c
 :END:
 #+begin_src lua
 vim.cmd('colorscheme vim')
 #+end_src
-** commandline
+*** commandline
 :PROPERTIES:
 :CUSTOM_ID: 6cd4993d-8dce-4506-b156-cd76606141e0
 :END:
@@ -115,7 +115,7 @@ vim.keymap.set('c', '<Esc>f', '<C-Right>', {  })
 vim.keymap.set('c', '<Esc>p', '<Up>', {  })
 vim.keymap.set('c', '<Esc>n', '<Down>', {  })
 #+end_src
-** emacsclient
+*** emacsclient
 :PROPERTIES:
 :CUSTOM_ID: e57de01b-02b3-444b-a500-14ffbc921ac7
 :END:
@@ -131,7 +131,7 @@ end
 vim.keymap.set('n', '<Leader>e', open_with_emacsclient, { silent = true })
 #+end_src
 
-*** eval
+***** eval
 :PROPERTIES:
 :CUSTOM_ID: 149a8156-b704-4bbc-933d-7924b01b1c09
 :END:
@@ -151,7 +151,7 @@ local function emacs_eval(sexp, cb)
 end
 #+end_src
 
-*** dictionary
+***** dictionary
 :PROPERTIES:
 :CUSTOM_ID: 00830061-38d8-4bac-9d60-8a7acf7d17c3
 :END:
@@ -177,9 +177,9 @@ end
 vim.keymap.set("n", "<leader>d", dictionary_search_under_cursor, { desc = "Emacs dictionary-search under cursor" })
 #+end_src
 
-*** org
+***** org
 
-**** tangle
+***** tangle
 :PROPERTIES:
 :CUSTOM_ID: a0f3be67-39aa-484d-9f3e-f4adf322076a
 :END:
@@ -196,7 +196,7 @@ vim.api.nvim_create_user_command(
     emacs_eval(cmd)
   end, {})
 #+end_src
-**** detangle
+***** detangle
 :PROPERTIES:
 :CUSTOM_ID: 992c50bd-519c-4231-af71-f2088449408a
 :END:
@@ -214,9 +214,9 @@ vim.api.nvim_create_user_command(
   end, {})
 #+end_src
 
-** terminal
+*** terminal
 
-*** proc
+***** proc
 :PROPERTIES:
 :CUSTOM_ID: c6872684-09eb-4590-bb51-5c9857848fd2
 :END:
@@ -256,12 +256,12 @@ local function term_last_matching_proc()
 end
 #+end_src
 
-*** map
+***** map
 :PROPERTIES:
 :CUSTOM_ID: cba672ec-fabe-426d-9967-5d11342b607b
 :END:
 
-**** vim default
+***** vim default
 :PROPERTIES:
 :CUSTOM_ID: d26e8060-6d33-49cb-bf89-5f9cd25787b8
 :END:
@@ -277,7 +277,7 @@ vim.keymap.set('t', '<C-w>gt', '<C-\\><C-o>gt')
 vim.keymap.set('t', '<C-w>gT', '<C-\\><C-o>gT')
 #+end_src
 
-**** other
+***** other
 :PROPERTIES:
 :CUSTOM_ID: 09e7f325-2c80-4746-a4a3-02a3506a4dcf
 :END:
@@ -325,7 +325,7 @@ local function term_map_key(key)
 end
 #+end_src
 
-*** dirtrack
+***** dirtrack
 :PROPERTIES:
 :CUSTOM_ID: e137dfbe-f420-4fc3-b904-89cccbc7d719
 :END:
@@ -358,12 +358,12 @@ vim.api.nvim_create_autocmd('TermRequest', {
 })
 #+end_src
 
-*** shell
+***** shell
 :PROPERTIES:
 :CUSTOM_ID: b3b3a606-2889-4775-bd6d-2cd38ef9ec33
 :END:
 
-**** rc
+***** rc
 :PROPERTIES:
 :CUSTOM_ID: 96b627f6-d3a1-41d9-9413-c73505aca25c
 :END:
@@ -390,7 +390,7 @@ local bash_rc = {
 }
 #+end_src
 
-**** setup
+***** setup
 :PROPERTIES:
 :CUSTOM_ID: a2021abf-db0d-438c-9805-5a04a25a0958
 :END:
@@ -476,9 +476,9 @@ vim.api.nvim_create_autocmd('TermOpen', {
 })
 #+end_src
 
-** remote
+*** remote
 
-*** start
+***** start
 :PROPERTIES:
 :CUSTOM_ID: c1082729-583b-4866-849f-4f5615e60630
 :END:
@@ -486,7 +486,7 @@ vim.api.nvim_create_autocmd('TermOpen', {
 if os.getenv('SSH_TTY') then
 #+end_src
 
-*** clipboard
+***** clipboard
 :PROPERTIES:
 :CUSTOM_ID: cc4bceeb-422b-4b35-8ec7-a8563dc18cec
 :END:
@@ -567,7 +567,7 @@ end, { nargs = 1 })
 table.insert(bash_rc, string.format('clip() { %s --server "$NVIM" --remote-expr "execute(\'OSC52Copy $(base64 -w0)\')" ; }', vim.fn.shellescape(vi_program)))
 #+end_src
 
-*** browse-url
+***** browse-url
 :PROPERTIES:
 :CUSTOM_ID: 21e2f805-abfa-4435-9f15-a72b8281af48
 :END:
@@ -584,7 +584,7 @@ vim.keymap.set({ 'n' }, 'gx', function()
 end, {  })
 #+end_src
 
-*** browse-media
+***** browse-media
 :PROPERTIES:
 :CUSTOM_ID: f2bcf8c1-a7a6-463c-96dd-bc6fbc0b553c
 :END:
@@ -676,7 +676,7 @@ vim.api.nvim_create_user_command(
   end, { nargs = '*' })
 #+end_src
 
-*** end
+***** end
 :PROPERTIES:
 :CUSTOM_ID: bbf6df13-a341-489c-92be-22d3c37679f1
 :END:
@@ -684,8 +684,8 @@ vim.api.nvim_create_user_command(
 end
 #+end_src
 
-** netrw
-*** vars
+*** netrw
+***** vars
 :PROPERTIES:
 :CUSTOM_ID: 0c6f9751-5296-4199-879d-dd91d0e9d278
 :END:
@@ -698,7 +698,7 @@ if archive_7z_program then
   }
 end
 #+end_src
-*** bind
+***** bind
 :PROPERTIES:
 :CUSTOM_ID: 1ad2abfd-1d4a-4651-85c5-859f1f2ba1e6
 :END:
@@ -709,13 +709,13 @@ end
 
 vim.keymap.set('n', '<Leader>D', netrw_current_dir, {  })
 #+end_src
-** sudo
+*** sudo
 :PROPERTIES:
 :CUSTOM_ID: a905f861-9fb1-4a8d-ad2d-94b8d94fa7a7
 :END:
 Steal from https://github.com/ibhagwan/nvim-lua/blob/main/lua/utils.lua.
 
-*** exec
+***** exec
 :PROPERTIES:
 :CUSTOM_ID: 1ff91053-4aa4-4c8a-8fe1-33a0788dca01
 :END:
@@ -739,7 +739,7 @@ local function sudo_exec(cmd, print_output)
 end
 #+end_src
 
-*** write
+***** write
 :PROPERTIES:
 :CUSTOM_ID: ed5a8717-3b22-4a2f-b51e-232dfe151792
 :END:
@@ -770,7 +770,7 @@ end
 
 vim.api.nvim_create_user_command('Sudoedit', sudo_edit, { nargs = '*' })
 #+end_src
-** plugins
+*** plugins
 :PROPERTIES:
 :CUSTOM_ID: 1261a50d-da5b-4dcb-9eb1-911c6c6ab5c9
 :END:
@@ -843,7 +843,7 @@ if (vim.uv or vim.loop).fs_stat(lazypath) then
   end
 end
 #+end_src
-*** sub
+***** sub
 :PROPERTIES:
 :header-args:lua: :tangle no
 :END:
@@ -869,7 +869,7 @@ end
   end,
 },
 #+end_src
-** lsp
+*** lsp
 :PROPERTIES:
 :CUSTOM_ID: b107dcff-8a0e-48c8-afeb-42dd8e7a467a
 :END:
@@ -885,7 +885,7 @@ if vim.fn.executable('bash-language-server') == 1 then
   vim.lsp.enable('bashls')
 end
 #+end_src
-** post
+*** post
 :PROPERTIES:
 :CUSTOM_ID: e9ab948e-c8d6-4f2c-ab8f-d225b27d9114
 :END:
