@@ -286,6 +286,34 @@ table.insert(launcher, {
 })
 #+end_src
 
+*** wsl domains
+
+***** NixOS
+:PROPERTIES:
+:CUSTOM_ID: 9120f48f-d3c7-46ea-9118-851559bbcfc8
+:END:
+#+begin_src lua
+local wsl_domains = wezterm.default_wsl_domains()
+
+for _, domain in ipairs(wsl_domains) do
+  if domain.name == 'WSL:NixOS' then
+    for _, prog in ipairs({
+      'boohu',
+      'cataclysm',
+      'narsil',
+      'tome-gcu',
+    }) do
+      table.insert(wsl_domains, {
+        name = 'WSL:' .. prog,
+        distribution = 'NixOS',
+        default_cwd = '~',
+        default_prog = { '/etc/profiles/per-user/nixos/bin/' .. prog },
+      })
+    end
+  end
+end
+#+end_src
+
 *** vars
 :PROPERTIES:
 :CUSTOM_ID: 266feeb4-922a-449a-86a5-e58d153d8a73
@@ -295,6 +323,7 @@ config.window_decorations = "RESIZE"
 config.window_background_opacity = 0.6
 config.win32_system_backdrop = 'Tabbed'
 config.launch_menu = launcher
+config.wsl_domains = wsl_domains
 config.hide_tab_bar_if_only_one_tab = true
 config.unix_domains = {
   { name = 'unix' },
