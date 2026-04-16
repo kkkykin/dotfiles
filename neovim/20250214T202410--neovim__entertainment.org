@@ -22,6 +22,9 @@
 :CUSTOM_ID: c8305f6f-935c-4e99-b737-5c36fb821580
 :END:
 #+begin_src lua
+-- https://github.com/wezterm/wezterm/issues/5007#issuecomment-2481674933
+-- vim.env.WEZTERM_SHELL_SKIP_ALL = 1
+
 local is_windows = vim.fn.has('win32') == 1 or vim.fn.has('win64') == 1
 
 local my_augroup = vim.api.nvim_create_augroup("MyAutoCommands", { clear = true })
