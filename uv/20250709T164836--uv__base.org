@@ -18,12 +18,11 @@
 :CUSTOM_ID: d18cc652-cc91-4913-898d-b3be6afd5256
 :END:
 #+begin_src toml :mkdirp t :tangle (zr-org-by-tangle-dir "uv.toml")
+exclude-newer = "1 week"
+
 [[index]]
 url = "https://pypi.mirrors.ustc.edu.cn/simple/"
 default = true
-
-[tool.uv]
-exclude-newer = "7 days"
 #+end_src
 
 * scripts
