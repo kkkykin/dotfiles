@@ -1220,10 +1220,9 @@ cmdTitle := 'Command Prompt'
 ; #HotIf WinActive('ahk_exe msedge.exe') || WinActive(cmdTitle)
 <^n::Down
 
-#HotIf WinActive('ahk_group EmacsParty')
+; #HotIf WinActive('ahk_group EmacsParty')
+#HotIf WinActive('ahk_exe scrcpy.exe')
 <^Space::^@
-; #HotIf WinActive('ahk_exe scrcpy.exe')
-; >!`::Run 'wt.exe -w _quake ft'
 
 #HotIf WinActive('ahk_exe WXWork.exe') and not WinActive('ahk_class ImagePreview')
 Capslock::WinMinimize
