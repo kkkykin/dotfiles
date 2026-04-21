@@ -313,15 +313,6 @@
 <<gen-server-bounds(name="vps0")>>
 #+end_src
 
-***** server1
-:PROPERTIES:
-:CUSTOM_ID: 24c5c785-b594-4987-b947-a22e63c24f3e
-:END:
-
-#+begin_src json :tangle (zr-org-by-tangle-dir "500-s1.json")
-<<gen-server-bounds(name="vps1")>>
-#+end_src
-
 ***** server2
 :PROPERTIES:
 :CUSTOM_ID: dafd128d-c905-49be-a432-42aff4d2159d
