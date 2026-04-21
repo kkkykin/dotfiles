@@ -398,7 +398,7 @@ config.font_size = 11.0
 :CUSTOM_ID: 52b7e147-750f-40d0-b910-844032b769c2
 :END:
 #+begin_src lua
-config.leader = { key = '`', mods = 'ALT', timeout_milliseconds = 1000 }
+config.leader = { key = 'F1', timeout_milliseconds = 1000 }
 config.keys = {
   {
     key = 'd',
