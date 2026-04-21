@@ -1161,7 +1161,7 @@ esac
 daemon-manager() {
   local daemon_name="$1"
   local action="$2"
-  local notification_id="$daemon_name-daemon"
+  local NOTIFICATION_ID="$daemon_name-daemon"
 
   # Source the daemon's specific functions if they exist
   local daemon_script="$DAEMON_DIR/${daemon_name}"
@@ -1177,7 +1177,7 @@ daemon-manager() {
   return 1
   fi
 
-  local stop_act="$manager_path $daemon_name stop"
+  local STOP_ACT="$manager_path $daemon_name stop"
 
   case "$action" in
     start)
@@ -1190,13 +1190,13 @@ daemon-manager() {
         termux-notification \
           --ongoing -c "$daemon_name" -t "$daemon_name" \
           --group "$NOTIFICATION_GROUP" \
-          -i "$notification_id" --priority min \
-          --on-delete "$stop_act"
+          -i "$NOTIFICATION_ID" --priority min \
+          --on-delete "$STOP_ACT"
       fi
       ;;
     stop)
       stop
-      termux-notification-remove "$notification_id"
+      termux-notification-remove "$NOTIFICATION_ID"
       ;;
     stat)
       stat
@@ -1583,8 +1583,8 @@ notify(){
   termux-notification \
     --ongoing -c "IP: $ip" -t "sshd" \
     --group "$NOTIFICATION_GROUP" \
-    -i "$notification_id" \
-    --on-delete "$stop_act"
+    -i "$NOTIFICATION_ID" \
+    --on-delete "$STOP_ACT"
   termux-toast "IP: $ip"
 }
 
@@ -1596,6 +1596,38 @@ start(){
 stop(){
   "$zr_cli" stay-on-while-plugged-in false
   pkill sshd
+}
+#+end_src
+** private dns
+:PROPERTIES:
+:CUSTOM_ID: a67e6eca-4fa0-4d3a-8a7c-180aebf794a4
+:END:
+#+name: private-dns
+#+begin_src sh :tangle (zr-org-by-tangle-dir "dot")
+stat(){
+  local mode
+  mode=$(rish -c "settings get global private_dns_mode")
+  if [ "$mode" = "hostname" ]; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+notify(){
+  termux-notification \
+    --ongoing -c "Private DNS Mode: ON" \
+    -t "Android DOT" --group "$NOTIFICATION_GROUP" \
+    -i "$NOTIFICATION_ID" --on-delete "$STOP_ACT"
+}
+
+start(){
+  rish -c "settings put global private_dns_mode hostname"
+  notify
+}
+
+stop(){
+  rish -c "settings put global private_dns_mode off"
 }
 #+end_src
 
@@ -1619,9 +1651,9 @@ start(){
   termux-notification \
     --ongoing -c "http://$rclone_addr" -t "rclone" \
     --group "$NOTIFICATION_GROUP" \
-    -i "$notification_id" \
+    -i "$NOTIFICATION_ID" \
     --button1 'Open' --button1-action "$open_url" \
-    --on-delete "$stop_act"
+    --on-delete "$STOP_ACT"
 }
 
 stop(){
@@ -1650,11 +1682,11 @@ start(){
   termux-notification \
     --ongoing -c "Remote: $ip" -t "Trojan-go" \
     --group "$NOTIFICATION_GROUP" \
-    -i "$notification_id" \
+    -i "$NOTIFICATION_ID" \
     --button1 'Re IP' --button1-action "$refresh" \
     --button2 'Restart' --button2-action "$restart" \
     --button3 'Copy' --button3-action "$copy" \
-    --on-delete "$stop_act"
+    --on-delete "$STOP_ACT"
 }
 
 stop(){
@@ -1678,9 +1710,9 @@ notify(){
   termux-notification \
     --ongoing -c "sys: $system_proxy" -t "sing-box" \
     --group "$NOTIFICATION_GROUP" \
-    -i "$notification_id" \
+    -i "$NOTIFICATION_ID" \
     --action "$zr_cli proxy toggle && $zr_cli daemon sing-box notify" \
-    --on-delete "$stop_act"
+    --on-delete "$STOP_ACT"
 }
 
 start(){
