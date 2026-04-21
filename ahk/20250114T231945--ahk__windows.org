@@ -13,7 +13,7 @@
 :header-args:ahk: :tangle (zr-org-by-tangle-dir "default.ahk")
 :END:
 
-** include
+*** include
 :PROPERTIES:
 :CUSTOM_ID: 7bfba842-bc68-4665-9af1-a37da905366a
 :END:
@@ -23,7 +23,7 @@
 #Include '*i %A_ScriptDir%/../_pre_local.ahk'
 #+end_src
 
-** vars
+*** vars
 :PROPERTIES:
 :CUSTOM_ID: 60239ccb-cc1a-41e3-b25e-76ca74830f16
 :END:
@@ -43,7 +43,7 @@ rapidFireEnable := 0
 log_file := gOrgDir '/_ahk.log'
 #+end_src
 
-** universal-arg
+*** universal-arg
 :PROPERTIES:
 :CUSTOM_ID: d275a01a-d285-46de-bf5c-698f5300653b
 :END:
@@ -96,8 +96,8 @@ clearNumArg(){
 }
 #+end_src
 
-** App
-*** edge
+*** App
+***** edge
 :PROPERTIES:
 :CUSTOM_ID: c100aa36-9a58-4e66-b85d-c6256dba7dee
 :END:
@@ -136,7 +136,7 @@ edgeToggle(){
   }
 }
 #+end_src
-** Misc Func
+*** Misc Func
 :PROPERTIES:
 :CUSTOM_ID: f80b46cf-63bf-45c3-8a75-fafa356597a2
 :END:
@@ -178,7 +178,7 @@ processLiveP(pid, pname){
   return ProcessExist(pid) && pname == ProcessGetName(pid)
 }
 #+end_src
-** Quark Mode
+*** Quark Mode
 :PROPERTIES:
 :CUSTOM_ID: 4eb610ca-557d-4312-a9be-a7d0fe28d176
 :END:
@@ -336,7 +336,7 @@ DoMove(hwnd, monitor, anchor, wPct, hPct, xPct) {
   return true
 }
 #+end_src
-** rapid-fire
+*** rapid-fire
 :PROPERTIES:
 :CUSTOM_ID: acdfba9b-92d1-4a70-b670-aac0364019c8
 :END:
@@ -355,7 +355,7 @@ RapidFire(key_send, key_hold := False, delay := 25){
   }
 }
 #+end_src
-** Macro
+*** Macro
 :PROPERTIES:
 :CUSTOM_ID: b92cbeec-0287-43f2-a102-9114b2590197
 :END:
@@ -574,7 +574,7 @@ macroManager(pAction?){
 }
 #+end_src
 
-** Game-Saver
+*** Game-Saver
 :PROPERTIES:
 :CUSTOM_ID: 6f9a542f-99b8-4298-b709-f09d55332a32
 :END:
@@ -586,7 +586,7 @@ GameSaverLog(msg) {
 }
 #+end_src
 
-*** git
+***** git
 :PROPERTIES:
 :CUSTOM_ID: 9103f9f6-654f-4adc-8d80-d7247289ddbd
 :END:
@@ -692,7 +692,7 @@ SaveGame() {
 }
 #+end_src
 
-*** load-game-from-commit
+***** load-game-from-commit
 :PROPERTIES:
 :CUSTOM_ID: 575e0072-7883-447e-8c0b-1d4b8162c74a
 :END:
@@ -749,7 +749,7 @@ LoadGameFromCommit(config, commit_hash) {
 }
 #+end_src
 
-*** load-game
+***** load-game
 :PROPERTIES:
 :CUSTOM_ID: 64d4a995-e9e2-401b-83bc-9362e3ca66ba
 :END:
@@ -799,7 +799,7 @@ LoadGame() {
 }
 #+end_src
 
-*** get-game-config
+***** get-game-config
 :PROPERTIES:
 :CUSTOM_ID: bc461c1a-dbeb-4056-b892-4d748561d0c7
 :END:
@@ -821,7 +821,7 @@ getGameConfig(win_criteria) {
 }
 #+end_src
 
-*** check-git-repo
+***** check-git-repo
 :PROPERTIES:
 :CUSTOM_ID: 1e22e4f0-6515-4353-9fc1-1c59235dc494
 :END:
@@ -858,7 +858,7 @@ checkGitRepo(save_dir) {
 }
 #+end_src
 
-*** init-git-repo
+***** init-git-repo
 :PROPERTIES:
 :CUSTOM_ID: a8773fc0-9b0c-4cd5-a39c-205565a0f836
 :END:
@@ -900,7 +900,7 @@ initGitRepo(save_dir) {
 }
 #+end_src
 
-*** execute-hooks
+***** execute-hooks
 :PROPERTIES:
 :CUSTOM_ID: 54053c99-2ef8-49fe-b7da-91d8109ae517
 :END:
@@ -916,7 +916,7 @@ executeHooks(hooks, args := False) {
 }
 #+end_src
 
-*** get-user-commit-message
+***** get-user-commit-message
 :PROPERTIES:
 :CUSTOM_ID: aa991075-ac77-4a2d-b7d7-00b51f509fbb
 :END:
@@ -930,7 +930,7 @@ getUserCommitMessage(default_msg) {
 }
 #+end_src
 
-*** get-user-selected-commit
+***** get-user-selected-commit
 :PROPERTIES:
 :CUSTOM_ID: db5100c4-813b-4f67-99fa-ae1abab99418
 :END:
@@ -1011,7 +1011,7 @@ getUserSelectedCommit(save_dir, callback) {
 }
 #+end_src
 
-*** get-git-commit-history
+***** get-git-commit-history
 :PROPERTIES:
 :CUSTOM_ID: 736773f5-a20d-4327-8bf8-772a0c1cf3cf
 :END:
@@ -1026,7 +1026,7 @@ getGitCommitHistory(save_dir) {
 }
 #+end_src
 
-*** git-add-and-commit
+***** git-add-and-commit
 :PROPERTIES:
 :CUSTOM_ID: c79a916b-9731-4f98-bd07-9649cbadbf18
 :END:
@@ -1063,7 +1063,7 @@ gitAddAndCommit(commit_msg, save_dir) {
 }
 #+end_src
 
-** Post
+*** Post
 :PROPERTIES:
 :CUSTOM_ID: 6976a1ae-848d-44e4-9102-0b6141b09b39
 :END:
@@ -1092,7 +1092,7 @@ bossIsComing(){
 }
 #+end_src
 
-*** include
+***** include
 :PROPERTIES:
 :CUSTOM_ID: fe93c96b-97b4-4f15-9d37-997856b63295
 :END:
@@ -1100,9 +1100,9 @@ bossIsComing(){
 #Include '*i %A_ScriptDir%/../_post_local.ahk'
 #+end_src
 
-** Bind
+*** Bind
 
-*** Global
+***** Global
 :PROPERTIES:
 :CUSTOM_ID: 1a77bcfe-be1a-4b2d-beac-0879b9f7c5e7
 :END:
@@ -1176,9 +1176,9 @@ Capslock & r::{
 })
 #+end_src
 
-*** Local
+***** Local
 
-**** MatchMode3
+***** MatchMode3
 :PROPERTIES:
 :CUSTOM_ID: 5dd7edc3-c99a-439e-9bba-522ad81318be
 :END:
@@ -1243,7 +1243,7 @@ Capslock::WinMinimize
 #HotIf
 #+end_src
 
-**** rapid-fire
+***** rapid-fire
 :PROPERTIES:
 :CUSTOM_ID: 1fbfe4a2-b591-478c-8e2d-bb5043cbac8e
 :END:
@@ -1259,7 +1259,7 @@ Space::RapidFire(ThisHotkey)
 :header-args:ahk: :tangle (zr-org-by-tangle-dir "mouse.ahk")
 :END:
 
-** include
+*** include
 :PROPERTIES:
 :CUSTOM_ID: c77c0629-f231-402e-823f-a5b6efab50fb
 :END:
@@ -1267,7 +1267,7 @@ Space::RapidFire(ThisHotkey)
 #Include '../lib/HotGestures/HotGestures.ahk'
 #+end_src
 
-** gestures
+*** gestures
 :PROPERTIES:
 :CUSTOM_ID: 749ea152-6a90-4ab0-a5ce-d395a47d1e4e
 :END:
@@ -1316,9 +1316,9 @@ hgs.Register(_D_U, '↓↑')
 ; hgs.Register(_R_D, '→↓')
 #+end_src
 
-** Action
+*** Action
 
-*** Global
+***** Global
 :PROPERTIES:
 :CUSTOM_ID: 089834b9-4044-4ad2-8473-1a2266e20691
 :END:
@@ -1330,9 +1330,9 @@ defaultHgs(g){
 }
 #+end_src
 
-*** Local
+***** Local
 
-**** Browser
+***** Browser
 :PROPERTIES:
 :CUSTOM_ID: f23179e0-5a9c-40c4-b3e9-f355710ebf89
 :END:
@@ -1351,7 +1351,7 @@ browserHgs(g){
 }
 #+end_src
 
-** Router
+*** Router
 :PROPERTIES:
 :CUSTOM_ID: 5190391d-0221-466c-a4a1-5ef7f6c30f83
 :END:
@@ -1365,7 +1365,7 @@ hotGestureRouter(mWin, gesture){
 }
 #+end_src
 
-** Trigger
+*** Trigger
 :PROPERTIES:
 :CUSTOM_ID: 9d0a5191-1fc0-4225-8f4c-6f467c7410ea
 :END:
