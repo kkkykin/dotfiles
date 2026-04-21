@@ -1578,8 +1578,7 @@ stat(){
   return 1
 }
 
-start(){
-  sshd
+notify(){
   local ip="$("$zr_cli" wlan-ip)"
   termux-notification \
     --ongoing -c "IP: $ip" -t "sshd" \
@@ -1587,6 +1586,10 @@ start(){
     -i "$notification_id" \
     --on-delete "$stop_act"
   termux-toast "IP: $ip"
+}
+
+start(){
+  sshd
   "$zr_cli" stay-on-while-plugged-in true
 }
 
