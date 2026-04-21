@@ -400,6 +400,7 @@ config.font_size = 11.0
 #+begin_src lua
 config.leader = { key = 'F1', timeout_milliseconds = 1000 }
 config.keys = {
+  { key = 'F2', action = wezterm.action.ShowTabNavigator },
   {
     key = 'd',
     mods = 'LEADER',
