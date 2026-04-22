@@ -1,0 +1,111 @@
+#+title:      rime
+#+date:       [2026-04-22 Wed 10:32]
+#+filetags:   :base:
+#+identifier: 20260422T103211
+
+* tangle
+#+begin_src elisp
+(let ((domain (auth-source-pick-first-password :host "mydomain" :user "main"))
+      (urls '(;; "https://github.com/rime/rime-double-pinyin/raw/refs/heads/master/double_pinyin.schema.yaml"
+              "https://github.com/rime/rime-wubi/raw/refs/heads/master/wubi86.schema.yaml"
+              "https://github.com/rime/rime-wubi/raw/refs/heads/master/wubi86.dict.yaml"))
+      (conf-dir (pcase system-type
+                  ('windows-nt (substitute-in-file-name "$appdata/Rime/"))
+                  ('android "/storage/emulated/0/rime/"))))
+  (call-process "git" nil 0 nil "clone"
+                "https://github.com/iDvel/rime-ice.git"
+                (expand-file-name conf-dir) "--depth" "1")
+  (let ((default-directory (expand-file-name zr-org-tangle-default-dir))
+        (etag-dir "etags"))
+    (mkdir etag-dir t)
+    (dolist (u urls)
+      (let* ((fname (file-name-nondirectory u))
+             (etag-name (format "%s/%s.txt" etag-dir fname)))
+        (call-process "curl" nil 0 nil "-Lo" (expand-file-name fname conf-dir)
+                      "--etag-compare" etag-name "--etag-save" etag-name
+                      (replace-regexp-in-string (rx bos "https://github.com/")
+                                                (format "https://xget.%s/gh/" domain)
+                                                u)))))
+  (dolist (f (org-babel-tangle))
+    (when (string-suffix-p ".yaml" f)
+      (make-symbolic-link f conf-dir t))))
+#+end_src
+
+* config
+:PROPERTIES:
+:header-args:yml: :mkdirp t :tangle (zr-org-by-tangle-dir)
+:CUSTOM_ID: f23fa37c-b140-457c-870e-e80d49278fb3
+:END:
+
+#+name: default.custom.yaml
+#+begin_src yml
+patch:
+  ascii_composer/switch_key/Caps_Lock: noop
+  "key_binder/bindings":
+    - { when: paging, accept: bracketleft, send: Page_Up }
+    - { when: has_menu, accept: bracketright, send: Page_Down }
+  "menu/page_size": 9
+  schema_list:
+    - schema: wubi86
+    - schema: double_pinyin
+  "switcher/hotkeys":
+    - "Control+grave"
+  "switches/@0/reset": 1        # ascii_mode
+#+end_src
+
+#+name: wubi86.custom.yaml
+#+begin_src yml
+patch:
+  "engine/filters/+":
+    - single_char_filter
+  "key_binder/bindings":
+    - { when: composing, accept: Return, send: Escape }
+    - { when: has_menu, accept: semicolon, send: 2 }
+    - { when: has_menu, accept: apostrophe, send: 3 }
+  "translator/enable_user_dict": false
+  "translator/enable_sentence": false
+  reverse_lookup:
+    dictionary: rime_ice
+    prism: double_pinyin
+    prefix: "z"
+    tips: 〔自然〕
+#+end_src
+
+*** weasel
+:PROPERTIES:
+:header-args+: :tangle (if (eq 'windows-nt system-type) (zr-org-by-tangle-dir) "no")
+:CUSTOM_ID: 326931e0-c481-4ce3-b6aa-b74f30700a75
+:END:
+
+#+name: weasel.custom.yaml
+#+begin_src yml
+patch:
+  "app_options/emacs.exe":
+    ascii_mode: true
+  "app_options/wezterm-gui.exe":
+    ascii_mode: true
+  "style/horizontal": true
+  "style/inline_preedit": true
+#+end_src
+
+https://github.com/rime/weasel/issues/717#issuecomment-2936233497
+#+name: disable-ctrl-spc.reg
+#+begin_src conf-windows
+Windows Registry Editor Version 5.00
+
+[HKEY_CURRENT_USER\Control Panel\Input Method\Hot Keys\00000010]
+"Key Modifiers"=hex:00,c0,00,00
+"Virtual Key"=hex:ff,00,00,00
+
+[HKEY_CURRENT_USER\Control Panel\Input Method\Hot Keys\00000070]
+"Key Modifiers"=hex:00,c0,00,00
+"Virtual Key"=hex:ff,00,00,00
+
+[HKEY_USERS\.DEFAULT\Control Panel\Input Method\Hot Keys\00000010]
+"Key Modifiers"=hex:00,c0,00,00
+"Virtual Key"=hex:ff,00,00,00
+
+[HKEY_USERS\.DEFAULT\Control Panel\Input Method\Hot Keys\00000070]
+"Key Modifiers"=hex:00,c0,00,00
+"Virtual Key"=hex:ff,00,00,00
+#+end_src
