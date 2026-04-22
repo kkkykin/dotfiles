@@ -90,7 +90,7 @@ patch:
 
 https://github.com/rime/weasel/issues/717#issuecomment-2936233497
 #+name: disable-ctrl-spc.reg
-#+begin_src conf-windows
+#+begin_src conf-windows :comments no
 Windows Registry Editor Version 5.00
 
 [HKEY_CURRENT_USER\Control Panel\Input Method\Hot Keys\00000010]
