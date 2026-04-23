@@ -6,29 +6,25 @@
 * tangle
 #+begin_src elisp
 (let ((domain (auth-source-pick-first-password :host "mydomain" :user "main"))
-      (urls '(;; "https://github.com/rime/rime-double-pinyin/raw/refs/heads/master/double_pinyin.schema.yaml"
+      (urls '("https://github.com/rime/rime-double-pinyin/raw/refs/heads/master/double_pinyin.schema.yaml"
+              "https://github.com/gaboolic/rime-frost/raw/refs/heads/master/cn_dicts/8105.dict.yaml"
               "https://github.com/rime/rime-wubi/raw/refs/heads/master/wubi86.schema.yaml"
               "https://github.com/rime/rime-wubi/raw/refs/heads/master/wubi86.dict.yaml"))
-      (conf-dir (pcase system-type
-                  ('windows-nt (substitute-in-file-name "$appdata/Rime/"))
-                  ('android "/storage/emulated/0/rime/"))))
-  (call-process "git" nil 0 nil "clone"
-                "https://github.com/iDvel/rime-ice.git"
-                (expand-file-name conf-dir) "--depth" "1")
+      (zr-org-tangle-default-dir (pcase system-type
+                                   ('windows-nt (substitute-in-file-name "$appdata/Rime/"))
+                                   ('android "/storage/emulated/0/rime/"))))
   (let ((default-directory (expand-file-name zr-org-tangle-default-dir))
         (etag-dir "etags"))
     (mkdir etag-dir t)
     (dolist (u urls)
       (let* ((fname (file-name-nondirectory u))
              (etag-name (format "%s/%s.txt" etag-dir fname)))
-        (call-process "curl" nil 0 nil "-Lo" (expand-file-name fname conf-dir)
+        (call-process "curl" nil 0 nil "-LO"
                       "--etag-compare" etag-name "--etag-save" etag-name
                       (replace-regexp-in-string (rx bos "https://github.com/")
                                                 (format "https://xget.%s/gh/" domain)
                                                 u)))))
-  (dolist (f (org-babel-tangle))
-    (when (string-suffix-p ".yaml" f)
-      (make-symbolic-link f conf-dir t))))
+  (org-babel-tangle))
 #+end_src
 
 * config
@@ -65,10 +61,21 @@ patch:
   "translator/enable_user_dict": false
   "translator/enable_sentence": false
   reverse_lookup:
-    dictionary: rime_ice
+    dictionary: 8105
     prism: double_pinyin
     prefix: "z"
     tips: 〔自然〕
+#+end_src
+
+#+name: double_pinyin.custom.yaml
+#+begin_src yml
+patch:
+  "translator/dictionary": 8105
+  reverse_lookup:
+    dictionary: wubi86
+    enable_completion: true
+    prefix: "`"
+    tips: "〔五笔〕"
 #+end_src
 
 *** weasel
@@ -82,8 +89,10 @@ patch:
 patch:
   "app_options/emacs.exe":
     ascii_mode: true
+    vim_mode: true
   "app_options/wezterm-gui.exe":
     ascii_mode: true
+    vim_mode: true
   "style/horizontal": true
   "style/inline_preedit": true
 #+end_src
