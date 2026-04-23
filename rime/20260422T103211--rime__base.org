@@ -78,7 +78,7 @@ patch:
   "translator/enable_user_dict": false
   "translator/enable_sentence": false
   reverse_lookup:
-    dictionary: 8105
+    dictionary: rime_frost
     prism: double_pinyin
     prefix: "z"
     tips: 〔自然〕
@@ -93,6 +93,8 @@ patch:
     enable_completion: true
     prefix: "`"
     tips: "〔五笔〕"
+  "schema/dependencies":
+    - wubi86
 #+end_src
 
 *** weasel
