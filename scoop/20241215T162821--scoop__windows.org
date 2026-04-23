@@ -29,6 +29,7 @@
 | TheCjw         | scoop-retools         |
 | kiennq         | scoop-misc            |
 | uJZk           | Shovel-Koolar         |
+| szyha          | bucket                |
 
 #+begin_src elisp :eval no :var buckets=buckets
 (let ((cmd (mapconcat
