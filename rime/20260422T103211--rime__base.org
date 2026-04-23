@@ -9,7 +9,7 @@
       (urls '("https://github.com/rime/rime-double-pinyin/raw/refs/heads/master/double_pinyin.schema.yaml"
               "https://github.com/gaboolic/rime-frost/raw/refs/heads/master/cn_dicts/8105.dict.yaml"
               "https://github.com/rime/rime-wubi/raw/refs/heads/master/wubi86.schema.yaml"
-              "https://github.com/rime/rime-wubi/raw/refs/heads/master/wubi86.dict.yaml"))
+              "https://github.com/networm/Rime/raw/refs/heads/master/wubi86.dict.yaml"))
       (zr-org-tangle-default-dir (pcase system-type
                                    ('windows-nt (substitute-in-file-name "$appdata/Rime/"))
                                    ('android "/storage/emulated/0/rime/"))))
@@ -29,7 +29,7 @@
 
 * config
 :PROPERTIES:
-:header-args:yml: :mkdirp t :tangle (zr-org-by-tangle-dir)
+:header-args: :mkdirp t :tangle (zr-org-by-tangle-dir)
 :CUSTOM_ID: f23fa37c-b140-457c-870e-e80d49278fb3
 :END:
 
@@ -52,12 +52,14 @@ patch:
 #+name: wubi86.custom.yaml
 #+begin_src yml
 patch:
-  "engine/filters/+":
-    - single_char_filter
+  # "engine/filters/+":
+  #   - single_char_filter
   "key_binder/bindings":
     - { when: composing, accept: Return, send: Escape }
     - { when: has_menu, accept: semicolon, send: 2 }
     - { when: has_menu, accept: apostrophe, send: 3 }
+  "speller/auto_select": true
+  "speller/max_code_length": 4
   "translator/enable_user_dict": false
   "translator/enable_sentence": false
   reverse_lookup:
