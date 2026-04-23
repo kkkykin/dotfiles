@@ -8,6 +8,7 @@
 (let ((domain (auth-source-pick-first-password :host "mydomain" :user "main"))
       (urls '("https://github.com/rime/rime-double-pinyin/raw/refs/heads/master/double_pinyin.schema.yaml"
               "https://github.com/gaboolic/rime-frost/raw/refs/heads/master/cn_dicts/8105.dict.yaml"
+              "https://github.com/gaboolic/rime-frost/raw/refs/heads/master/cn_dicts/base.dict.yaml"
               "https://github.com/rime/rime-wubi/raw/refs/heads/master/wubi86.schema.yaml"
               "https://github.com/networm/Rime/raw/refs/heads/master/wubi86.dict.yaml"))
       (zr-org-tangle-default-dir (pcase system-type
@@ -32,6 +33,20 @@
 :header-args: :mkdirp t :tangle (zr-org-by-tangle-dir)
 :CUSTOM_ID: f23fa37c-b140-457c-870e-e80d49278fb3
 :END:
+
+https://github.com/gaboolic/rime-frost/blob/master/rime_frost.dict.yaml
+#+name: rime_frost.dict.yaml
+#+begin_src yml
+# Rime dictionary
+# encoding: utf-8
+
+---
+name: rime_frost
+version: "2023-11-13"
+import_tables:
+  - 8105     # 字表
+  - base     # 基础词库
+#+end_src
 
 #+name: default.custom.yaml
 #+begin_src yml
@@ -72,7 +87,7 @@ patch:
 #+name: double_pinyin.custom.yaml
 #+begin_src yml
 patch:
-  "translator/dictionary": 8105
+  "translator/dictionary": rime_frost
   reverse_lookup:
     dictionary: wubi86
     enable_completion: true
@@ -119,4 +134,17 @@ Windows Registry Editor Version 5.00
 [HKEY_USERS\.DEFAULT\Control Panel\Input Method\Hot Keys\00000070]
 "Key Modifiers"=hex:00,c0,00,00
 "Virtual Key"=hex:ff,00,00,00
+#+end_src
+
+*** trime
+:PROPERTIES:
+:header-args+: :tangle (if (eq 'android system-type) (zr-org-by-tangle-dir) "no")
+:CUSTOM_ID: bf2e48cb-0047-42bb-aba2-3f21711d266e
+:END:
+
+#+name: trime.custom.yaml
+#+begin_src yml
+patch:
+  "style/keyboard_height": 200
+  "style/proximity_correction": true
 #+end_src
