@@ -52,7 +52,7 @@ import_tables:
 #+begin_src yml
 patch:
   ascii_composer/switch_key/Caps_Lock: noop
-  ascii_composer/switch_key/Shift_L: commit_code
+  # ascii_composer/switch_key/Shift_L: commit_code
   "key_binder/bindings/+":
     - { when: paging, accept: bracketleft, send: Page_Up }
     - { when: has_menu, accept: bracketright, send: Page_Down }
@@ -71,7 +71,7 @@ patch:
   # "engine/filters/+":
   #   - single_char_filter
   "key_binder/bindings":
-    - { when: composing, accept: Return, send: Escape }
+    # - { when: composing, accept: Return, send: Escape }
     - { when: has_menu, accept: semicolon, send: 2 }
     - { when: has_menu, accept: apostrophe, send: 3 }
   "speller/auto_select": true
