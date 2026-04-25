@@ -1,0 +1,31 @@
+#+title:      yt-dlp
+#+date:       [2026-04-25 Sat 12:23]
+#+filetags:   :entertainment:
+#+identifier: 20260425T122309
+
+* tangle
+#+begin_src elisp
+(let* ((zr-org-tangle-default-dir (expand-file-name zr-org-tangle-default-dir))
+       (plug-dir (expand-file-name "plugins" zr-org-tangle-default-dir)))
+  (org-babel-tangle)
+  (make-symbolic-link zr-org-tangle-default-dir
+                      (pcase system-type
+                        ('windows-nt (substitute-in-file-name "$appdata/yt-dlp"))
+                        (_ (expand-file-name "~/.yt-dlp")))
+                      t)
+  (when (file-directory-p plug-dir)
+    (dolist (f (directory-files plug-dir t "^[^.]"))
+      (call-process "git" nil 0 nil "-C" f "pull"))))
+#+end_src
+
+* config
+:PROPERTIES:
+:header-args: :mkdirp t :tangle (zr-org-by-tangle-dir)
+:CUSTOM_ID: ccdc6130-c2e6-45f9-9b3c-c95bde822523
+:END:
+
+#+name: config.txt
+#+header: :var proxy-port=(auth-source-pick-first-password :host "mylocal" :user "proxy-port")
+#+begin_src org
+--proxy 127.0.0.1:$proxy-port
+#+end_src
