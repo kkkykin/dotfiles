@@ -1072,6 +1072,7 @@ GroupAdd 'games', 'ahk_exe Game.exe'
 GroupAdd 'games', 'ahk_class SDL_app'
 GroupAdd 'games', 'ahk_class UnityWndClass'
 GroupAdd 'games', 'ahk_class UnrealWindow'
+GroupAdd 'games', 'ahk_class RetroArch'
 GroupAdd 'games', 'ahk_class Skyrim Special Edition'
 
 GroupAdd 'NSFW', 'ahk_exe mpv.exe'
