@@ -36,12 +36,19 @@
 	defaultBranch = main
 [diff "gpg"]
 	textconv = gpg -d -q
+[diff "sops"]
+	textconv = sops -d
 [merge]
 	tool = vimdiff
 [pull]
 	ff = only
 [http "https://github.com"]
 	proxy = $proxy
+[filter "lfs"]
+	clean = git-lfs clean -- %f
+	smudge = git-lfs smudge -- %f
+	process = git-lfs filter-process
+	required = true
 #+end_src
 
 #+begin_src conf :tangle no
