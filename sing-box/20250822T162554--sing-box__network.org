@@ -1666,6 +1666,7 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
 #+begin_src elisp
 (let* ((default `(((domain_suffix
                     . [".steamcontent.com"
+                       ".nexus-cdn.com"
                        ".weyolo.com"]))
                   ((process_name
                     . ["cfst"
