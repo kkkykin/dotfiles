@@ -22,6 +22,9 @@ https://github.com/Electronicks/JoyShockMapper/blob/master/dist/OnStartup.txt
 #+begin_src org :mkdirp t :tangle (zr-org-by-tangle-dir "OnStartup.txt")
 GyroConfigs/xbox.txt
 
+HOME = LWINDOWS\ G\
+CAPTURE = CAPS_LOCK\ SPACE\
+
 RESTART_GYRO_CALIBRATION
 SLEEP 2                       # wait two seconds
 FINISH_GYRO_CALIBRATION
