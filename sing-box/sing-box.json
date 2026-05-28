@@ -118,7 +118,7 @@
 			"ips": [
 				{
 					"type": "ENC[AES256_GCM,data:4Q==,iv:KudzsdMSetjqfhrWRDP6jp8dePYts729TS2dEmlfhSY=,tag:OlsmprlrgbM8i9rUVKijrA==,type:float]",
-					"addr": "ENC[AES256_GCM,data:ozyL6M6OwUR9ZPw=,iv:okbEJKjqQp33ZIY6YpE18xR3GcvOHOYKNCclsFOFW6I=,tag:vslgpfaxRpRfWN9y2/AXsQ==,type:str]"
+					"addr": "ENC[AES256_GCM,data:IiqszPU2W8xb6o5fFpg=,iv:dJL67MEACoXMhu52U0FVQMxONnMghC6h0duUzWaiQxk=,tag:96uNK1ZZLJjlfnyL+634og==,type:str]"
 				},
 				{
 					"type": "ENC[AES256_GCM,data:0Q==,iv:YSzHoiSuheLk+Axe2Ri7SKWFk8INdvmjobKIFZNuQz4=,tag:6PnmMmrwALJTEdwoBweAjg==,type:float]",
@@ -133,7 +133,7 @@
 					"addr": "ENC[AES256_GCM,data:pQwvz/Cf5nY9ry73dBc/hJIlIHcP8vIZ5ks=,iv:LLxTpOcm6fTRazCZtsG7tPJl/Bo6hWhkqdIDArT5rMQ=,tag:+L6Lmv4RQY3q7DP7WRqQhw==,type:str]"
 				}
 			],
-			"ip": "ENC[AES256_GCM,data:x8APoqAmBYtyeb4=,iv:9fLPPJQQJeEJ8RhjkuYmnSAR2lyoCgYMqrsEA8aBid0=,tag:sqJ775kd2m7/oglpxPdZSQ==,type:str]",
+			"ip": "ENC[AES256_GCM,data:ibPGbnxBeEEbX25FAMc=,iv:MUJW/PhArZfNrPOv+iUE5AhqrZWM6ox4U8ofHuIPtAc=,tag:X4mHH0vaqzZ6acfa7OCANA==,type:str]",
 			"ipv6": "ENC[AES256_GCM,data:9q8X4dr/GlBZpDBMbKgJ9CFlbClCdLR2bSk=,iv:DqkL43ynPtE/+iB8COTEkFKGisAtKxGkEBYvPjTB5ww=,tag:4tG3xLCbl1bKu2SBvN5pKQ==,type:str]",
 			"obfs-pass": "ENC[AES256_GCM,data:LbJxIEq7f+4/hq6TFzTV,iv:XK0xR43H2Q+ZbpNnKVupKeZVFX/BrE2Epz/AzuyWoQs=,tag:AcH/GLF3WOYKaHUSJsDXzA==,type:str]",
 			"users": [
@@ -210,8 +210,8 @@
 		}
 	},
 	"sops": {
-		"lastmodified": "2026-04-21T02:02:37Z",
-		"mac": "ENC[AES256_GCM,data:q3jJkv0BW9CHpVUL8k+wCoPGC7+oglhR4WKpGgTnmC2UhFzAhnHiJ53cxHxyWZs1tkkENu52eiPLCz+nPjGX+zw6ZJxSmThLH2gbos9oRZ6LaHJ+3zfBtUfSFF3ndXeIKjiQH8xYQ2fOowetMViaJ6CYrZy8mrhaCxTqy/5FJGo=,iv:BssC3EQ525kY0rimfPyj96oI7hciYPIIrS1MDcWmSfM=,tag:0Rgi31S2n5kzNh+d9tGMUQ==,type:str]",
+		"lastmodified": "2026-05-28T06:59:35Z",
+		"mac": "ENC[AES256_GCM,data:1tS5ATIrGbejZN5osNQv+kxExXnCFgIfCGbj2+YSG2jNamG3WoCGHBpJOIAx7kIWPWiEQCl+EstY8KW52WqgCmkhmOgdzivofE7BJGnmCFY5B5psXtGCdkb3qHtEdlM9N4xCWqvc4gln1EyEzU7a5tYNuF34M2Q7AnMWEozfoOY=,iv:TNghwlNHTNlyRKpPseXJ6St5u+mhWL8Latr6/sj/Qik=,tag:hLOE+0E5CKOD7V+FrAHbxA==,type:str]",
 		"pgp": [
 			{
 				"created_at": "2026-01-15T00:51:44Z",
@@ -220,6 +220,6 @@
 			}
 		],
 		"unencrypted_suffix": "_unencrypted",
-		"version": "3.12.2"
+		"version": "3.13.1"
 	}
 }
