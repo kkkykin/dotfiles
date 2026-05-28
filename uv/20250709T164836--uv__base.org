@@ -17,11 +17,12 @@
 :PROPERTIES:
 :CUSTOM_ID: d18cc652-cc91-4913-898d-b3be6afd5256
 :END:
+#+header: :var index=(getenv "UV_DEFAULT_INDEX")
 #+begin_src toml :mkdirp t :tangle (zr-org-by-tangle-dir "uv.toml")
-exclude-newer = "1 week"
+# exclude-newer = "1 week"
 
 [[index]]
-url = "https://pypi.mirrors.ustc.edu.cn/simple/"
+url = "$index"
 default = true
 #+end_src
 
