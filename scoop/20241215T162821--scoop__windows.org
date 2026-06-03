@@ -24,7 +24,6 @@
 | user           | repo                  |
 |----------------+-----------------------|
 | kkkykin        | Personal-Scoop-Bucket |
-| YDX-2147483647 | scoop-bucket          |
 | brian6932      | dank-scoop            |
 | TheCjw         | scoop-retools         |
 | kiennq         | scoop-misc            |
