@@ -116,7 +116,6 @@ video-output-levels=full
 :CUSTOM_ID: d3d06537-b3b2-4147-b7d2-b7fafcc60cb2
 :END:
 #+begin_src conf-unix
-image-display-duration=inf
 keep-open
 # no-border
 no-title-bar
@@ -134,8 +133,17 @@ ontop
 autofit=30%
 shuffle
 
+[base-image]
+profile-desc='image bedrock'
+prefetch-playlist
+hr-seek=yes
+loop-playlist=inf
+reset-on-next-file=mute,video-pan-x,video-pan-y,video-zoom
+
 [repeat-random-image]
 profile-desc='Image the Image'
+profile=base-image
+profile=proxy
 image-display-duration=60
 #+end_src
 ******* prefetch
@@ -206,14 +214,11 @@ sub-font-size=44
 :END:
 #+begin_src conf-unix
 [images]
-profile-desc="Playing images"
-profile-cond=p.estimated_frame_count == 0
-prefetch-playlist
-hr-seek=yes
-image-display-duration=inf
-loop-playlist=inf
+profile-desc="fallback images"
+profile-cond=p.estimated_frame_count == 0 and p.image_display_duration == 5
+profile=image-base
 loop-file=inf
-reset-on-next-file=mute,video-pan-x,video-pan-y,video-zoom
+image-display-duration=inf
 #+end_src
 ******* alist
 ********* baidu
