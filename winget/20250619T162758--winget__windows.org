@@ -16,3 +16,8 @@ winget source reset winget
 #+begin_src sh
 sudo winget settings set DefaultProxy http://127.0.0.1:10807
 #+end_src
+* pin
+*** scoop
+#+begin_src sh
+winget pin add AutoHotkey.AutoHotkey
+#+end_src
