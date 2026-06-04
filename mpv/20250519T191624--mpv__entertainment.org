@@ -19,8 +19,8 @@
 :header-args:conf-unix: :tangle "_tangle/mpv.conf"
 :END:
 
-** always
-*** default
+*** always
+***** default
 :PROPERTIES:
 :CUSTOM_ID: fcfc81f5-0e48-4f31-bf89-951c30c9fc3a
 :END:
@@ -31,7 +31,7 @@ profile-cond=1
 watch-later-options=volume,window-scale
 force-seekable=yes
 #+end_src
-*** video
+***** video
 :PROPERTIES:
 :CUSTOM_ID: 7163a856-ee8c-48f9-8660-986236530488
 :END:
@@ -43,7 +43,7 @@ gpu-context=d3d11
 gpu-api=d3d11
 d3d11-adapter='NVIDIA GeForce RTX 3070 Laptop GPU'
 #+end_src
-*** audio
+***** audio
 :PROPERTIES:
 :CUSTOM_ID: bb9ed961-9b8e-48f0-ae20-7c91f7c1573c
 :END:
@@ -54,7 +54,7 @@ alang=eng,en,chi,zh-CN,sc,chs,jpn,ja,jp
 aid=1
 volume=50
 #+end_src
-*** subtitle
+***** subtitle
 :PROPERTIES:
 :CUSTOM_ID: 529a2b5e-6787-49c6-bdf7-d0ac1dbc6aa0
 :END:
@@ -64,7 +64,7 @@ sub-file-paths=subs,字幕
 slang=eng,en,chi,zh-CN,sc,chs
 sub-use-margins=yes
 #+end_src
-*** network
+***** network
 :PROPERTIES:
 :CUSTOM_ID: b19e7389-e128-4739-bfcc-9337ed2577fa
 :END:
@@ -73,7 +73,7 @@ hls-bitrate=max
 rtsp-transport=lavf
 user-agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36 Edg/136.0.0.0"
 #+end_src
-**** yt-dlp
+******* yt-dlp
 :PROPERTIES:
 :CUSTOM_ID: 606d4c45-3b76-488d-8560-f10b2bc29aab
 :END:
@@ -81,7 +81,7 @@ user-agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
 ytdl-raw-options=no-check-certificate=,netrc=
 ytdl-format=bv[width<=?2560]+ba/b
 #+end_src
-*** screenshot
+***** screenshot
 :PROPERTIES:
 :CUSTOM_ID: 33447925-6144-4703-9798-0fce0a337d2f
 :END:
@@ -91,7 +91,7 @@ screenshot-format=jxl
 screenshot-jxl-distance=0.1
 screenshot-jxl-effort=8
 #+end_src
-*** cache
+***** cache
 :PROPERTIES:
 :CUSTOM_ID: 2a08636d-8495-49f8-9d79-2e3255e3016e
 :END:
@@ -101,7 +101,7 @@ cache-on-disk=no
 demuxer-max-bytes=400MiB
 demuxer-max-back-bytes=150MiB
 #+end_src
-*** display
+***** display
 :PROPERTIES:
 :CUSTOM_ID: 6c3730e1-d6d9-4cbb-96ca-1b8129eb65eb
 :END:
@@ -111,7 +111,7 @@ cursor-autohide-fs-only
 cursor-autohide=1000
 video-output-levels=full
 #+end_src
-*** window
+***** window
 :PROPERTIES:
 :CUSTOM_ID: d3d06537-b3b2-4147-b7d2-b7fafcc60cb2
 :END:
@@ -122,8 +122,8 @@ keep-open
 no-title-bar
 snap-window
 #+end_src
-** profile
-*** manual
+*** profile
+***** manual
 :PROPERTIES:
 :CUSTOM_ID: 557be9cd-0f22-40ad-8f49-a4c03e5663bc
 :END:
@@ -133,8 +133,12 @@ profile-desc='mini player ontop'
 ontop
 autofit=30%
 shuffle
+
+[repeat-random-image]
+profile-desc='Image the Image'
+image-display-duration=60
 #+end_src
-**** prefetch
+******* prefetch
 :PROPERTIES:
 :CUSTOM_ID: c46ed5d2-29bf-4b05-a65d-fff1495759d3
 :END:
@@ -146,7 +150,7 @@ prefetch-playlist
 demuxer-max-bytes=1G
 demuxer-readahead-secs=20
 #+end_src
-**** proxy
+******* proxy
 :PROPERTIES:
 :CUSTOM_ID: 570a656b-1bdf-4e69-b734-3abe3e2ed8fa
 :END:
@@ -155,8 +159,8 @@ demuxer-readahead-secs=20
 http-proxy=http://127.0.0.1:10807
 #+end_src
 
-*** auto
-**** gpu
+***** auto
+******* gpu
 :PROPERTIES:
 :CUSTOM_ID: 7dd763c3-70ee-4767-9201-7d0948db2b1d
 :END:
@@ -176,7 +180,7 @@ vd-lavc-dr=yes
 hwdec=d3d11va,auto
 hwdec-codecs=all
 #+end_src
-**** dolby
+******* dolby
 #+begin_src conf-unix :tangle no
 [dolby]
 profile-desc="For Dolby Vision"
@@ -186,7 +190,7 @@ vf=format:dolbyvision=yes #杜比视界滤镜
 d3d11-output-csp=pq
 target-colorspace-hint
 #+end_src
-**** mov-text
+******* mov-text
 :PROPERTIES:
 :CUSTOM_ID: 77dac732-5ff9-4f3d-a686-ac401a2fd674
 :END:
@@ -196,7 +200,7 @@ profile-desc='mov_text stylish in mp4'
 profile-cond=p['current-tracks/sub/codec'] == 'mov_text'
 sub-font-size=44
 #+end_src
-**** image
+******* image
 :PROPERTIES:
 :CUSTOM_ID: 7aac8967-4623-4ecf-83d1-4fa3d50655a2
 :END:
@@ -211,8 +215,8 @@ loop-playlist=inf
 loop-file=inf
 reset-on-next-file=mute,video-pan-x,video-pan-y,video-zoom
 #+end_src
-**** alist
-***** baidu
+******* alist
+********* baidu
 :PROPERTIES:
 :CUSTOM_ID: 411b30f4-2e32-411c-a539-282378e9c3d0
 :END:
@@ -223,7 +227,7 @@ profile-cond=path:find('^http://192.168.[0-9.]+:5244/d/baidu/')
 profile=prefetch
 user-agent='netdisk'
 #+end_src
-***** ftp
+********* ftp
 :PROPERTIES:
 :CUSTOM_ID: c34f8d25-ed32-4f87-a222-bd434bb4564d
 :END:
@@ -234,7 +238,7 @@ cache-on-disk
 demuxer-cache-dir="~~\\cache\\"
 demuxer-cache-unlink-files=whendone
 #+end_src
-***** local
+********* local
 :PROPERTIES:
 :CUSTOM_ID: f6fe4302-3818-4f8e-b877-b7a428459bdb
 :END:
@@ -245,7 +249,7 @@ profile-cond=path:find('^http://192.168.[0-9.]+:5244/d/local/')
 http-proxy=no
 ytdl=no
 #+end_src
-**** bilibili
+******* bilibili
 :PROPERTIES:
 :CUSTOM_ID: eb72ecbb-c34b-4185-b972-f2400ee5ac57
 :END:
@@ -255,7 +259,7 @@ profile-cond=path:find("^https://www.bilibili.com/")
 referrer=https://www.bilibili.com/&apos
 ytdl-raw-options-append=cookies-from-browser=firefox
 #+end_src
-**** youtube
+******* youtube
 :PROPERTIES:
 :CUSTOM_ID: b5fc1e77-59ba-4b15-b574-8da0ae323e78
 :END:
@@ -266,7 +270,7 @@ ytdl-raw-options-append=cookies-from-browser=firefox
 profile=proxy
 profile=prefetch
 #+end_src
-**** rule34video
+******* rule34video
 :PROPERTIES:
 :CUSTOM_ID: 231befe2-74cd-454d-9114-e19dc120f1b2
 :END:
@@ -283,9 +287,9 @@ profile=prefetch
 :PROPERTIES:
 :tangle-dir: _tangle/scripts
 :END:
-** code
+*** code
 
-*** main
+***** main
 :PROPERTIES:
 :CUSTOM_ID: 57407e82-97f0-4ca4-ba6d-547ce0bd1676
 :END:
@@ -305,8 +309,8 @@ if not is_jellyfin_shim then
   mp.set_property("loop-playlist", "inf")
 end
 #+end_src
-*** sub
-**** autovsr
+***** sub
+******* autovsr
 :PROPERTIES:
 :CUSTOM_ID: bc6a80b4-1ad7-47a4-8d34-4e19b49ac3fd
 :END:
@@ -333,7 +337,7 @@ function autovsr()
 end
 mp.observe_property("video-params/pixelformat", "native", autovsr)
 #+end_src
-**** uri-transformer
+******* uri-transformer
 :PROPERTIES:
 :CUSTOM_ID: 21e659d6-efe3-4204-a01b-e3b16dd2147e
 :END:
@@ -446,7 +450,7 @@ end)
 -- 4. 脚本第一次加载时把当前+下一条都跑一遍
 update_current_and_next()
 #+end_src
-**** shadow-shadow
+******* shadow-shadow
 :PROPERTIES:
 :CUSTOM_ID: bd222aba-8236-4e43-9f96-22e881149b6c
 :END:
@@ -483,7 +487,7 @@ end
 -- mp.register_event('start-file', light_light)
 
 #+end_src
-**** ontop
+******* ontop
 :PROPERTIES:
 :CUSTOM_ID: 1f2b9d6c-a183-44e0-b3dc-72587851e541
 :END:
@@ -509,7 +513,7 @@ end
 mp.observe_property('fullscreen', 'bool', my_auto_ontop)
 mp.observe_property('pause', 'bool', my_auto_ontop)
 #+end_src
-**** ytdl-prefetch
+******* ytdl-prefetch
 :PROPERTIES:
 :CUSTOM_ID: 16c623cd-d921-44ea-9ab8-0ad25f0421df
 :END:
@@ -707,7 +711,7 @@ end
 mp.register_event('start-file', observe)
 mp.add_key_binding('ctrl+o', 'Browse-url', browse_url)
 #+end_src
-**** network-subtitle
+******* network-subtitle
 :PROPERTIES:
 :CUSTOM_ID: 28598dbb-79cf-46ed-95e0-b667e50f2d76
 :END:
@@ -840,7 +844,7 @@ end
 -- 监听文件加载事件
 mp.register_event("file-loaded", auto_load_subtitle)
 #+end_src
-***** config
+********* config
 字幕规则配置表
 key: 视频URL匹配模式
 value: 字幕URL模式列表，${name} 会被替换为视频文件名（不含扩展名）
@@ -864,7 +868,7 @@ return {
   end,
 }
 #+end_src
-**** wallpaper-shot
+******* wallpaper-shot
 :PROPERTIES:
 :CUSTOM_ID: 4be41171-20b2-4c4b-bf0b-7229702cee90
 :END:
@@ -1179,18 +1183,18 @@ if o.key and o.key ~= "" then
   mp.add_key_binding(o.key, "set_wallpaper", set_wallpaper)
 end
 #+end_src
-** opts
+*** opts
 :PROPERTIES:
 :tangle-dir: _tangle/script-opts
 :END:
-*** console
+***** console
 :PROPERTIES:
 :CUSTOM_ID: 4be9b535-8895-426a-acc9-4de9cd77563e
 :END:
 #+begin_src conf-unix :tangle (zr-org-by-tangle-dir "console.conf")
 font_size=24
 #+end_src
-*** thumbfast
+***** thumbfast
 :PROPERTIES:
 :CUSTOM_ID: 1511bd4c-a641-45b1-8c7e-b56f31f74dda
 :END:
@@ -1233,7 +1237,7 @@ direct_io=yes
 # Custom path to the mpv executable
 mpv_path=mpv
 #+end_src
-*** wallpaper-shot
+***** wallpaper-shot
 :PROPERTIES:
 :CUSTOM_ID: 76c405a7-4c8e-4e75-b91b-a554cd975448
 :END:
