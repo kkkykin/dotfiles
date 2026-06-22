@@ -56,11 +56,11 @@ import {$MAINPATH}/snippets/*
     import {$LOCALPATH}/subpath/*
 }
 #+end_src
-** main
+*** main
 :PROPERTIES:
 :CUSTOM_ID: 5297ab0f-3f8b-4b59-b5af-c29366d57a64
 :END:
-*** global
+***** global
 :PROPERTIES:
 :tangle-dir: _tangle/main/global
 :CUSTOM_ID: 87e8d3b9-696c-4dc0-b041-6ab479876b29
@@ -86,11 +86,11 @@ layer4 {
 }
 #+end_src
 
-*** snippets
+***** snippets
 :PROPERTIES:
 :tangle-dir: _tangle/main/snippets
 :END:
-**** load balance
+******* load balance
 :PROPERTIES:
 :CUSTOM_ID: 072fe3c4-fc1a-44e0-8ccc-64a9630ca915
 :END:
@@ -140,7 +140,7 @@ layer4 {
 }
 #+end_src
 
-**** cors
+******* cors
 :PROPERTIES:
 :CUSTOM_ID: b90c38da-1fce-4fef-8f9f-6414994fd6ea
 :END:
@@ -180,7 +180,7 @@ layer4 {
 }
 #+end_src
 
-**** remove forward headers
+******* remove forward headers
 :PROPERTIES:
 :CUSTOM_ID: f60abfad-d6df-40a6-98b8-e5be1198a108
 :END:
@@ -190,11 +190,12 @@ layer4 {
     header_up -Cf-*
     header_up -X-Forwarded-*
     header_up -X-Real-IP
+    header_up -X-Proxy-*
     header_up -Via
 }
 #+end_src
 
-**** rate limit
+******* rate limit
 #+begin_src caddy
 (rate-limit-by-key) {
     rate_limit {
@@ -207,7 +208,7 @@ layer4 {
 }
 #+end_src
 
-**** waf
+******* waf
 #+begin_src caddy
 (waf) {
     coraza_waf {
@@ -222,12 +223,58 @@ layer4 {
 }
 #+end_src
 
-** subpath
+******* trans-forward
+:PROPERTIES:
+:CUSTOM_ID: 5e925cc0-b6ca-4e5c-b812-184f6fc32c99
+:END:
+#+begin_src caddy :tangle (zr-org-by-tangle-dir "trans-forward.Caddyfile")
+(trans-forward) {
+    @http header_regexp up X-Proxy-Upstream ^http://([^:/]+)(?::(\d+))?$
+    @https header_regexp up X-Proxy-Upstream ^https://([^:/]+)(?::(\d+))?$
+
+    handle @http {
+
+        map {http.regexp.up.2} {up_port} {
+            "" 80
+            default {http.regexp.up.2}
+        }
+
+        reverse_proxy {http.regexp.up.1}:{up_port} {
+
+            header_up Host {http.regexp.up.1}
+
+            import remove-forward-headers
+        }
+    }
+
+    handle @https {
+
+        map {http.regexp.up.2} {up_port} {
+            "" 443
+            default {http.regexp.up.2}
+        }
+
+        reverse_proxy {http.regexp.up.1}:{up_port} {
+
+            transport http {
+                tls
+                tls_server_name {http.regexp.up.1}
+            }
+
+            header_up Host {http.regexp.up.1}
+
+            import remove-forward-headers
+        }
+    }
+}
+#+end_src
+
+*** subpath
 :PROPERTIES:
 :tangle-dir: _tangle/main/subpath
 :END:
 
-*** mpv
+***** mpv
 :PROPERTIES:
 :CUSTOM_ID: 54913f3d-72e8-45ba-b9fe-8b9bb6599582
 :END:
@@ -253,7 +300,7 @@ route /mpv/ {
 }
 #+end_src
 
-*** pac
+***** pac
 :PROPERTIES:
 :CUSTOM_ID: 9d031bef-33c9-4fe8-aee8-31fb9a29d1fc
 :END:
@@ -265,7 +312,7 @@ handle /pac.js {
 }
 #+end_src
 
-*** browse-url
+***** browse-url
 :PROPERTIES:
 :CUSTOM_ID: 96e9671c-2992-4c32-94e9-435f82f60950
 :END:
@@ -291,7 +338,7 @@ route /browse-url/ {
 }
 #+end_src
 
-*** rsshub
+***** rsshub
 :PROPERTIES:
 :CUSTOM_ID: cc962bac-3d8f-428e-b0ce-b31541933960
 :END:
@@ -316,7 +363,7 @@ handle_path /rsshub/* {
 }
 #+end_src
 
-*** aria2
+***** aria2
 :PROPERTIES:
 :CUSTOM_ID: c88e06a5-88ea-4ebf-934a-9a9b5be4e002
 :END:
@@ -471,7 +518,7 @@ http://127.0.0.1:9123 {
 # }
 #+end_src
 * helper
-** rsshub
+*** rsshub
 #+name: rsshub-public-instance
 #+begin_src elisp
 (require 'dom)
@@ -526,13 +573,13 @@ http://127.0.0.1:9123 {
                filename))))
  urls "\n")
 #+end_src
-** cors
+*** cors
 #+name: cors-map
 #+begin_src elisp :var cors="mpv-cors"
 (mapconcat (lambda (s) (format "%s 1" s)) (plist-get (cdr (plstore-get zr-local-pls cors)) :cors) "\n")
 #+end_src
 
-** format-matcher
+*** format-matcher
 #+name: format-matcher
 #+begin_src elisp :var fmt="host %s" val=hosts[] sep="\n"
 (mapconcat (lambda (s) (format fmt s)) val sep)
