@@ -21,15 +21,16 @@
 
 * Buckets
 #+name: buckets
-| user           | repo                  |
-|----------------+-----------------------|
-| kkkykin        | Personal-Scoop-Bucket |
-| brian6932      | dank-scoop            |
-| TheCjw         | scoop-retools         |
-| kiennq         | scoop-misc            |
-| uJZk           | Shovel-Koolar         |
-| szyha          | bucket                |
-| t8y2           | scoop-bucket          |
+| user      | repo                  |
+|-----------+-----------------------|
+| kkkykin   | Personal-Scoop-Bucket |
+| brian6932 | dank-scoop            |
+| TheCjw    | scoop-retools         |
+| kiennq    | scoop-misc            |
+| uJZk      | Shovel-Koolar         |
+| szyha     | bucket                |
+| t8y2      | scoop-bucket          |
+| rfnash    | scoop                 |
 
 #+begin_src elisp :eval no :var buckets=buckets
 (let ((cmd (mapconcat
