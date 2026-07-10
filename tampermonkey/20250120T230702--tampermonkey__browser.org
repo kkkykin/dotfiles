@@ -13,7 +13,7 @@
 
 * scripts
 
-** cookies-dumper
+*** cookies-dumper
 :PROPERTIES:
 :header-args: :tangle (zr-org-by-tangle-dir "cookies-dumper.js") :mkdirp t
 :CUSTOM_ID: 6fc870b6-bae2-4b60-8858-5e2af52b8cfa
@@ -98,13 +98,13 @@ GM_cookie.list({}, function(cookies, error) {
 });
 #+end_src
 
-** File List
+*** File List
 :PROPERTIES:
 :header-args: :var aria2_remote_token=(auth-info-password zr-local-pls) aria2_remote_url=(plist-get zr-local-pls :user)
 :CUSTOM_ID: 17fa8862-9243-4d50-b8a6-62e04976a848
 :END:
 
-*** baidu
+***** baidu
 :PROPERTIES:
 :header-args+: :tangle (zr-org-by-tangle-dir "file-list.js") :mkdirp t
 :CUSTOM_ID: 448afd5a-4d4c-4a08-b668-610654d0c781
@@ -260,7 +260,7 @@ GM_cookie.list({}, function(cookies, error) {
 })();
 #+end_src
 
-*** ali
+***** ali
 :PROPERTIES:
 :header-args+: :tangle (zr-org-by-tangle-dir "file-list-ali.js") :mkdirp t
 :CUSTOM_ID: b8b171e3-babe-4442-bdcb-777f4cb31bab
@@ -322,7 +322,7 @@ GM_cookie.list({}, function(cookies, error) {
 })();
 #+end_src
 
-*** motrix to aria2
+***** motrix to aria2
 :PROPERTIES:
 :CUSTOM_ID: f27b8880-e7db-4a26-8c9f-bdc9d924f072
 :END:
@@ -464,7 +464,7 @@ const ORIGINAL_RPC_URLS = [
 })();
 #+end_src
 
-** qr-decoder
+*** qr-decoder
 :PROPERTIES:
 :CUSTOM_ID: f6c588d9-ad10-4bee-9609-112e1f1aae4a
 :END:
@@ -1153,7 +1153,7 @@ const ORIGINAL_RPC_URLS = [
 })();
 #+end_src
 
-** org protocol bridge
+*** org protocol bridge
 :PROPERTIES:
 :CUSTOM_ID: e65224f3-0dbe-487d-9719-c92461fead64
 :END:

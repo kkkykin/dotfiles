@@ -1087,7 +1087,7 @@ bossIsComing(){
   DllCall('SystemParametersInfoW', 'UInt', 0x14, 'UInt', 0, 'Ptr', 0, 'UInt', 2)
   SoundSetMute 1
   winMinimizeAll('ahk_group NSFW')
-  Run 'uv run "' A_ScriptDir '/../../uv/_tangle/scripts/chrome_ctrl.py" close "^https://asmr.one/"',, 'Hide'
+  Run 'uv run "' A_ScriptDir '/../../uv/_tangle/scripts/chrome_ctrl.py" close "^https://eltirosto.github.io/" "^https://asmr.one/"',, 'Hide'
   Run 'emacsclient -e "(zr-moyu-quit-window)"',, 'Hide'
   executeHooks(post_boss_hook)
 }
