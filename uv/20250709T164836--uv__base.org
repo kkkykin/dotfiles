@@ -74,23 +74,23 @@ def close_tab(tab_id):
 
 
 def main():
-  if len(sys.argv) != 3 or sys.argv[1] != "close":
-    print("用法: python chrome_ctrl.py close '<regex>'", file=sys.stderr)
+  if len(sys.argv) < 3 or sys.argv[1] != "close":
+    print("用法: python chrome_ctrl.py close '<regex1>' '<regex2>' ...", file=sys.stderr)
     sys.exit(1)
 
-  pattern = re.compile(sys.argv[2])
+  patterns = [re.compile(p) for p in sys.argv[2:]]
   tabs = get_tabs()
   closed = 0
 
   for tab in tabs:
     url = tab.get("url", "")
-    if pattern.search(url) and tab.get("type", "") == "page":
-      close_tab(tab["id"])
-      closed += 1
-      print(f"关闭: {url}")
+    if tab.get("type", "") == "page":
+      if any(p.search(url) for p in patterns):
+        close_tab(tab["id"])
+        closed += 1
+        print(f"关闭: {url}")
 
   print(f"共关闭 {closed} 个标签页")
-
 
 if __name__ == "__main__":
   main()
