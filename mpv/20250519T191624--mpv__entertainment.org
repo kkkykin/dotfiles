@@ -216,8 +216,8 @@ sub-font-size=44
 [images]
 profile-desc="fallback images"
 profile-cond=p.estimated_frame_count == 0 and p.image_display_duration == 5
-profile=image-base
-loop-file=inf
+profile=base-image
+# loop-file=inf
 image-display-duration=inf
 #+end_src
 ******* alist
