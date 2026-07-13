@@ -521,9 +521,115 @@ end)
 :CUSTOM_ID: f5827e60-fd72-4e4a-9c84-9c8d17eeb3b4
 :END:
 
+******* transport
+:PROPERTIES:
+:CUSTOM_ID: 602abfa0-faeb-4ab9-a44c-74d554d1483c
+:END:
+#+begin_src lua
+local transports = {}
+local TIMEOUT = 60
+
+local function cleanup_transport()
+  local now = os.time()
+
+  for id, t in pairs(transports) do
+    if now - t.created_at > TIMEOUT then
+      wezterm.log_warn(("transport %s timeout"):format(id))
+      transports[id] = nil
+    end
+  end
+end
+
+local function on_transport_message(window, pane, payload)
+  local ok, msg = pcall(wezterm.json_parse, payload)
+
+  if not ok then
+    wezterm.log_error("invalid transport payload")
+    return
+  end
+
+  ----------------------------------------------------------------
+  -- dispatch
+  ----------------------------------------------------------------
+
+  if msg.type == "search_dictionary" then
+    emacs_utils.search_dictionary(msg.word)
+
+  elseif msg.type == "set_theme" then
+    theme_utils.set_theme(window, pane, msg.theme)
+
+  else
+    wezterm.log_warn("unknown message: " .. tostring(msg.type))
+  end
+end
+
+local function handle_transport(window, pane, value)
+  cleanup_transport()
+
+  if not value or value == "" then
+    return
+  end
+
+  local ok, packet = pcall(wezterm.json_parse, value)
+
+  if not ok then
+    wezterm.log_warn("invalid transport packet")
+    return
+  end
+
+  if packet.op == "begin" then
+    transports[packet.id] = {
+      total = packet.total,
+      chunks = {},
+      created_at = os.time(),
+    }
+    return
+  end
+
+  if packet.op == "abort" then
+    transports[packet.id] = nil
+    return
+  end
+
+  local t = transports[packet.id]
+  if not t then
+    return
+  end
+
+  if packet.op == "chunk" then
+    t.chunks[packet.seq + 1] = packet.data
+    return
+  end
+
+  if packet.op == "end" then
+    for i = 1, t.total do
+      if not t.chunks[i] then
+        wezterm.log_warn(
+          ("transport %s missing chunk %d"):format(packet.id, i - 1)
+        )
+        transports[packet.id] = nil
+        return
+      end
+    end
+
+    local payload = table.concat(t.chunks)
+
+    transports[packet.id] = nil
+
+    on_transport_message(window, pane, payload)
+  end
+end
+#+end_src
+
+******* main
+:PROPERTIES:
+:CUSTOM_ID: f9a7421b-1a85-46c9-a2d8-6e86bcb066de
+:END:
 #+begin_src lua
 wezterm.on('user-var-changed', function(window, pane, name, value)
-  if name == 'SetUserTheme' and value and value ~= "" then
+  if name == "ZRTransport" then
+    handle_transport(window, pane, value)
+  elseif name == 'SetUserTheme' and value and value ~= "" then
     theme_utils.set_theme(window, pane, value)
   elseif name == 'SearchDictionary' and value and value ~= "" then
     emacs_utils.search_dictionary(value)
