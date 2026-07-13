@@ -26,7 +26,7 @@
 #+header: :var host=(concat host) user=(user-full-name)
 #+begin_src toml :tangle (zr-org-by-tangle-dir "config.toml") :mkdirp t
 disable_response_storage = true
-model = "gpt-5.2"
+model = "gpt-5.6"
 model_reasoning_effort = "xhigh"
 model_provider = "main"
 sandbox_mode="danger-full-access"
@@ -47,6 +47,7 @@ view_image_tool = true
 web_search_request = true
 experimental_windows_sandbox = true
 experimental_sandbox_command_assessment = true
+image_generation = false
 parallel = true
 
 [model_providers.main]
@@ -58,6 +59,16 @@ wire_api = "responses"
 [sandbox_workspace_write]
 network_access = true
 writable_roots = ["/home/$user/.cache", "/home/$user/.local"]
+
+[analytics]
+enabled = false
+[feedback]
+enabled = false
+[otel]
+exporter = "none"
+trace_exporter = "none"
+metrics_exporter = "none"
+log_user_prompt = false
 #+end_src
 ** auth
 :PROPERTIES:
