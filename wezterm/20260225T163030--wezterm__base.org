@@ -521,6 +521,42 @@ end)
 :CUSTOM_ID: f5827e60-fd72-4e4a-9c84-9c8d17eeb3b4
 :END:
 
+******* mpv
+:PROPERTIES:
+:CUSTOM_ID: 08dcacd9-216e-496d-9cad-e44072724a80
+:END:
+#+begin_src lua
+local function mpv_remote(window, pane, msg)
+  local playlist = string.format(
+    "%s\\playlist-%d-%08x.m3u8",
+    os.getenv("TEMP") or ".",
+    os.time(),
+    math.random(0xffffffff)
+  )
+
+  local f = assert(io.open(playlist, "wb"))
+  f:write(msg.stdin or "")
+  f:close()
+
+  local argv = {
+    "mpv",
+    "--terminal=yes",
+    "--playlist=" .. playlist,
+  }
+
+  for _, arg in ipairs(msg.args or {}) do
+    table.insert(argv, arg)
+  end
+
+  window:perform_action(
+    wezterm.action.SpawnCommandInNewTab {
+      args = argv,
+    },
+    pane
+  )
+end
+#+end_src
+
 ******* transport
 :PROPERTIES:
 :CUSTOM_ID: 602abfa0-faeb-4ab9-a44c-74d554d1483c
@@ -557,6 +593,9 @@ local function on_transport_message(window, pane, payload)
 
   elseif msg.type == "set_theme" then
     theme_utils.set_theme(window, pane, msg.theme)
+
+  elseif msg.type == "mpv" then
+    mpv_remote(window, pane, msg)
 
   else
     wezterm.log_warn("unknown message: " .. tostring(msg.type))
