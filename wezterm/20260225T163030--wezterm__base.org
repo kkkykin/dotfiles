@@ -30,7 +30,7 @@ local wezterm = require 'wezterm'
 local act = wezterm.action
 local mux = wezterm.mux
 local config = {}
-local launcher = {}
+local launch_menu = {}
 #+end_src
 
 *** functions
@@ -104,6 +104,7 @@ local theme_utils = {}
 local pane_themes = {
   id = {},
   title = {
+    ['pokete'] = 'NvimLight',
     ['crawl.exe'] = 'Ef-Tritanopia-Light'
   },
 }
@@ -289,12 +290,42 @@ end
 :CUSTOM_ID: 6c209c4f-c2f6-470d-972f-42c555528790
 :END:
 #+begin_src lua
+-- Function to ensure a directory exists
+local function ensure_dir_exists(path)
+  -- Convert to absolute path if needed
+  local abs_path = wezterm.expand_tilde(path)
+
+  -- Check if directory exists using Lua's lfs (if available) or wezterm's glob
+  local success, err = pcall(function()
+    local info = io.open(abs_path)
+    if info then
+      info:close()
+      return true
+    end
+    return false
+  end)
+
+  -- If directory doesn't exist, create it
+  if not success or not success then
+    wezterm.log_info('Creating directory: ' .. abs_path)
+    local mkdir_cmd
+    mkdir_cmd = { 'mkdir', '-p', abs_path }
+
+    local result = wezterm.run_child_process(mkdir_cmd)
+    if result then
+      wezterm.log_info('Successfully created: ' .. abs_path)
+    else
+      wezterm.log_warn('Failed to create directory: ' .. abs_path)
+    end
+  end
+end
+
 local function basename(s)
   return string.gsub(s, '(.*[/\\])(.*)', '%2')
 end
 #+end_src
 
-*** launcher
+*** launch_menu
 :PROPERTIES:
 :CUSTOM_ID: 2b276c48-4a7d-4afc-8419-552fda71ff87
 :END:
@@ -302,7 +333,7 @@ end
 #+begin_src lua
 local ssh_domains = {}
 
-for host, config in pairs(wezterm.enumerate_ssh_hosts()) do  
+for host, config in pairs(wezterm.enumerate_ssh_hosts()) do
   table.insert(ssh_domains, {
     name = 'SSH:' .. host,
     remote_address = host,
@@ -317,14 +348,18 @@ for host, config in pairs(wezterm.enumerate_ssh_hosts()) do
     timeout = 0,
   })
 
-  table.insert(launcher, {  
+  table.insert(launch_menu, {
     label = 'Open:' .. host,
-    args = { 'ssh', host },  
-  })  
-end  
+    args = { 'ssh', host },
+  })
+end
 
-table.insert(launcher, { args = { 'crawl' } })
-table.insert(launcher, {
+table.insert(launch_menu, { args = { 'crawl' } })
+table.insert(launch_menu, {
+  label = 'kardx',
+  args = { 'uv', 'tool', 'run', '--from', 'kard-x', 'kardx' }
+})
+table.insert(launch_menu, {
   args = { 'nethack' },
   set_environment_variables = {
     NETHACKOPTIONS = table.concat({
@@ -334,6 +369,18 @@ table.insert(launcher, {
     }, ',')
   }
 })
+table.insert(launch_menu, {
+  label = 'pokete',
+  args = { 'uv', 'tool', 'run', 'pokete' }
+})
+#+end_src
+
+#+begin_src lua
+for _, entry in ipairs(launch_menu) do
+  if entry.cwd then
+    ensure_dir_exists(entry.cwd)
+  end
+end
 #+end_src
 
 *** wsl domains
@@ -372,7 +419,7 @@ end
 config.window_decorations = "RESIZE"
 config.window_background_opacity = 0.6
 config.win32_system_backdrop = 'Tabbed'
-config.launch_menu = launcher
+config.launch_menu = launch_menu
 config.ssh_domains = ssh_domains
 config.wsl_domains = wsl_domains
 config.hide_tab_bar_if_only_one_tab = true
@@ -426,6 +473,11 @@ config.keys = {
         emacs_utils.search_dictionary(word)
       end
     end),
+  },
+  {
+    key = 'Enter',
+    mods = 'ALT',
+    action = act.DisableDefaultAssignment,
   },
   {
     key = '@',
