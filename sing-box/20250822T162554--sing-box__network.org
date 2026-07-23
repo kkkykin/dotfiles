@@ -823,6 +823,7 @@ SEP defaults to \"/\"."
                 "inbound": "tun-in",
                 "outbound": "s[direct]",
                 "process_name": [
+                    "aria2c",
                     "sing-box",
                     "ssh"
                 ]
