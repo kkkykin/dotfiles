@@ -1271,3 +1271,105 @@ const ORIGINAL_RPC_URLS = [
 
 })();
 #+end_src
+
+*** LINUXDO MiddleclickFix
+:PROPERTIES:
+:CUSTOM_ID: d395e0a0-19f0-4bbf-999c-e3166f3d49eb
+:END:
+
+https://linux.do/t/topic/2227424
+
+#+begin_src js :tangle (zr-org-by-tangle-dir "linux-do-click.js")
+// ==UserScript==
+// @name         LINUXDO MiddleclickFix
+// @namespace    linux.do_middleclick_fix
+// @match        https://linux.do/t/*
+// @run-at       document-end
+// @grant        none
+// @version      1.0
+// @author       Do
+// @description  修复 Discourse "鼠标中键(新标签页)打开主题不增加 topics_entered 计数" 的问题
+// @description:en Fix Discourse middle-click-to-new-tab not incrementing topics_entered
+// ==/UserScript==
+
+/*
+ * ─── 原理 ───────────────────────────────────────────────────────────────
+ * Discourse 的 topics_entered 计数由 lib/middleware/request_tracker.rb 写入，
+ * 触发条件是请求 header 同时带：
+ *   - Discourse-Track-View: true
+ *   - Discourse-Track-View-Topic-Id: {topic_id}
+ *
+ * SPA 内点击话题时，Ember (lib/ajax.js) 会自动给下一个 ajax 注入这些 header；
+ * 但鼠标中键(新标签页)走的是浏览器原生 HTML 导航，对应代码路径是 pageview.js
+ * 发 POST /pageview，那个请求**只带 Deferred 标志，没有 topic_id**，所以
+ * 中间件 if data[:topic_id].present? 这一分支不进，topic_views 不写。
+ *
+ * 修复：用户脚本在话题页加载完成后，主动发一个轻量 GET 请求（载体不重要），
+ * 把缺失的 4 个 header 补上，触发 middleware 写 topic_views。
+ *
+ * ⚠️ topic_views 表对 (user_id, topic_id) 全局唯一去重，所以只有"从未访问过"
+ *    的话题才会真正 +1。已访问过的主题再访问永远不加（这是 Discourse 设计）。
+ * ─────────────────────────────────────────────────────────────────────── */
+
+(function () {
+    'use strict'
+
+    // 仅处理 /t/{slug}/{id} 形式的话题详情页
+    const m = location.pathname.match(/^\/t\/[^/]+\/(\d+)/)
+    if (!m) return
+    const topicId = m[1]
+
+    // 每个 tab 只补一次，避免 SPA 在同 tab 内反复打开同一主题反复触发
+    const flagKey = `mfix_topic_${topicId}`
+    if (sessionStorage.getItem(flagKey)) return
+
+    function sendTrackView() {
+        // 未登录直接退出
+        if (!document.querySelector('meta[name=csrf-token]')?.content) return
+
+        const sessionId = document.querySelector('meta[name=discourse-track-view-session-id]')?.content || ''
+
+        const headers = {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Discourse-Track-View': 'true',
+            'Discourse-Track-View-Topic-Id': topicId,
+            'Discourse-Track-View-Url': location.href,
+            'Discourse-Track-View-Referrer': document.referrer || '',
+            'Discourse-Present': 'true',
+        }
+        if (sessionId) headers['Discourse-Track-View-Session-Id'] = sessionId
+
+        // 用 /session/current.json 作为载体——轻量、无副作用、返回 200
+        // 中间件只看 header 不看 path，任何成功的请求都会触发计数
+        fetch('/session/current.json', {
+            method: 'GET',
+            credentials: 'include',
+            headers,
+        }).then(r => {
+            if (r.ok) {
+                sessionStorage.setItem(flagKey, '1')
+                console.log(`[MiddleclickFix] ✓ 已为话题 ${topicId} 补 track-view`)
+            } else {
+                console.warn(`[MiddleclickFix] 请求失败 status=${r.status}`)
+            }
+        }).catch(e => console.warn('[MiddleclickFix] 网络错误:', e))
+    }
+
+    // 等 Discourse JS bootstrap 完成（meta[discourse-track-view-session-id] 出现说明 boot OK）
+    const isReady = () => !!document.querySelector('meta[name=discourse-track-view-session-id]')
+
+    if (isReady()) {
+        sendTrackView()
+    } else {
+        // 兜底轮询，最长等 6 秒
+        let tries = 0
+        const itv = setInterval(() => {
+            tries++
+            if (isReady() || tries > 30) {
+                clearInterval(itv)
+                sendTrackView()
+            }
+        }, 200)
+    }
+})()
+#+end_src
