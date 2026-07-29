@@ -72,6 +72,7 @@
                              (tag . "tailscale-dns")
                              (type . "tailscale"))))
        (dns4-tag "dns4-in")
+       (wg-tag "wg-ep")
        pre-dns-client-rules
        pre-dns-server-rules
        (pre-hosts-tag "pre-hosts-dns")
@@ -532,7 +533,7 @@
 
 #+name: gen-route
 #+begin_src elisp
-(let* ((pre-rules '(((action . "sniff")
+(let* ((pre-rules `(((action . "sniff")
                      (sniffer . ["bittorrent"
                                  "dns"
                                  "ntp"
@@ -544,6 +545,8 @@
                      (type . "logical"))
                     ((outbound . "s[mitm]")
                      (rule_set . "mitm-rules"))
+                    ((outbound . ,wg-tag)
+                     (rule_set . "wireguard-rules"))
                     ((outbound . "s[tailscale]")
                      (rule_set . "tailscale-rules"))
                     ((action . "reject")
@@ -625,9 +628,9 @@
                           (override_address . ,cf-6)
                           (rule_set . "geoip-cloudflare"))))
        (default-mode (cond
-                      (zr-sys-android-p "cf-direct/wg-ep[vps2]")
-                      ((zr-net-has-public-ipv6-addr-p) "cf-v6/wg-ep[vps2]")
-                      (t "cf-v4/wg-ep[vps2]"))))
+                      (zr-sys-android-p "cf-direct")
+                      ((zr-net-has-public-ipv6-addr-p) "cf-v6")
+                      (t "cf-v4"))))
   (push cf-group-rules mode-rules-group)
   (cl-letf*
       (((symbol-function 'clash--cartesian-product)
@@ -858,6 +861,7 @@ SEP defaults to \"/\"."
       (browse-tags '("s[this-way]" "s[direct]" "s[relay]"))
       relay-tags
       wg-rules-group
+      wg-peers
       s-tags)
   (push `(state_directory . ,tailscale-state-dir) ts-ep)
 
@@ -1000,39 +1004,40 @@ SEP defaults to \"/\"."
                (push tag relay-tags))))
          (push s-tag s-tags))
 
-       (when-let* ((sys-name (string-trim (or (org-file-contents "_system-name.txt" t t)
-                                              (system-name))))
-                   (wg (gethash sys-name wg-clients))
-                   (port (gethash "wg-port" attr))
+       (when-let* ((port (gethash "wg-port" attr))
                    (addr (gethash "wg-addr" attr))
                    (pub (gethash "wg-pub-key" attr))
                    (proto (if (and (eq ip-type :ipv6)
                                    (not zr-sys-android-p))
                               "ipv6"
-                            "ip"))
-                   (peers `( :address ,(gethash proto attr)
-                             :port ,port
-                             :persistent_keepalive_interval 30
-                             :public_key ,pub
-                             :allowed_ips ,addr))
-                   (tag (format "wg-ep[%s]" name)))
-         (push `((clash_mode . ,tag)
-                 (outbound . ,tag)
-                 (rule_set . "wireguard-rules"))
-               wg-rules-group)
-         (push `( (tag . ,tag)
-                  (name . ,tag)
-                  (type . "wireguard")
-                  (system . ,(if zr-sys-linux-p t :false))
-                  (address . ,(concat (gethash "addr" wg) "/24"))
-                  (private_key . ,(auth-source-pick-first-password
-                                   :host "wireguard" :user sys-name))
-                  (peers . ,(vector peers)))
-               ep))))
+                            "ip")))
+         (push `( :address ,(gethash proto attr)
+                  :port ,port
+                  :persistent_keepalive_interval 30
+                  :public_key ,pub
+                  :allowed_ips ,(concat addr "/32"))
+               wg-peers))))
    vps-secrets)
+  
+  (when-let* ((sys-name (string-trim (or (org-file-contents "_system-name.txt" t t)
+                                         (system-name))))
+              (wg (gethash sys-name wg-clients)))
+    ;; (push `((clash_mode . ,tag)
+    ;;         (outbound . ,tag)
+    ;;         (rule_set . "wireguard-rules"))
+    ;;       wg-rules-group)
+    (push `((tag . ,wg-tag)
+            (name . ,wg-tag)
+            (type . "wireguard")
+            (system . ,(if zr-sys-linux-p t :false))
+            (address . ,(concat (gethash "addr" wg) "/24"))
+            (private_key . ,(auth-source-pick-first-password
+                             :host "wireguard" :user sys-name))
+            (peers . ,(vconcat wg-peers)))
+          ep))
 
-  (when wg-rules-group
-    (push wg-rules-group mode-rules-group))
+  ;; (when wg-rules-group
+  ;;   (push wg-rules-group mode-rules-group))
 
   ;; selector
   (let* ((u-self-tag "u[self]")
@@ -1198,7 +1203,7 @@ SEP defaults to \"/\"."
   (when-let* ((port (gethash "wg-port" attr))
               (addr (gethash "wg-addr" attr))
               (priv-key (auth-source-pick-first-password :host "wireguard" :user name)))
-    (push `((tag . "wg-ep")
+    (push `((tag . ,wg-tag)
             (type . "wireguard")
             (system . t)
             (address . ,addr)
@@ -1889,4 +1894,3 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
    `((version . 3)
      (rules . ,(vconcat local default)))))
 #+end_src
-
