@@ -1,0 +1,16 @@
+{
+	"owner": "ENC[AES256_GCM,data:O3OVMKwqGhmtz8oIZ90=,iv:yqFLBdT4YnpMVfgDBAmA9/ru8sR042jDqXRs81LGFMI=,tag:n8ZQZtwp/EV4Ixowr/Ry7w==,type:str]",
+	"sops": {
+		"lastmodified": "2026-07-30T01:09:14Z",
+		"mac": "ENC[AES256_GCM,data:1iit42tnozOEZonM2cCKRsRzJcuLSY5qOPyzaZrOnrYYp4amjjzwa6dR+u2fcqBitD4wr0pGBmAK6tklPWjcI9G8zxwlEO1xKX+atfWOZDxL6ejfRZYW2vog/tp9E9kdAWGRxHKOriVpF/U77I9IOLmb1xKhCkFH6jMTwoknanE=,iv:1e/lX0OW52fXywsdBAOcOu96QcQHV0FzUKJhMbIqxtU=,tag:vj7RynPt+oLN4j84SBPFaw==,type:str]",
+		"pgp": [
+			{
+				"created_at": "2026-07-30T01:08:07Z",
+				"enc": "-----BEGIN PGP MESSAGE-----\r\n\r\nhF4DhteJcpg+xyQSAQdAk3MNStuLlpLQ7OodWKomgRqeXyhYJ77VqvpCAye7owYw\r\nNG0uTutXmkIOF06TBrTEOGXznVyuRk/SPYBzNXh9l2tL9S8lqR7rlEApLp65BXHP\r\n1GgBCQIQ7Ofurt9f0xMKjdEx67H5ARxXt70v+NweinmDGigijww5vXCve1pSti3c\r\nPFgyMOlLPgZNNayHjlulnhLgpJQW57hvxB1bXGC+my2Nz511ySIlWpuqLE9W8jTX\r\nlEFESEQpdGAZYQ==\r\n=IV21\r\n-----END PGP MESSAGE-----",
+				"fp": "3933DFAC58D07052EF3B97F24424F4AD801B5547"
+			}
+		],
+		"unencrypted_suffix": "_unencrypted",
+		"version": "3.13.3"
+	}
+}

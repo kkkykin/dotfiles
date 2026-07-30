@@ -1,2 +1,3 @@
 pac.json diff=sops
 sing-box/sing-box.json diff=sops
+tailscale/tailscale.json diff=sops

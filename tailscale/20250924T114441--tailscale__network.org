@@ -6,7 +6,10 @@
 * tangle
 #+begin_src elisp
 (zr-org-babel-json-format "acl-rules")
-(let ((zr-local-pls (plstore-open "tailscale.pls")))
+(let ((secrets (with-temp-buffer
+                 (call-process "sops" nil t nil "-d" "tailscale.json")
+                 (goto-char 1)
+                 (json-parse-buffer))))
   (org-babel-tangle))
 #+end_src
 
@@ -15,7 +18,7 @@
 :CUSTOM_ID: 01deabc9-1e59-4dd2-a2a3-9aadcf7e9e30
 :END:
 #+name: acl-rules
-#+header: :var main_owner=(substring (json-serialize (plist-get (cdr (plstore-get zr-local-pls "owner")) :name)) 1 -1)
+#+header: :var main_owner=(substring (json-serialize (gethash "owner" secrets)) 1 -1)
 #+begin_src json :mkdirp t :tangle (zr-org-by-tangle-dir "acl.json")
 {
   "grants": [
