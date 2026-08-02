@@ -11,6 +11,7 @@
        (zr-org-tangle-default-dir (pcase system-type
                                     ('android "/storage/emulated/0/RetroArch/")
                                     (_ "_tangle")))
+       (cheevos-auth (car (auth-source-search :host "retroachievements.org")))
        (cfg-path (zr-org-by-tangle-dir "config/init.cfg")))
   (org-babel-tangle)
   (pcase system-type
@@ -36,12 +37,20 @@
 #+header: :var webdav-url=(string-trim (or local-webdav-url webdav-url))
 #+header: :var webdav-username=(identity webdav-username)
 #+header: :var webdav-password=(identity webdav-password)
+#+header: :var cheevos-password=(auth-info-password cheevos-auth)
+#+header: :var cheevos-user=(plist-get cheevos-auth :user)
 #+begin_src conf-unix :mkdirp t :tangle (identity cfg-path)
 audio_rewind_mute = "true"
+cheevos_badges_enable = "true"
+cheevos_enable = "true"
+cheevos_hardcore_mode_enable = "false"
+cheevos_password = "$cheevos-password"
+cheevos_unlock_sound_enable = "true"
+cheevos_username = "$cheevos-user"
 cloud_sync_driver = "webdav"
 cloud_sync_enable = "true"
 cloud_sync_sync_configs = "false"
-cloud_sync_sync_mode = "1"
+cloud_sync_sync_mode = "0"
 config_save_on_exit = "true"
 menu_startup_page = "2"
 network_on_demand_thumbnails = "true"
