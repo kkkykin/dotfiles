@@ -668,6 +668,200 @@ end)
   (format "local zr_kosync_servers={'%s','%s'}" (elt servers 0) (elt servers 1)))
 #+end_src
 
+*** opds-author-fallback
+:PROPERTIES:
+:CUSTOM_ID: da3a2f9c-e735-46ef-8a23-5eeeeed3a32c
+:END:
+#+begin_src lua :tangle (zr-org-by-tangle-dir "2-opds-author-fallback.lua")
+--[[--
+KOReader user patch: OPDS "author" fallback to "contributors".
+
+Some OPDS 2.0 / Readium catalogs omit `entry.metadata.author` but do provide
+`entry.metadata.contributors` or the singular Readium
+`entry.metadata.contributor`. Stock KOReader shows "Unknown Author" for those
+entries.
+
+This patch makes OPDSBrowser:getItemFromPublication() fall back to the
+contributors when the author is missing, preferring contributors whose role is
+"author", otherwise the first contributor.
+
+Implementation note on type-safety:
+    In the stock code `author` is always coerced to a *string* (it is used as
+    `title .. " - " .. author` and as a download-filename prefix). Instead of
+    re-implementing the string normalization (which handles string / {name=...}
+    / arrays of either), we derive a value shaped like a valid `metadata.author`
+    and let the *original* method normalize it. That guarantees the fallback
+    result has exactly the same type (string) as the stock path.
+
+Install: copy this file into KOReader's `patches/` directory
+(`koreader/patches/`). The leading "2-" makes it a `late` patch, so it is
+applied on every startup (do NOT use a "0-" prefix: that is `early_once`, which
+only runs once after an OTA update).
+--]]--
+
+local logger = require("logger")
+local userpatch = require("userpatch")
+
+-- Return a value shaped like a valid OPDS `metadata.author`
+-- (string / {name=...} / array of those) derived from a `contributors` value,
+-- so the original getItemFromPublication() can normalize it into a display
+-- string with its existing logic. Returns nil when there is nothing usable.
+local function pick_author_from_contributors(contributors)
+    if type(contributors) == "string" then
+        return contributors ~= "" and contributors or nil
+    end
+    if type(contributors) ~= "table" then
+        return nil
+    end
+
+    -- A contributor's `role` may be a plain string ("author") or a list of roles.
+    local function has_author_role(c)
+        if type(c) ~= "table" then return false end
+        local role = c.role
+        if role == "author" then return true end
+        if type(role) == "table" then
+            for _, r in ipairs(role) do
+                if r == "author" then return true end
+            end
+        end
+        return false
+    end
+
+    -- If it is an array of contributor objects, prefer those tagged as authors.
+    local authors = {}
+    for _, c in ipairs(contributors) do
+        if has_author_role(c) then
+            authors[#authors + 1] = c
+        end
+    end
+    if #authors > 0 then
+        return authors -- array of {name=...}; the original joins their names
+    end
+
+    -- No explicit "author" role: take the first contributor (string or object).
+    if contributors[1] ~= nil then
+        return contributors[1]
+    end
+
+    -- Not an array: a single contributor object such as {name=...} or a
+    -- role-tagged object. Hand it over as-is; the original reads `.name`.
+    if next(contributors) ~= nil then
+        return contributors
+    end
+
+    return nil
+end
+
+local function patchOPDSBrowser()
+    local ok, OPDSBrowser = pcall(require, "opdsbrowser")
+    if not ok or type(OPDSBrowser) ~= "table" then
+        logger.warn("userpatch 2-opds-author-fallback: cannot require opdsbrowser:", OPDSBrowser)
+        return
+    end
+    if OPDSBrowser._author_fallback_patched then
+        return -- registerPatchPluginFunc runs on every plugin instantiation; wrap once
+    end
+    OPDSBrowser._author_fallback_patched = true
+
+    local orig_getItemFromPublication = OPDSBrowser.getItemFromPublication
+    OPDSBrowser.getItemFromPublication = function(self, entry, item_url)
+        local md = entry and entry.metadata
+        if type(md) == "table" then
+            local a = md.author
+            local has_author = (type(a) == "string" and a ~= "")
+                or (type(a) == "table" and next(a) ~= nil)
+            if not has_author then
+                local derived = pick_author_from_contributors(md.contributors or md.contributor)
+                if derived ~= nil then
+                    -- Temporarily present the derived value as `author` so the
+                    -- stock normalization turns it into a string, then restore
+                    -- to avoid mutating (possibly reused) feed data.
+                    local saved = md.author
+                    md.author = derived
+                    local item = orig_getItemFromPublication(self, entry, item_url)
+                    md.author = saved
+                    return item
+                end
+            end
+        end
+        return orig_getItemFromPublication(self, entry, item_url)
+    end
+
+    logger.info("userpatch 2-opds-author-fallback: applied")
+end
+
+userpatch.registerPatchPluginFunc("opds", patchOPDSBrowser)
+#+end_src
+
+*** opds-jellyfin-bom
+:PROPERTIES:
+:CUSTOM_ID: 3e6ea3dc-fd7d-4d11-b6ed-d55b2031c690
+:END:
+#+begin_src lua :tangle (zr-org-by-tangle-dir "2-opds-jellyfin-bom.lua")
+--[[--
+KOReader user patch: strip a leading UTF-8 BOM from OPDS feeds (Jellyfin fix).
+
+Jellyfin (and other .NET servers that serialize with `Encoding.UTF8`) prefix
+their OPDS feed body with a UTF-8 BOM (bytes EF BB BF) *before* `<?xml ...`.
+
+OPDSBrowser:parseFeed() decides the feed format from the very first byte:
+    local start = feed and feed:sub(1, 1)
+    if start == "<" then ... (OPDS 1.x / XML)
+    elseif start == "{" then ... (OPDS 2.0 / JSON)
+    -- otherwise: returns nil -> empty catalog -> "nothing happens"
+The BOM's first byte (0xEF) is neither "<" nor "{", so Jellyfin catalogs parse
+to nil and the browser opens an empty list (the reported "nothing happens").
+
+fetchFeed() is the single source of the `feed` string that parseFeed()
+inspects (and caches). We wrap it and strip a leading BOM plus any leading
+whitespace from the returned body, so the format dispatch sees the real first
+character. luxl (the XML parser) already tolerates a BOM, so no parser change
+is needed. Header-only calls (which return a table) and error paths (false/nil)
+are passed through untouched.
+
+Install: copy this file into KOReader's `patches/` directory
+(`koreader/patches/`). The leading "2-" makes it a `late` patch, applied on
+every startup (do NOT use a "0-" prefix: that is `early_once`, which only runs
+once after an OTA update).
+--]]--
+
+local logger = require("logger")
+local userpatch = require("userpatch")
+
+local UTF8_BOM = "\239\187\191" -- EF BB BF (none of these bytes are Lua-pattern magic)
+
+local function patchOPDSBrowser()
+    local ok, OPDSBrowser = pcall(require, "opdsbrowser")
+    if not ok or type(OPDSBrowser) ~= "table" then
+        logger.warn("userpatch 2-opds-jellyfin-bom: cannot require opdsbrowser:", OPDSBrowser)
+        return
+    end
+    if OPDSBrowser._bom_strip_patched then
+        return -- registerPatchPluginFunc runs on every plugin instantiation; wrap once
+    end
+    OPDSBrowser._bom_strip_patched = true
+
+    local orig_fetchFeed = OPDSBrowser.fetchFeed
+    OPDSBrowser.fetchFeed = function(self, item_url, headers_only)
+        local result = orig_fetchFeed(self, item_url, headers_only)
+        -- Only the body path returns a string; leave headers (table),
+        -- false (empty body) and nil (error) untouched.
+        if type(result) == "string" then
+            result = result:gsub("^" .. UTF8_BOM, "") -- strip a leading UTF-8 BOM
+            result = result:gsub("^%s+", "")          -- strip leading whitespace
+            if result == "" then
+                return false -- mirror fetchFeed's "empty body" contract
+            end
+        end
+        return result
+    end
+
+    logger.info("userpatch 2-opds-jellyfin-bom: applied")
+end
+
+userpatch.registerPatchPluginFunc("opds", patchOPDSBrowser)
+#+end_src
+
 *** hide-cutout
 :PROPERTIES:
 :CUSTOM_ID: 13adabbe-183c-4fac-9a20-e8dcd762a921
