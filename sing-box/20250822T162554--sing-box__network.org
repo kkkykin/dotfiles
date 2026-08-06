@@ -133,13 +133,17 @@
                                       (member (alist-get 'method obd)
                                               '("chacha20-poly1305"))
                                       (member (alist-get 'type (alist-get 'transport obd))
-                                              '("xhttp"))
+                                              '("xhttp"
+                                                "raw"))
                                       (and (string= type "tuic")
                                            (not (assoc 'tls obd)))
                                       (assoc 'utls obd)
                                       (assoc 'plugin obd))))
                             (tag (format "%s[%s]" (alist-get 'tag obd) name)))
                   (push tag tags)
+                  (pcase type
+                    ("hysteria2"
+                     (assq-delete-all 'auth obd)))
                   (push (push `(tag . ,tag) obd) obds)))
               outbounds)
              (if tags
