@@ -10,7 +10,7 @@
   (mkdir (expand-file-name "_cookies" tangle-dir) t)
   (make-symbolic-link (expand-file-name tangle-dir)
                       (substitute-in-file-name
-                       "$USERPROFILE/scoop/persist/mpv-v3/portable_config")
+                       "$USERPROFILE/scoop/persist/mpv/portable_config")
                       t)
   (org-babel-tangle))
 #+end_src
