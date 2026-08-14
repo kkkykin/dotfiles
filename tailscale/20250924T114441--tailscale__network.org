@@ -6,10 +6,11 @@
 * tangle
 #+begin_src elisp
 (zr-org-babel-json-format "acl-rules")
-(let ((secrets (with-temp-buffer
-                 (call-process "sops" nil t nil "-d" "tailscale.json")
-                 (goto-char 1)
-                 (json-parse-buffer))))
+(let* ((secrets (with-temp-buffer
+                  (call-process "sops" nil t nil "-d" "tailscale.json")
+                  (goto-char 1)
+                  (json-parse-buffer)))
+       (posture-com (gethash "com" (gethash "posture" secrets))))
   (org-babel-tangle))
 #+end_src
 
@@ -19,6 +20,8 @@
 :END:
 #+name: acl-rules
 #+header: :var main_owner=(substring (json-serialize (gethash "owner" secrets)) 1 -1)
+#+header: :var com_os=(substring (json-serialize (gethash "os" posture-com)) 1 -1)
+#+header: :var com_ts=(substring (json-serialize (gethash "ts" posture-com)) 1 -1)
 #+begin_src json :mkdirp t :tangle (zr-org-by-tangle-dir "acl.json")
 {
   "grants": [
@@ -56,8 +59,8 @@
   "postures": {
     "posture:com": [
       "node:os IN ['windows']",
-      "node:osVersion >= '10.0.26100.4946'",
-      "node:tsVersion >= 'sing-box 1.12.12'",
+      "node:osVersion IN $com_os",
+      "node:tsVersion IN $com_ts",
       "node:tsAutoUpdate == false"
     ]
   },
@@ -77,10 +80,8 @@
   },
   "tests": [
     {
-      "accept": [
-        "tag:home:22"
-      ],
       "deny": [
+        "tag:home:22",
         "tag:home:80",
         "tag:phone:80",
         "tag:vps:80",
