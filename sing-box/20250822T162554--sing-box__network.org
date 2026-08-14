@@ -1186,7 +1186,7 @@ SEP defaults to \"/\"."
   (mapc
    (lambda (ip)
      (let* ((addr (gethash "addr" ip))
-            (user (format "%s.%s" name addr)))
+            (user (format "%s.%s" name (subst-char-in-string ?: ?_ addr))))
        (push user users)
        (push `((auth_user . ,user)
                (outbound . ,addr))
