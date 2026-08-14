@@ -19,18 +19,13 @@
 :END:
 #+begin_src toml :tangle (zr-org-by-tangle-dir "config.toml") :mkdirp t
 [[repos]]
-id = 'kkky'
-url = 'https://fdroid.kkky.eu.org/repo'
-enabled = true
-
-[[repos]]
 id = 'f-droid'
-url = 'https://mirrors.nju.edu.cn/fdroid/repo'
+url = 'https://mirrors.cernet.edu.cn/fdroid/repo'
 enabled = true
 
 [[repos]]
 id = 'f-droid-archive'
-url = 'https://mirrors.nju.edu.cn/fdroid/archive'
+url = 'https://mirrors.cernet.edu.cn/fdroid/archive'
 enabled = false
 
 [[repos]]
@@ -57,7 +52,6 @@ apps = [
 'player.phonograph.plus'
 ]
 repos = [
-'kkky',
 'f-droid',
 'f-droid-archive',
 'lzzy'

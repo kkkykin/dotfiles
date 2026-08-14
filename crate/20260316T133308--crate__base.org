@@ -17,11 +17,8 @@
 :END:
 #+begin_src toml :mkdirp t :tangle (zr-org-by-tangle-dir "config.toml")
 [source.crates-io]
-replace-with = 'ustc'
+replace-with = 'mirror'
 
-[source.ustc]
-registry = "sparse+https://mirrors.ustc.edu.cn/crates.io-index/"
-
-[registries.ustc]
-index = "sparse+https://mirrors.ustc.edu.cn/crates.io-index/"
+[source.mirror]
+registry = "https://mirrors.cernet.edu.cn/crates.io-index.git"
 #+end_src
