@@ -1205,7 +1205,7 @@ SEP defaults to \"/\"."
            wg-peers))
    wg-clients)
   (when-let* ((port (gethash "wg-port" attr))
-              (addr (gethash "wg-addr" attr))
+              (addr (concat (gethash "wg-addr" attr) "/24"))
               (priv-key (auth-source-pick-first-password :host "wireguard" :user name)))
     (push `((tag . ,wg-tag)
             (type . "wireguard")
