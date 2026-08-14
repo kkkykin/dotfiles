@@ -598,7 +598,7 @@
         (append
          (mapcar (lambda (u)
                    `((auth_user . ,u)
-                     (outbound . ,(format "s[%s]" u))))
+                     (outbound . ,(format "s.%s" u))))
                  client-proxy-users)
          (mapcan
           (lambda (vps)
@@ -1186,7 +1186,7 @@ SEP defaults to \"/\"."
   (mapc
    (lambda (ip)
      (let* ((addr (gethash "addr" ip))
-            (user (format "%s[%s]" name addr)))
+            (user (format "%s.%s" name addr)))
        (push user users)
        (push `((auth_user . ,user)
                (outbound . ,addr))
@@ -1219,7 +1219,7 @@ SEP defaults to \"/\"."
   (when-let* ((warp (gethash "warp" attr))
               (addr (gethash "addr" warp))
               (priv-key (auth-source-pick-first-password :host "wgcf-warp" :user name))
-              (warp-user (format "%s[warp]" name))
+              (warp-user (format "%s.warp" name))
               (ep-tag "wg-warp"))
     (push warp-user users)
     (push `((auth_user . ,warp-user)
