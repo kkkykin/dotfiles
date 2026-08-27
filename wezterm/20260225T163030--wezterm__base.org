@@ -594,6 +594,9 @@ local function on_transport_message(window, pane, payload)
   elseif msg.type == "set_theme" then
     theme_utils.set_theme(window, pane, msg.theme)
 
+  elseif msg.type == "open_uri" then
+    wezterm.open_with(msg.uri)
+
   elseif msg.type == "mpv" then
     mpv_remote(window, pane, msg)
 
