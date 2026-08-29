@@ -288,6 +288,17 @@ cookies=yes
 cookies-file=$cookie
 profile=prefetch
 #+end_src
+******* iwara
+:PROPERTIES:
+:CUSTOM_ID: 47e5efaa-651b-48b0-9218-a0110435cba6
+:END:
+#+begin_src conf-unix
+[iwara]
+profile-cond=path:find("^https://www.iwara.tv/")
+profile=proxy
+profile=prefetch
+#+end_src
+
 * scripts
 :PROPERTIES:
 :tangle-dir: _tangle/scripts
@@ -1188,6 +1199,207 @@ if o.key and o.key ~= "" then
   mp.add_key_binding(o.key, "set_wallpaper", set_wallpaper)
 end
 #+end_src
+******* delete-current-file
+:PROPERTIES:
+:CUSTOM_ID: 83f90598-fe5b-4d5b-a698-dc0b540673c0
+:END:
+#+begin_src lua :tangle (zr-org-by-tangle-dir "delete-current-file.lua")
+local mp = require("mp")
+local utils = require("mp.utils")
+
+local opts = {
+    keybind = nil,
+    confirm_timeout = 5,
+}
+
+local pending_confirm = false
+local confirm_timer = nil
+
+local function is_http_url(path)
+    return path and path:match("^https?://") ~= nil
+end
+
+local function is_file_url(path)
+    return path and path:match("^file://") ~= nil
+end
+
+local function get_local_path(path)
+    if is_file_url(path) then
+        -- file:///home/user/video.mp4
+        -- Windows file:///C:/video.mp4
+        path = path:gsub("^file://", "")
+        
+        -- Unix URL 通常是 file:///path
+        -- Windows UNC 等情况暂时保持原样
+        if package.config:sub(1, 1) == "/" then
+            path = path:gsub("^//", "/")
+        end
+    end
+    
+    return path
+
+end
+
+local function get_http_headers()
+    local headers = mp.get_property_native("http-header-fields")
+    
+    if not headers then
+        return {}
+    end
+    
+    if type(headers) == "table" then
+        return headers
+    end
+    
+    if type(headers) == "string" then
+        return { headers }
+    end
+    
+    return {}
+
+end
+
+local function delete_remote_file(path)
+    local args = {
+        "curl",
+        "--fail",
+        "--silent",
+        "--show-error",
+        "-X",
+        "DELETE",
+    }
+    
+    
+    -- 继承 mpv 当前 HTTP 请求使用的 Header
+    local headers = get_http_headers()
+    
+    for _, header in ipairs(headers) do
+        table.insert(args, "-H")
+        table.insert(args, header)
+    end
+    
+    table.insert(args, path)
+    
+    mp.msg.info("WebDAV DELETE: " .. path)
+    
+    local result = utils.subprocess({
+        args = args,
+        cancellable = false,
+    })
+    
+    if result.status == 0 then
+        return true
+    end
+    
+    return false,
+        result.error_string
+        or result.stderr
+        or ("curl exit code: " .. tostring(result.status))
+
+end
+
+local function delete_local_file(path)
+    path = get_local_path(path)
+    
+    mp.msg.info("Deleting local file: " .. path)
+    
+    local ok, err = os.remove(path)
+    
+    if ok then
+        return true
+    end
+    
+    return false, err
+
+end
+
+local function delete_current_file()
+    local path = mp.get_property("path")
+    
+    if not path or path == "" then
+        mp.osd_message("没有正在播放的文件", 3)
+        return
+    end
+    
+    mp.osd_message("正在删除当前文件...", 3)
+    
+    local ok
+    local err
+    
+    if is_http_url(path) then
+        ok, err = delete_remote_file(path)
+    else
+        ok, err = delete_local_file(path)
+    end
+    
+    if ok then
+        mp.msg.info("删除成功: " .. path)
+        mp.osd_message("删除成功", 3)
+    
+        -- 先停止，避免 mpv 继续访问已经删除的文件
+        mp.commandv("stop")
+    else
+        mp.msg.error("删除失败: " .. tostring(err))
+    
+        mp.osd_message(
+            "删除失败: " .. tostring(err),
+            5
+        )
+    end
+
+end
+
+local function reset_confirmation()
+    pending_confirm = false
+    
+    if confirm_timer then
+        confirm_timer:kill()
+        confirm_timer = nil
+    end
+
+end
+
+local function request_delete()
+    local path = mp.get_property("path")
+    
+    if not path or path == "" then
+        mp.osd_message("没有正在播放的文件", 3)
+        return
+    end
+    
+    if pending_confirm then
+        reset_confirmation()
+        delete_current_file()
+        return
+    end
+    
+    pending_confirm = true
+    
+    local display_name = mp.get_property("filename") or path
+    
+    mp.osd_message(
+        "确认删除："
+            .. display_name
+            .. "\n再次触发删除命令以确认",
+        opts.confirm_timeout
+    )
+    
+    confirm_timer = mp.add_timeout(
+        opts.confirm_timeout,
+        function()
+            pending_confirm = false
+            confirm_timer = nil
+        end
+    )
+
+end
+
+mp.add_key_binding(
+    opts.keybind,
+    "delete-current-file",
+    request_delete
+)
+#+end_src
 *** opts
 :PROPERTIES:
 :tangle-dir: _tangle/script-opts
@@ -1270,4 +1482,5 @@ ext=png
 #+begin_src conf-unix
 n playlist-next
 p playlist-prev
+Shift+DEL script-binding delete-current-file
 #+end_src
