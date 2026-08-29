@@ -1336,8 +1336,8 @@ local function delete_current_file()
         mp.msg.info("删除成功: " .. path)
         mp.osd_message("删除成功", 3)
     
-        -- 先停止，避免 mpv 继续访问已经删除的文件
-        mp.commandv("stop")
+        -- 从 mpv 播放列表中移除当前项目
+        mp.commandv("playlist-remove", "current")
     else
         mp.msg.error("删除失败: " .. tostring(err))
     
