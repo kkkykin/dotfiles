@@ -1779,6 +1779,7 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
 (let* ((local-file "_browse.eld")
        (process-base '("chrome"
                        "cromite"
+                       "chromium"
                        "cli-proxy-api"
                        "firefox"
                        "msedge"
