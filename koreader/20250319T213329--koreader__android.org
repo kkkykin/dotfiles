@@ -115,6 +115,7 @@ return {
         ["ReaderReady"] = {
             ["alt status bar"] = true,
             ["status bar"] = true,
+            ["timer"] = true,
         },
     },
     ["quickstart_shown_version"] = 202508000000,
@@ -449,24 +450,26 @@ return {
 :END:
 #+begin_src lua :tangle (zr-org-by-tangle-dir "profiles.lua") :mkdirp t
 return {
-  ["alt status bar"] =
-   {
-     ["settings"] =
-      {
-        ["name"] = "alt status bar",
-        ["order"] =
-         {
-           [1] = "status_line",
-         },
-      },
-     ["status_line"] = 0,
-   },
-  ["status bar"] = {
-    ["load_footer_preset"] = "base",
-    ["settings"] = {
-      ["name"] = "status bar",
+    ["alt status bar"] = {
+        ["settings"] = {
+            ["name"] = "alt status bar",
+        },
+        ["status_line"] = 0,
     },
-  },
+    ["status bar"] = {
+        ["load_footer_preset"] = "base",
+        ["settings"] = {
+            ["auto_exec_delay"] = 1,
+            ["name"] = "status bar",
+        },
+    },
+    ["timer"] = {
+        ["settings"] = {
+            ["auto_exec_delay"] = 10,
+            ["name"] = "timer",
+        },
+        ["start_timer_not_running"] = true,
+    },
 }
 #+end_src
 
