@@ -5,13 +5,78 @@
 
 * tangle
 #+begin_src elisp
-(make-symbolic-link (expand-file-name "data") (substitute-in-file-name "$APPDATA/pandoc") t)
+(let ((dir (expand-file-name
+            "pandoc"
+            (pcase system-type
+              ('windows-nt (substitute-in-file-name "$APPDATA"))
+              (_ (expand-file-name "~/.local/share"))))))
+  (org-babel-tangle)
+  (make-symbolic-link (expand-file-name zr-org-tangle-default-dir) dir t))
+#+end_src
+
+* config
+:PROPERTIES:
+:header-args:yml: :var data_dir=(zr-org-by-tangle-dir "")
+:END:
+
+*** common
+:PROPERTIES:
+:CUSTOM_ID: 112964b9-9e30-4802-a943-61c3ffcce549
+:END:
+#+begin_src yml :tangle (zr-org-by-tangle-dir "common.yaml")
+data-dir: ${.}
+standalone: true
+pdf-engine: tectonic
+reference-doc: ${.}/reference.docx
+
+variables:
+  documentclass: ctexart
+  geometry:
+    - margin=1in
+  colorlinks: true
+#+end_src
+
+*** org
+:PROPERTIES:
+:CUSTOM_ID: 0c58234b-7e60-4ffa-aa9d-e7b2d3b3c12e
+:END:
+#+begin_src yml :tangle (zr-org-by-tangle-dir "org.yaml")
+defaults:
+  - $data_dir/common
+filters:
+  - remove_zwsp.lua
+#+end_src
+
+* filters
+:PROPERTIES:
+:tangle-dir: (expand-file-name "filters" zr-org-tangle-default-dir)
+:END:
+
+*** remove-zwsp
+:PROPERTIES:
+:CUSTOM_ID: 108aef0e-3636-4b00-ad9c-01e19f1fd547
+:END:
+see `zr-org-latex-filter-link-fix'
+
+#+begin_src lua :mkdirp t :tangle (zr-org-by-tangle-dir "remove_zwsp.lua")
+if FORMAT ~= "org" then
+  function Str(elem)
+    elem.text = elem.text:gsub("\u{200B}", "")
+    return elem
+  end
+end
 #+end_src
 
 * templates
-https://github.com/Achuan-2/pandoc_docx_template
+:PROPERTIES:
+:tangle-dir: (expand-file-name "templates" zr-org-tangle-default-dir)
+:END:
+https://github.com/jgm/pandoc-templates
 
+* data
+https://github.com/Achuan-2/pandoc_docx_template
+#+header: :var data_dir=(expand-file-name zr-org-tangle-default-dir)
 #+begin_src sh :eval no
-mkdir -p data
-pandoc -o data/reference.docx --print-default-data-file reference.docx
+mkdir -p "$data_dir"
+pandoc -o "$data_dir/reference.docx" --print-default-data-file reference.docx
 #+end_src
