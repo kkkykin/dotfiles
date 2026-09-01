@@ -5,8 +5,7 @@
 
 * tangle
 #+begin_src elisp
-(dolist (c '("client-config"
-             "server-config"
+(dolist (c '("server-config"
              "android-tun"))
   (zr-org-babel-json-format c))
 (let* ((box-secrets (with-temp-buffer
@@ -18,6 +17,7 @@
           ('gnu/linux "/etc/sing-box/")
           (_ "_tangle")))
        (sb-version (process-lines "sing-box" "version"))
+       (sb-version-no (nth 2 (split-string (car sb-version))))
        (client-tmp-dir (expand-file-name "tmp/" zr-org-tangle-default-dir))
        (tun-dir (expand-file-name "tun/" client-tmp-dir))
        (client-dir (expand-file-name "client/" zr-org-tangle-default-dir))
@@ -336,179 +336,75 @@
 :PROPERTIES:
 :CUSTOM_ID: fed30130-cdf9-42cb-805c-50dbb7b4c5bf
 :END:
-#+header: :var rule_sets_dir=(expand-file-name rule-sets-dir)
-#+header: :var cache_path=(expand-file-name "cache.db" zr-org-tangle-default-dir)
-#+header: :var jsdelivr="https://fastly.jsdelivr.net"
-#+header: :var dns_default="ld-neo"
-#+header: :var clash_secret=(substring (json-serialize (auth-source-pick-first-password :host "clash" :user "secret")) 1 -1)
 #+name: client-config
 #+begin_src json :tangle (zr-org-by-tangle-dir "_500-main.json") :mkdirp t
-{
-  "experimental": {
-    "cache_file": {
-      "enabled": true,
-      "path": "$cache_path",
-      "store_rdrc": false
-    },
-    "clash_api": {
-      "access_control_allow_origin": [
-        "https://board.zash.run.place",
-        "http://127.0.0.1"
-      ],
-      "access_control_allow_private_network": true,
-      "external_controller": "127.0.0.1:9090",
-      "secret": "$clash_secret"
-    }
-  },
-  "log": {
-    "level": "info"
-  },
-  "route": {
-    "final": "s[direct]",
-    "rule_set": [
-      {
-        "path": "$rule_sets_dir/dns-local.srs",
-        "tag": "dns-local-rules",
-        "type": "local"
-      },
-      {
-        "path": "$rule_sets_dir/proxy.srs",
-        "tag": "proxy-rules",
-        "type": "local"
-      },
-      {
-        "path": "$rule_sets_dir/tls-record-frag.srs",
-        "tag": "tls-record-frag-rules",
-        "type": "local"
-      },
-      {
-        "path": "$rule_sets_dir/direct.srs",
-        "tag": "direct-rules",
-        "type": "local"
-      },
-      {
-        "path": "$rule_sets_dir/block.srs",
-        "tag": "block-rules",
-        "type": "local"
-      },
-      {
-        "path": "$rule_sets_dir/browse.srs",
-        "tag": "browse-rules",
-        "type": "local"
-      },
-      {
-        "path": "$rule_sets_dir/download.srs",
-        "tag": "download-rules",
-        "type": "local"
-      },
-      {
-        "path": "$rule_sets_dir/wireguard.srs",
-        "tag": "wireguard-rules",
-        "type": "local"
-      },
-      {
-        "path": "$rule_sets_dir/tailscale.srs",
-        "tag": "tailscale-rules",
-        "type": "local"
-      },
-      {
-        "path": "$rule_sets_dir/mitm.srs",
-        "tag": "mitm-rules",
-        "type": "local"
-      },
-      {
-        "download_detour": "s[direct]",
-        "tag": "geoip-telegram",
-        "type": "remote",
-        "url": "$jsdelivr/gh/chocolate4u/Iran-sing-box-rules@rule-set/geoip-telegram.srs"
-      },
-      {
-        "download_detour": "s[direct]",
-        "tag": "geoip-microsoft",
-        "type": "remote",
-        "url": "$jsdelivr/gh/chocolate4u/Iran-sing-box-rules@rule-set/geoip-microsoft.srs"
-      },
-      {
-        "download_detour": "s[direct]",
-        "tag": "geoip-cloudflare",
-        "type": "remote",
-        "url": "$jsdelivr/gh/chocolate4u/Iran-sing-box-rules@rule-set/geoip-cloudflare.srs"
-      },
-      {
-        "download_detour": "s[direct]",
-        "tag": "geoip-cn",
-        "type": "remote",
-        "url": "$jsdelivr/gh/SagerNet/sing-geoip@rule-set/geoip-cn.srs"
-      },
-      {
-        "download_detour": "s[direct]",
-        "tag": "geosite-cn",
-        "type": "remote",
-        "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-cn.srs"
-      },
-      {
-        "download_detour": "s[direct]",
-        "tag": "geosite-geolocation-cn",
-        "type": "remote",
-        "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-geolocation-cn.srs"
-      },
-      {
-        "download_detour": "s[direct]",
-        "tag": "geosite-geolocation-!cn",
-        "type": "remote",
-        "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-geolocation-!cn.srs"
-      },
-      {
-        "download_detour": "s[direct]",
-        "tag": "geosite-category-porn",
-        "type": "remote",
-        "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-category-porn.srs"
-      },
-      {
-        "download_detour": "s[direct]",
-        "tag": "geosite-category-ai-!cn",
-        "type": "remote",
-        "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-category-ai-!cn.srs"
-      },
-      {
-        "download_detour": "s[direct]",
-        "tag": "geosite-google",
-        "type": "remote",
-        "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-google.srs"
-      },
-      {
-        "download_detour": "s[direct]",
-        "tag": "geosite-microsoft",
-        "type": "remote",
-        "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-microsoft.srs"
-      },
-      {
-        "download_detour": "s[direct]",
-        "tag": "geosite-telegram",
-        "type": "remote",
-        "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-telegram.srs"
-      },
-      {
-        "download_detour": "s[direct]",
-        "tag": "geosite-talkatone",
-        "type": "remote",
-        "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-talkatone.srs"
-      },
-      {
-        "download_detour": "s[direct]",
-        "tag": "geosite-ebay",
-        "type": "remote",
-        "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-ebay.srs"
-      },
-      {
-        "download_detour": "s[direct]",
-        "tag": "geosite-adblockplus",
-        "type": "remote",
-        "url": "$jsdelivr/gh/SagerNet/sing-geosite@rule-set/geosite-adblockplus.srs"
-      }
-    ]
-  }
-}
+<<gen-client-main()>>
+#+end_src
+
+#+name: gen-client-main
+#+begin_src elisp
+(let* ((local-rulesets (directory-files rule-sets-dir t "\\.json$" t))
+       (remote-rulesets '("gh/chocolate4u/Iran-sing-box-rules@rule-set/geoip-telegram.srs"
+                          "gh/chocolate4u/Iran-sing-box-rules@rule-set/geoip-microsoft.srs"
+                          "gh/chocolate4u/Iran-sing-box-rules@rule-set/geoip-cloudflare.srs"
+                          "gh/SagerNet/sing-geoip@rule-set/geoip-cn.srs"
+                          "gh/SagerNet/sing-geosite@rule-set/geosite-cn.srs"
+                          "gh/SagerNet/sing-geosite@rule-set/geosite-geolocation-cn.srs"
+                          "gh/SagerNet/sing-geosite@rule-set/geosite-geolocation-!cn.srs"
+                          "gh/SagerNet/sing-geosite@rule-set/geosite-category-porn.srs"
+                          "gh/SagerNet/sing-geosite@rule-set/geosite-category-ai-!cn.srs"
+                          "gh/SagerNet/sing-geosite@rule-set/geosite-google.srs"
+                          "gh/SagerNet/sing-geosite@rule-set/geosite-microsoft.srs"
+                          "gh/SagerNet/sing-geosite@rule-set/geosite-telegram.srs"
+                          "gh/SagerNet/sing-geosite@rule-set/geosite-talkatone.srs"
+                          "gh/SagerNet/sing-geosite@rule-set/geosite-ebay.srs"
+                          "gh/SagerNet/sing-geosite@rule-set/geosite-adblockplus.srs"))
+       (jsdelivr "https://fastly.jsdelivr.net/")
+       (cache-path (expand-file-name "cache.db" zr-org-tangle-default-dir))
+       (main-route `((final . "s[direct]")
+                     (rule_set
+                      . ,(vconcat
+                          (mapcar
+                           (lambda (local)
+                             `((path . ,(file-name-with-extension local "srs"))
+                               (tag . ,(concat (file-name-base local) "-rules"))
+                               (type . "local")))
+                           local-rulesets)
+                          (mapcar
+                           (lambda (remote)
+                             (let ((base `((tag . ,(file-name-base remote))
+                                           (type . "remote")
+                                           (url . ,(concat jsdelivr remote)))))
+                               (if (version< sb-version-no "1.14")
+                                   (cons '(download_detour . "s[direct]")
+                                         base)
+                                 base)))
+                           remote-rulesets)))))
+       (main-conf `((experimental
+                     (cache_file (,(if (version< sb-version-no "1.14")
+                                       'store_rdrc
+                                     'store_dns)
+                                  . :false)
+                                 (enabled . t)
+                                 (path . ,cache-path))
+                     (clash_api
+                      (access_control_allow_origin
+                       . ["https://board.zash.run.place"
+                          "http://127.0.0.1"])
+                      (access_control_allow_private_network . t)
+                      (external_controller . "127.0.0.1:9090")
+                      (secret . ,(auth-source-pick-first-password
+                                  :host "clash" :user "secret"))))
+                    (log (level . "info")))))
+  (unless (version< sb-version-no "1.14")
+    (let ((default-client "s[direct]"))
+      (push `(default_http_client . ,default-client)
+            main-route)
+      (push `(http_clients . [((detour . "s[direct]")
+                               (tag . ,default-client))])
+            main-conf)))
+  (push `(route . ,main-route) main-conf)
+  (json-serialize main-conf))
 #+end_src
 
 ***** bounds
@@ -1396,7 +1292,10 @@ SEP defaults to \"/\"."
                      (answer . "localhost. IN A 127.0.0.1")
                      (ip_accept_any . t)
                      (rule_set . "dns-local-rules"))
+                    ((action . "evaluate")
+                     (server . "tailscale-dns"))
                     ((ip_accept_any . t)
+                     (match_response . t)
                      (rule_set . "tailscale-rules")
                      (server . "tailscale-dns"))
                     ((action . "reject")
@@ -1406,8 +1305,11 @@ SEP defaults to \"/\"."
                      (type . "logical"))
                     ((rule_set . "geosite-geolocation-cn")
                      (server . "ali-doh"))
+                    ((action . "evaluate")
+                     (server . ,final-dns))
                     ((client_subnet . "114.114.114.114/24")
                      (mode . "and")
+                     (match_response . t)
                      (rules . [((invert . t)
                                 (rule_set . "geosite-geolocation-!cn"))
                                ((rule_set . "geoip-cn"))])
@@ -1421,7 +1323,16 @@ SEP defaults to \"/\"."
                               "prefer_ipv6"
                             "ipv4_only"))
              (servers . ,(vconcat extra-dns-servers dns-servers))
-             (rules . ,(vconcat pre-dns-client-rules dns-rules))))
+             (rules . ,(cl-loop
+                        with old-version = (version< sb-version-no "1.14.6") ; merge not support match_response in 1.14.0
+                        for rule in (append pre-dns-client-rules dns-rules)
+                        unless (and old-version
+                                    (equal (alist-get 'action rule) "evaluate"))
+                        collect (if old-version
+                                    (assq-delete-all 'match_response rule)
+                                  rule)
+                        into rules
+                        finally return (vconcat rules)))))
      (route . ((default_domain_resolver . ,final-dns))))))
 #+end_src
 
