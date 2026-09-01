@@ -1304,27 +1304,27 @@ SEP defaults to \"/\"."
                                ((rule_set . "block-rules"))])
                      (type . "logical"))
                     ((rule_set . "geosite-geolocation-cn")
-                     (server . "ali-doh"))
+                     (server . ,cn-dns))
                     ((action . "evaluate")
                      (client_subnet . "114.114.114.114/24")
                      (server . ,final-dns))
-                    ((client_subnet . "114.114.114.114/24")
-                     (mode . "and")
+                    ((mode . "and")
                      (rules . [((invert . t)
                                 (rule_set . "geosite-geolocation-!cn"))
                                ((match_response . t)
                                 (rule_set . "geoip-cn"))])
-                     (server . ,final-dns)
+                     (server . ,cn-dns)
                      (type . "logical"))
-                    ((rule_set . "geosite-geolocation-!cn")
-                     (server . ,final-dns)))))
+                    ((action . "respond")))))
   (cl-labels
       ((process-rules (rules)
          (cl-loop
           with old-version = (version< sb-version-no "1.14")
           for rule across rules
           unless (and old-version
-                      (equal (alist-get 'action rule) "evaluate"))
+                      (member (alist-get 'action rule)
+                              '("evaluate"
+                                "respond")))
           collect
           (if old-version
               (let ((rule (copy-tree rule)))
@@ -1343,8 +1343,8 @@ SEP defaults to \"/\"."
                               "ipv4_only"))
                (servers . ,(vconcat extra-dns-servers dns-servers))
                (rules . ,(process-rules
-                          (append pre-dns-client-rules
-                                  dns-rules)))))
+                          (vconcat pre-dns-client-rules
+                                   dns-rules)))))
        (route . ((default_domain_resolver . ,final-dns)))))))
 #+end_src
 
