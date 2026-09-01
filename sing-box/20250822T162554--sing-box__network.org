@@ -212,11 +212,11 @@
              collect
              (if old-version
                  (let ((rule (copy-tree rule)))
-                   (if-let* ((sub-rules (alist-get 'rules rule)))
-                       (setf (alist-get 'rules rule)
-                             (sb-process-dns-rules sub-rules))
-                     (dolist (key '(match_response race speculative))
-                       (setq rule (assq-delete-all key rule))))
+                   (when-let* ((sub-rules (alist-get 'rules rule)))
+                     (setf (alist-get 'rules rule)
+                           (sb-process-dns-rules sub-rules)))
+                   (dolist (key '(match_response race speculative))
+                     (setq rule (assq-delete-all key rule)))
                    rule)
                rule)
              into final
