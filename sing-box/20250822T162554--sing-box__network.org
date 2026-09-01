@@ -194,11 +194,34 @@
             (server . ,pre-hosts-tag))
           pre-dns-server-rules)
     (push `((domain . ,(vconcat client-domains all-domains))
+            (speculative . t)
             (server . ,pre-hosts-tag))
           pre-dns-client-rules))
 
   (let* ((coding-system-for-write 'utf-8))
-    (org-babel-tangle))
+    (cl-letf*
+        (((symbol-function 'sb-process-dns-rules)
+          (lambda (rules)
+            (cl-loop
+             with old-version = (version< sb-version-no "1.14")
+             for rule across rules
+             unless (and old-version
+                         (member (alist-get 'action rule)
+                                 '("evaluate"
+                                   "respond")))
+             collect
+             (if old-version
+                 (let ((rule (copy-tree rule)))
+                   (if-let* ((sub-rules (alist-get 'rules rule)))
+                       (setf (alist-get 'rules rule)
+                             (sb-process-dns-rules sub-rules))
+                     (dolist (key '(match_response race speculative))
+                       (setq rule (assq-delete-all key rule))))
+                   rule)
+               rule)
+             into final
+             finally return (vconcat final)))))
+      (org-babel-tangle)))
 
   (dolist (f (directory-files "." t "^_.+\\.json$" t))
     (make-symbolic-link f client-tmp-dir t))
@@ -618,6 +641,13 @@ SEP defaults to \"/\"."
        (tag "local-hosts")
        (hosts (vconcat hosts-files))
        (local-file "_hosts.eld")
+       (rules `(((action . "evaluate")
+                 (speculative . t)
+                 (server . ,tag))
+                ((ip_accept_any . t)
+                 (match_response . t)
+                 (race . t)
+                 (server . ,tag))))
        (local (and (file-exists-p local-file)
                    (with-temp-buffer
                      (insert-file-contents local-file)
@@ -627,8 +657,7 @@ SEP defaults to \"/\"."
                           (type . "hosts")
                           (path . ,hosts)
                           (predefined . ,(append local default)))])
-             (rules . [((ip_accept_any . t)
-                        (server . ,tag))]))))))
+             (rules . ,(sb-process-dns-rules (vconcat rules))))))))
 #+end_src
 
 ***** platform
@@ -1290,12 +1319,14 @@ SEP defaults to \"/\"."
                        (type . "quic"))))
        (dns-rules `(((action . "predefined")
                      (answer . "localhost. IN A 127.0.0.1")
-                     (ip_accept_any . t)
+                     (speculative . t)
                      (rule_set . "dns-local-rules"))
                     ((action . "evaluate")
+                     (speculative . t)
                      (server . "tailscale-dns"))
                     ((ip_accept_any . t)
                      (match_response . t)
+                     (race . t)
                      (rule_set . "tailscale-rules")
                      (server . "tailscale-dns"))
                     ((action . "reject")
@@ -1304,11 +1335,14 @@ SEP defaults to \"/\"."
                                ((rule_set . "block-rules"))])
                      (type . "logical"))
                     ((rule_set . "geosite-geolocation-cn")
+                     (speculative . t)
                      (server . ,cn-dns))
                     ((action . "evaluate")
+                     (speculative . t)
                      (client_subnet . "114.114.114.114/24")
                      (server . ,final-dns))
                     ((mode . "and")
+                     (race . t)
                      (rules . [((invert . t)
                                 (rule_set . "geosite-geolocation-!cn"))
                                ((match_response . t)
@@ -1316,36 +1350,16 @@ SEP defaults to \"/\"."
                      (server . ,cn-dns)
                      (type . "logical"))
                     ((action . "respond")))))
-  (cl-labels
-      ((process-rules (rules)
-         (cl-loop
-          with old-version = (version< sb-version-no "1.14")
-          for rule across rules
-          unless (and old-version
-                      (member (alist-get 'action rule)
-                              '("evaluate"
-                                "respond")))
-          collect
-          (if old-version
-              (let ((rule (copy-tree rule)))
-                (if-let* ((sub-rules (alist-get 'rules rule)))
-                    (setf (alist-get 'rules rule)
-                          (process-rules sub-rules))
-                  (setq rule (assq-delete-all 'match_response rule)))
-                rule)
-            rule)
-          into final
-          finally return (vconcat final))))
-    (json-serialize
-     `((dns . ((final . ,final-dns)
-               (strategy . ,(if (zr-net-has-public-ipv6-addr-p)
-                                "prefer_ipv6"
-                              "ipv4_only"))
-               (servers . ,(vconcat extra-dns-servers dns-servers))
-               (rules . ,(process-rules
-                          (vconcat pre-dns-client-rules
-                                   dns-rules)))))
-       (route . ((default_domain_resolver . ,final-dns)))))))
+  (json-serialize
+   `((dns . ((final . ,final-dns)
+             (strategy . ,(if (zr-net-has-public-ipv6-addr-p)
+                              "prefer_ipv6"
+                            "ipv4_only"))
+             (servers . ,(vconcat extra-dns-servers dns-servers))
+             (rules . ,(sb-process-dns-rules
+                        (vconcat pre-dns-client-rules
+                                 dns-rules)))))
+     (route . ((default_domain_resolver . ,final-dns))))))
 #+end_src
 
 *** server
