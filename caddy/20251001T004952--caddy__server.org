@@ -344,7 +344,7 @@ route /browse-url/ {
 :END:
 #+begin_src caddy :mkdirp t :tangle (zr-org-by-tangle-dir "rsshub.Caddyfile")
 handle_path /rsshub/* {
-    reverse_proxy <<rsshub-upstreams()>> https://kayin.zeabur.app {
+    reverse_proxy <<rsshub-upstreams()>> https://rss.sakiko.de https://kayin.zeabur.app {
         header_up Host {upstream_hostport}
         header_up -X-Forwarded-*
         header_up -via
