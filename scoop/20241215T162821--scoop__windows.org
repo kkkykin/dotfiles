@@ -4,6 +4,39 @@
 #+identifier: 20241215T162821
 #+property: header-args :var scoop-home=(expand-file-name "scoop" (getenv "USERPROFILE"))
 
+* tangle
+#+begin_src elisp
+(let* ((conf-dir (substitute-in-file-name "$userprofile/.config/scoop/"))
+       (zr-local-pls (zr-sops-parse-json "../global.json"))
+       (proxy-info (gethash "proxy" zr-local-pls)))
+  (mkdir conf-dir t)
+  (dolist (f (org-babel-tangle))
+    (make-symbolic-link f conf-dir t)))
+#+end_src
+
+* config
+:PROPERTIES:
+:CUSTOM_ID: ff988605-80bd-4638-bf3d-515e610323ef
+:END:
+
+https://github.com/ScoopInstaller/Scoop/raw/refs/heads/master/libexec/scoop-config.ps1
+
+#+header: :var proxy=(format "%s:%d" (gethash "host" proxy-info) (gethash "port" proxy-info))
+#+begin_src json :comments no :mkdirp t :tangle (zr-org-by-tangle-dir "config.json")
+{
+    "aria2-enabled":  true,
+    "aria2-warning-enabled":  false,
+    "aria2-options":  "",
+    "proxy":  "$proxy",
+    "scoop_repo":  "https://github.com/ScoopInstaller/Scoop",
+    "scoop_branch":  "master",
+    "update_nightly": true,
+    "use_sqlite_cache": true,
+    "shim":  "kiennq",
+    "use_external_7zip":  false
+}
+#+end_src
+
 * Cli symlink
 #+begin_src elisp :var tbl=symlink-table[]
 (dolist (l tbl)
