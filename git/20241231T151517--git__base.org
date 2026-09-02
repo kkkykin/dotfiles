@@ -26,6 +26,7 @@
 :END:
 #+header: :var proxy=(or (getenv "all_proxy") proxy-server)
 #+header: :var attr_path=(identity attr-path)
+#+header: :var mydomain=(auth-source-pick-first-password :host "mydomain" :user "main")
 #+begin_src conf :tangle (zr-org-by-tangle-dir "gitconfig") :mkdirp t
 [user]
 	email = kkkykin@foxmail.com
@@ -42,8 +43,10 @@
 	tool = vimdiff
 [pull]
 	ff = only
-[http "https://github.com"]
-	proxy = $proxy
+[url "https://xget.$mydomain/gh/"]
+	insteadOf = https://github.com/
+[url "https://xget.$mydomain/gl/"]
+	insteadOf = https://gitlab.com/
 [filter "lfs"]
 	clean = git-lfs clean -- %f
 	smudge = git-lfs smudge -- %f
@@ -56,6 +59,10 @@
 	ui = always
 #+end_src
 
+*** windows
+:PROPERTIES:
+:CUSTOM_ID: e9b19a3d-9cea-47c3-9301-1a78e25743c0
+:END:
 #+begin_src conf :tangle (if (eq system-type 'windows-nt) (zr-org-by-tangle-dir "gitconfig") "no")
 [core]
 	filemode = false
@@ -66,6 +73,39 @@
 	auto = 256
 [http]
 	sslBackend = openssl
+#+end_src
+
+*** include
+:PROPERTIES:
+:CUSTOM_ID: d26fd2dc-00b6-49f8-a7d8-8aeab3882723
+:END:
+#+begin_src conf :tangle (zr-org-by-tangle-dir "gitconfig")
+<<gen-include()>>
+#+end_src
+
+#+name: gen-include
+#+begin_src elisp
+(if-let* ((configs (directory-files "." t "^_.+\\.conf")))
+    (cl-loop
+     for conf in configs
+     for base = (file-name-base conf)
+     if (string-prefix-p "__" base)
+     collect (format "[includeIf \"gitdir:~/%s/\"]\n\tpath = ~/%s"
+                     (substring base 2)
+                     (substring base 2))
+     into gitdirs
+     else
+     collect (format "path = %s" conf)
+     into include
+     finally return
+     (string-join
+      (append
+       (when include
+         (list (format "[include]\n\t%s"
+                       (string-join include "\n\t"))))
+       gitdirs)
+      "\n\n"))
+  "")
 #+end_src
 
 * attributes
