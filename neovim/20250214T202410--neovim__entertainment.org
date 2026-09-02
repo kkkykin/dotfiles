@@ -854,6 +854,7 @@ end
 #+begin_src lua
 {
   'nvim-orgmode/orgmode',
+  enabled = false,
   event = 'VeryLazy',
   ft = { 'org' },
   config = function()
