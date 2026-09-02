@@ -14,7 +14,8 @@
   (dolist (b '())
     (zr-org-babel-execute-named-src-block
      b '((:results . "raw replace value"))))
-  (org-babel-tangle nil (expand-file-name "default.js" dir) "^js$")
+  (let ((coding-system-for-write 'utf-8))
+    (org-babel-tangle nil (expand-file-name "default.js" dir) "^js$"))
   (org-babel-tangle))
 (org-babel-remove-result-one-or-many '(4))
 (save-buffer)
@@ -737,12 +738,32 @@ function fetchUrl(url, onload, name) {
 
 function loadScript(url, onload, name) {
   fetchUrl(url, function(scriptText) {
-    // 使用Function构造函数代替eval，更安全且可控制作用域
-    const scriptFunc = new Function(scriptText);
-    scriptFunc();
+    try {
+      const scriptFunc = new Function(scriptText);
+      scriptFunc();
+      onload();
+    } catch (e) {
+      Front.showBanner(`${name} 执行失败`);
+      console.error(e);
+    }
+  }, name);
+}
 
-    // 调用原始回调
-    onload();
+function loadScriptWithExports(url, exports, onload, name) {
+  fetchUrl(url, function(scriptText) {
+    try {
+      const scriptFunc = new Function(`
+        ${scriptText}
+        return {
+          ${exports.map(name => `${name}: ${name}`).join(',')}
+        };
+      `);
+
+      onload(scriptFunc());
+    } catch (e) {
+      Front.showBanner(`${name} 执行失败`);
+      console.error(e);
+    }
   }, name);
 }
 #+end_src
@@ -813,6 +834,24 @@ function openLinkInQRCode() {
 }
 
 mapkey(',q', '打开二维码中链接', openLinkInQRCode);
+#+end_src
+
+***** fswp
+:PROPERTIES:
+:CUSTOM_ID: 7ae2822d-7721-4b42-98da-e9592326ad9f
+:END:
+
+#+begin_src js :tangle no
+loadScriptWithExports(
+  'https://github.com/redguardtoo/fswp/raw/refs/heads/main/js/fswp.js',
+  ['fswpToggleSearchInterface'],
+  function(fswp) {
+    mapkey(',/', '#Fuzzy search webpage', function() {
+      fswp.fswpToggleSearchInterface();
+    });
+  },
+  'fswp.js'
+);
 #+end_src
 
 * local variables
