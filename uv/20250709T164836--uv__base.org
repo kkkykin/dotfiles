@@ -1118,3 +1118,50 @@ def main():
 if __name__ == "__main__":
     raise SystemExit(main())
 #+end_src
+
+** win-windows
+:PROPERTIES:
+:CUSTOM_ID: da9a829b-2849-4e84-8557-c2ae2b6babb5
+:END:
+#+begin_src py :tangle (zr-org-by-tangle-dir "win-windows.py")
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#   "pywin32",
+# ]
+# ///
+
+import win32gui
+
+
+def enum_windows():
+    windows = []
+
+    def callback(hwnd, _):
+        if not win32gui.IsWindowVisible(hwnd):
+            return
+
+        title = win32gui.GetWindowText(hwnd).strip()
+        if not title:
+            return
+
+        # 排除一些明显不是用户窗口的情况
+        if win32gui.IsIconic(hwnd):
+            return
+
+        windows.append((hwnd, title))
+
+    win32gui.EnumWindows(callback, None)
+
+    # title 去重，同时保留第一个窗口
+    seen = set()
+    for hwnd, title in windows:
+        if title in seen:
+            continue
+        seen.add(title)
+        print(f"{hwnd:x}\t{title}")
+
+
+if __name__ == "__main__":
+    enum_windows()
+#+end_src
