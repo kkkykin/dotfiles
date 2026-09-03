@@ -432,7 +432,7 @@
                   (listen . "127.0.0.1")
                   (listen_port . 9090)
                   (dashboard
-                   . ((enabled . t)
+                   . ((enabled . ,(if zr-sys-android-p :false t))
                       (http_client . ,this-way-client)
                       (path . ,(expand-file-name "dashboard"
                                                  zr-org-tangle-default-dir)))))])
