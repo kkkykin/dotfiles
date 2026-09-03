@@ -395,37 +395,53 @@
                            local-rulesets)
                           (mapcar
                            (lambda (remote)
-                             (let ((base `((tag . ,(file-name-base remote))
-                                           (type . "remote")
-                                           (url . ,(concat jsdelivr remote)))))
-                               (if (version< sb-version-no "1.14")
-                                   (cons '(download_detour . "s[direct]")
-                                         base)
-                                 base)))
+                             `((tag . ,(file-name-base remote))
+                               (,(if (version< sb-version-no "1.14")
+                                     'download_detour
+                                   'http_client)
+                                . "s[direct]")
+                               (type . "remote")
+                               (url . ,(concat jsdelivr remote))))
                            remote-rulesets)))))
-       (main-conf `((experimental
-                     (cache_file (,(if (version< sb-version-no "1.14")
-                                       'store_rdrc
-                                     'store_dns)
-                                  . :false)
-                                 (enabled . t)
-                                 (path . ,cache-path))
-                     (clash_api
-                      (access_control_allow_origin
-                       . ["https://board.zash.run.place"
-                          "http://127.0.0.1"])
-                      (access_control_allow_private_network . t)
-                      (external_controller . "127.0.0.1:9090")
-                      (secret . ,(auth-source-pick-first-password
-                                  :host "clash" :user "secret"))))
-                    (log (level . "info")))))
-  (unless (version< sb-version-no "1.14")
-    (let ((default-client "s[direct]"))
+       (exp-conf `((cache_file (,(if (version< sb-version-no "1.14")
+                                     'store_rdrc
+                                   'store_dns)
+                                . :false)
+                               (enabled . t)
+                               (path . ,cache-path))))
+       (main-conf `((log (level . "info")))))
+  (if (version< sb-version-no "1.14")
+      (push `(clash_api
+              (access_control_allow_origin
+               . ["https://board.zash.run.place"
+                  "http://127.0.0.1"])
+              (access_control_allow_private_network . t)
+              (external_controller . "127.0.0.1:9090")
+              (secret . ,(auth-source-pick-first-password
+                          :host "clash" :user "secret")))
+            exp-conf)
+    (let ((default-client "s[direct]")
+          (this-way-client "s[this-way]"))
       (push `(default_http_client . ,default-client)
             main-route)
-      (push `(http_clients . [((detour . "s[direct]")
-                               (tag . ,default-client))])
+      (push `(services
+              . [((type . "api")
+                  (secret . ,(auth-source-pick-first-password
+                              :host "sing-box" :user "secret"))
+                  (access_control_allow_origin . "http://127.0.0.1")
+                  (listen . "127.0.0.1")
+                  (listen_port . 9090)
+                  (dashboard
+                   . ((enabled . t)
+                      (http_client . ,this-way-client)
+                      (path . ,(expand-file-name "dashboard"
+                                                 zr-org-tangle-default-dir)))))])
+            main-conf)
+      (push `(http_clients . [((tag . ,default-client))
+                              ((detour . ,this-way-client)
+                               (tag . ,this-way-client))])
             main-conf)))
+  (push `(experimental . ,exp-conf) main-conf)
   (push `(route . ,main-route) main-conf)
   (json-serialize main-conf))
 #+end_src
@@ -642,7 +658,6 @@ SEP defaults to \"/\"."
        (hosts (vconcat hosts-files))
        (local-file "_hosts.eld")
        (rules `(((action . "evaluate")
-                 (speculative . t)
                  (server . ,tag))
                 ((ip_accept_any . t)
                  (match_response . t)
@@ -1319,7 +1334,6 @@ SEP defaults to \"/\"."
                        (type . "quic"))))
        (dns-rules `(((action . "predefined")
                      (answer . "localhost. IN A 127.0.0.1")
-                     (speculative . t)
                      (rule_set . "dns-local-rules"))
                     ((action . "evaluate")
                      (speculative . t)
