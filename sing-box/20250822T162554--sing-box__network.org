@@ -1577,6 +1577,9 @@ if __name__ == "__main__":
 :END:
 https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
 
+https://github.com/SagerNet/sing-geosite/tree/rule-set
+https://github.com/Chocolate4U/Iran-sing-box-rules/tree/rule-set
+
 *** proxy
 :PROPERTIES:
 :CUSTOM_ID: 86dd13c4-1322-4298-a426-d3bbed2b8a44
@@ -1630,8 +1633,10 @@ https://sing-box.sagernet.org/zh/configuration/rule-set/headless-rule/
 #+begin_src elisp
 (let* ((default `(((domain_suffix
                     . [".steamcontent.com"
-                       ".nexus-cdn.com"
-                       ".weyolo.com"]))
+                       ;; ".steampowered.com"
+                       ".steamstatic.com"
+                       ".steamserver.net"
+                       ".nexus-cdn.com"]))
                   ((process_name
                     . ["cfst"
                        "mcis"
