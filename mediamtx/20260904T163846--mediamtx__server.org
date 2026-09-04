@@ -10,135 +10,748 @@
 
 * hls-cdn
 #+begin_src js
+const AUTH_COOKIE_NAME = "hlsAuth";
+const TOKEN_PARAM = "token";
+
+// Worker authentication cookie lifetime.
+const AUTH_COOKIE_MAX_AGE = 60 * 60 * 24;
+
+// --------------------------------------------------
+// Worker
+// --------------------------------------------------
+
 export default {
-  async fetch(request, env) {
-    let config;
+    async fetch(request, env) {
+        let config;
 
-    try {
-      config = JSON.parse(env.HLS_CONFIG);
-    } catch {
-      return new Response("Worker configuration error", {
-        status: 500,
-      });
-    }
+        try {
+            config = JSON.parse(env.HLS_CONFIG);
+        } catch {
+            return new Response(
+                "Worker configuration error",
+                { status: 500 },
+            );
+        }
 
-    const url = new URL(request.url);
+        const url = new URL(request.url);
 
-    // Only allow GET / HEAD.
-    if (request.method !== "GET" && request.method !== "HEAD") {
-      return new Response("Method Not Allowed", {
-        status: 405,
-        headers: {
-          Allow: "GET, HEAD",
-        },
-      });
-    }
+        // Only allow GET / HEAD.
+        if (
+            request.method !== "GET" &&
+                request.method !== "HEAD"
+        ) {
+            return new Response(
+                "Method Not Allowed",
+                {
+                    status: 405,
+                    headers: {
+                        Allow: "GET, HEAD",
+                    },
+                },
+            );
+        }
 
-    // Find the most specific matching rule.
-    const rule = findRule(config.rules, url.pathname);
+        // Find the most specific matching rule.
+        const rule = findRule(
+            config.rules,
+            url.pathname,
+        );
 
-    if (!rule) {
-      return new Response("Not Found", {
-        status: 404,
-      });
-    }
+        if (!rule) {
+            return new Response(
+                "Not Found",
+                { status: 404 },
+            );
+        }
 
-    // Country ACL.
-    // Empty array = allow all countries.
-    if (rule.countries.length > 0) {
-      const country = request.cf?.country;
+        // --------------------------------------------------
+        // Country ACL
+        // --------------------------------------------------
 
-      if (!country || !rule.countries.includes(country)) {
-        return new Response("Forbidden", {
-          status: 403,
-        });
-      }
-    }
+        if (
+            Array.isArray(rule.countries) &&
+                rule.countries.length > 0
+        ) {
+            const country = request.cf?.country;
 
-    // Authorization ACL.
-    // Empty array = public.
-    if (rule.authorization.length > 0) {
-      const authorization =
-        request.headers.get("Authorization");
+            if (
+                !country ||
+                    !rule.countries.includes(country)
+            ) {
+                return new Response(
+                    "Forbidden",
+                    { status: 403 },
+                );
+            }
+        }
 
-      if (
-        !authorization ||
-        !rule.authorization.includes(authorization)
-      ) {
-        return new Response("Unauthorized", {
-          status: 401,
-          headers: {
-            "WWW-Authenticate": 'Basic realm="HLS"',
-          },
-        });
-      }
-    }
+        // --------------------------------------------------
+        // Worker authentication
+        // --------------------------------------------------
 
-    // Build Origin URL while preserving path + query string.
-    const originUrl = new URL(
-      url.pathname + url.search,
-      config.origin,
-    );
+        const protectedPath =
+              Array.isArray(rule.tokens) &&
+              rule.tokens.length > 0;
 
-    const headers = new Headers(request.headers);
+        let authenticated = false;
+        let issueAuthCookie = false;
 
-    // Never forward the client's Authorization.
-    headers.delete("Authorization");
+        if (protectedPath) {
+            const cookieHeader =
+                  request.headers.get("Cookie") || "";
 
-    // Worker -> MediaMTX authentication.
-    headers.set(
-      "Authorization",
-      `Bearer ${config.cdn_secret}`,
-    );
+            const authCookie =
+                  getCookie(
+                      cookieHeader,
+                      AUTH_COOKIE_NAME,
+                  );
 
-    // Use the Origin's Host header.
-    headers.set(
-      "Host",
-      new URL(config.origin).host,
-    );
+            // Existing Worker authentication cookie.
+            if (authCookie) {
+                authenticated =
+                    await verifyAuthCookie(
+                        authCookie,
+                        rule,
+                        config.hls_cookie_secret,
+                    );
+            }
 
-    const originRequest = new Request(originUrl, {
-      method: request.method,
-      headers,
-      redirect: "follow",
-    });
+            // If no valid cookie, authenticate with token.
+            if (!authenticated) {
+                const token =
+                      url.searchParams.get(
+                          TOKEN_PARAM,
+                      );
 
-    const response = await fetch(originRequest);
+                if (
+                    !token ||
+                        !rule.tokens.includes(token)
+                ) {
+                    return new Response(
+                        "Forbidden",
+                        { status: 403 },
+                    );
+                }
 
-    const responseHeaders = new Headers(response.headers);
+                authenticated = true;
+                issueAuthCookie = true;
+            }
+        } else {
+            authenticated = true;
+        }
 
-    // Don't expose Origin implementation details.
-    responseHeaders.delete("Server");
+        // --------------------------------------------------
+        // Directory -> index.m3u8
+        // --------------------------------------------------
+        //
+        // Make /pub/?token=xxx redirect directly to
+        // /pub/index.m3u8.
+        //
+        // This avoids MediaMTX's own directory redirect:
+        //
+        // /pub/
+        //   -> 302 /pub/index.m3u8?cookieCheck=1
+        //
+        // and lets us establish hlsAuth before redirecting.
+        //
 
-    return new Response(response.body, {
-      status: response.status,
-      statusText: response.statusText,
-      headers: responseHeaders,
-    });
-  },
+        if (
+            request.method === "GET" &&
+                shouldRedirectToIndex(
+                    url.pathname,
+                )
+        ) {
+            const redirectUrl =
+                  new URL(url);
+
+            if (
+                !redirectUrl.pathname.endsWith("/")
+            ) {
+                redirectUrl.pathname += "/";
+            }
+
+            redirectUrl.pathname +=
+                "index.m3u8";
+
+            // Never expose the token in the redirected URL.
+            redirectUrl.searchParams.delete(
+                TOKEN_PARAM,
+            );
+
+            const responseHeaders =
+                  new Headers();
+
+            responseHeaders.set(
+                "Location",
+                redirectUrl.pathname +
+                    redirectUrl.search,
+            );
+
+            if (issueAuthCookie) {
+                const authCookie =
+                      await createAuthCookie(
+                          rule,
+                          config.hls_cookie_secret,
+                      );
+
+                responseHeaders.append(
+                    "Set-Cookie",
+                    buildAuthCookie(
+                        authCookie,
+                        rule,
+                    ),
+                );
+            }
+
+            return new Response(
+                null,
+                {
+                    status: 302,
+                    headers:
+                    responseHeaders,
+                },
+            );
+        }
+
+        // --------------------------------------------------
+        // Build Origin URL
+        // --------------------------------------------------
+
+        const originUrl = new URL(
+            url.pathname,
+            config.origin,
+        );
+
+        // Preserve query parameters except Worker token.
+        for (
+            const [key, value]
+            of url.searchParams
+        ) {
+            if (
+                key !== TOKEN_PARAM
+            ) {
+                originUrl.searchParams.append(
+                    key,
+                    value,
+                );
+            }
+        }
+
+        // --------------------------------------------------
+        // Forward request
+        // --------------------------------------------------
+
+        const headers =
+              new Headers(request.headers);
+
+        // Never forward client Authorization.
+        headers.delete(
+            "Authorization",
+        );
+
+        // Host is managed by fetch().
+        headers.delete("Host");
+
+        // Worker -> MediaMTX authentication.
+        headers.set(
+            "Authorization",
+            `Bearer ${config.cdn_secret}`,
+        );
+
+        const originRequest =
+              new Request(
+                  originUrl,
+                  {
+                      method:
+                      request.method,
+                      headers,
+                      redirect:
+                      "follow",
+                  },
+              );
+
+        const response =
+              await fetch(
+                  originRequest,
+              );
+
+        // --------------------------------------------------
+        // Response headers
+        // --------------------------------------------------
+
+        const responseHeaders =
+              new Headers(
+                  response.headers,
+              );
+
+        // Don't expose Origin implementation details.
+        responseHeaders.delete(
+            "Server",
+        );
+
+        // Don't cache authenticated HLS resources.
+        if (
+            isHLSResource(
+                url.pathname,
+            )
+        ) {
+            responseHeaders.set(
+                "Cache-Control",
+                "private, no-store",
+            );
+        }
+
+        // Issue Worker authentication cookie.
+        if (issueAuthCookie) {
+            const authCookie =
+                  await createAuthCookie(
+                      rule,
+                      config.hls_cookie_secret,
+                  );
+
+            responseHeaders.append(
+                "Set-Cookie",
+                buildAuthCookie(
+                    authCookie,
+                    rule,
+                ),
+            );
+        }
+
+        return new Response(
+            response.body,
+            {
+                status:
+                response.status,
+                statusText:
+                response.statusText,
+                headers:
+                responseHeaders,
+            },
+        );
+
+    },
 };
 
+// --------------------------------------------------
+// Directory detection
+// --------------------------------------------------
+
+function shouldRedirectToIndex(
+    pathname,
+) {
+    return (
+        pathname.endsWith("/") &&
+            !pathname.endsWith(
+                "/index.m3u8/",
+            )
+    );
+}
 
 // --------------------------------------------------
 // Rule matching
 // --------------------------------------------------
 
-function findRule(rules, pathname) {
-  let bestRule = null;
-  let bestLength = -1;
+function findRule(
+    rules,
+    pathname,
+) {
+    let bestRule = null;
+    let bestLength = -1;
 
-  for (const rule of rules) {
-    for (const path of rule.paths) {
-      if (
-        pathname.startsWith(path) &&
-        path.length > bestLength
-      ) {
-        bestRule = rule;
-        bestLength = path.length;
-      }
+    for (
+        const rule
+        of rules ?? []
+    ) {
+        for (
+            const path
+            of rule.paths ?? []
+        ) {
+            if (
+                pathMatches(
+                    pathname,
+                    path,
+                ) &&
+                    path.length > bestLength
+            ) {
+                bestRule = rule;
+                bestLength =
+                    path.length;
+            }
+        }
     }
-  }
 
-  return bestRule;
+    return bestRule;
+}
+
+// --------------------------------------------------
+// Path matching
+// --------------------------------------------------
+
+function pathMatches(
+    pathname,
+    path,
+) {
+    if (
+        typeof path !== "string" ||
+            path.length === 0
+    ) {
+        return false;
+    }
+
+    if (
+        pathname === path
+    ) {
+        return true;
+    }
+
+    const prefix =
+          path.endsWith("/")
+          ? path
+          : `${path}/`;
+
+    return pathname.startsWith(
+        prefix,
+    );
+}
+
+// --------------------------------------------------
+// Cookie helpers
+// --------------------------------------------------
+
+function getCookie(
+    cookieHeader,
+    name,
+) {
+    if (!cookieHeader) {
+        return null;
+    }
+
+    for (
+        const cookie
+        of cookieHeader.split(";")
+    ) {
+        const index =
+              cookie.indexOf("=");
+
+        if (index === -1) {
+            continue;
+        }
+
+        const key =
+              cookie
+              .slice(0, index)
+              .trim();
+
+        if (key !== name) {
+            continue;
+        }
+
+        return cookie
+            .slice(index + 1)
+            .trim();
+
+    }
+
+    return null;
+}
+
+// --------------------------------------------------
+// Authentication cookie
+// --------------------------------------------------
+
+async function createAuthCookie(
+    rule,
+    secret,
+) {
+    if (!secret) {
+        throw new Error(
+            "HLS_COOKIE_SECRET is missing",
+        );
+    }
+
+    // Bind the cookie to the rule's
+    // most specific path.
+    const path =
+          rule.paths?.[0] ?? "/";
+
+    const payload = {
+        path,
+        exp:
+        Math.floor(
+            Date.now() / 1000,
+        ) +
+            AUTH_COOKIE_MAX_AGE,
+    };
+
+    const encodedPayload =
+          base64UrlEncode(
+              JSON.stringify(
+                  payload,
+              ),
+          );
+
+    const signature =
+          await hmacSign(
+              encodedPayload,
+              secret,
+          );
+
+    return (
+        encodedPayload +
+            "." +
+            signature
+    );
+}
+
+async function verifyAuthCookie(
+    value,
+    rule,
+    secret,
+) {
+    if (!secret) {
+        return false;
+    }
+
+    const parts =
+          value.split(".");
+
+    if (
+        parts.length !== 2
+    ) {
+        return false;
+    }
+
+    const [
+        encodedPayload,
+        signature,
+    ] = parts;
+
+    let payload;
+
+    try {
+        payload = JSON.parse(
+            base64UrlDecode(
+                encodedPayload,
+            ),
+        );
+    } catch {
+        return false;
+    }
+
+    // Expiration.
+    if (
+        !payload.exp ||
+            payload.exp <
+            Math.floor(
+                Date.now() / 1000,
+            )
+    ) {
+        return false;
+    }
+
+    // Bind cookie to rule.
+    const rulePath =
+          rule.paths?.[0] ?? "/";
+
+    if (
+        payload.path !== rulePath
+    ) {
+        return false;
+    }
+
+    const expectedSignature =
+          await hmacSign(
+              encodedPayload,
+              secret,
+          );
+
+    return timingSafeEqual(
+        signature,
+        expectedSignature,
+    );
+}
+
+// --------------------------------------------------
+// HMAC SHA-256
+// --------------------------------------------------
+
+async function hmacSign(
+    data,
+    secret,
+) {
+    const encoder =
+          new TextEncoder();
+
+    const key =
+          await crypto.subtle.importKey(
+              "raw",
+              encoder.encode(secret),
+              {
+                  name: "HMAC",
+                  hash: "SHA-256",
+              },
+              false,
+              ["sign"],
+          );
+
+    const signature =
+          await crypto.subtle.sign(
+              "HMAC",
+              key,
+              encoder.encode(data),
+          );
+
+    return base64UrlEncodeBytes(
+        new Uint8Array(
+            signature,
+        ),
+    );
+}
+
+// --------------------------------------------------
+// Base64URL
+// --------------------------------------------------
+
+function base64UrlEncode(
+    value,
+) {
+    return base64UrlEncodeBytes(
+        new TextEncoder().encode(
+            value,
+        ),
+    );
+}
+
+function base64UrlEncodeBytes(
+    bytes,
+) {
+    let binary = "";
+
+    for (
+        const byte
+        of bytes
+    ) {
+        binary +=
+            String.fromCharCode(
+                byte,
+            );
+    }
+
+    return btoa(binary)
+        .replaceAll("+", "-")
+        .replaceAll("/", "_")
+        .replaceAll("=", "");
+}
+
+function base64UrlDecode(
+    value,
+) {
+    let base64 =
+        value
+        .replaceAll("-", "+")
+        .replaceAll("_", "/");
+
+    while (
+        base64.length % 4 !== 0
+    ) {
+        base64 += "=";
+    }
+
+    const binary =
+          atob(base64);
+
+    const bytes =
+          Uint8Array.from(
+              binary,
+              (char) =>
+              char.charCodeAt(0),
+          );
+
+    return new TextDecoder()
+        .decode(bytes);
+}
+
+// --------------------------------------------------
+// Constant-time comparison
+// --------------------------------------------------
+
+function timingSafeEqual(
+    a,
+    b,
+) {
+    if (
+        a.length !== b.length
+    ) {
+        return false;
+    }
+
+    let result = 0;
+
+    for (
+        let i = 0;
+        i < a.length;
+        i++
+    ) {
+        result |=
+            a.charCodeAt(i) ^
+            b.charCodeAt(i);
+    }
+
+    return result === 0;
+}
+
+// --------------------------------------------------
+// HLS resource detection
+// --------------------------------------------------
+
+function isHLSResource(
+    pathname,
+) {
+    return (
+        pathname.endsWith(".m3u8") ||
+            pathname.endsWith(".ts") ||
+            pathname.endsWith(".m4s") ||
+            pathname.endsWith(".mp4")
+    );
+}
+
+// --------------------------------------------------
+// Set-Cookie
+// --------------------------------------------------
+
+function buildAuthCookie(
+    value,
+    rule,
+) {
+    // Restrict the cookie to the protected
+    // HLS directory rather than the entire domain.
+    const cookiePath =
+          normalizeCookiePath(
+              rule.paths?.[0] ?? "/",
+          );
+
+    return [
+        `${AUTH_COOKIE_NAME}=${value}`,
+        `Max-Age=${AUTH_COOKIE_MAX_AGE}`,
+        `Path=${cookiePath}`,
+        "HttpOnly",
+        "Secure",
+        "SameSite=Lax",
+    ].join("; ");
+}
+
+function normalizeCookiePath(
+    path,
+) {
+    if (
+        path === "/"
+    ) {
+        return "/";
+    }
+
+    return path.endsWith("/")
+        ? path
+        : `${path}/`;
 }
 #+end_src
