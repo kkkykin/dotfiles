@@ -1,0 +1,144 @@
+#+title:      mediamtx
+#+date:       [2026-09-04 Fri 16:38]
+#+filetags:   :server:
+#+identifier: 20260904T163846
+
+* tangle
+#+begin_src elisp
+(kill-new (zr-sops-file-contents "mediamtx.json"))
+#+end_src
+
+* hls-cdn
+#+begin_src js
+export default {
+  async fetch(request, env) {
+    let config;
+
+    try {
+      config = JSON.parse(env.HLS_CONFIG);
+    } catch {
+      return new Response("Worker configuration error", {
+        status: 500,
+      });
+    }
+
+    const url = new URL(request.url);
+
+    // Only allow GET / HEAD.
+    if (request.method !== "GET" && request.method !== "HEAD") {
+      return new Response("Method Not Allowed", {
+        status: 405,
+        headers: {
+          Allow: "GET, HEAD",
+        },
+      });
+    }
+
+    // Find the most specific matching rule.
+    const rule = findRule(config.rules, url.pathname);
+
+    if (!rule) {
+      return new Response("Not Found", {
+        status: 404,
+      });
+    }
+
+    // Country ACL.
+    // Empty array = allow all countries.
+    if (rule.countries.length > 0) {
+      const country = request.cf?.country;
+
+      if (!country || !rule.countries.includes(country)) {
+        return new Response("Forbidden", {
+          status: 403,
+        });
+      }
+    }
+
+    // Authorization ACL.
+    // Empty array = public.
+    if (rule.authorization.length > 0) {
+      const authorization =
+        request.headers.get("Authorization");
+
+      if (
+        !authorization ||
+        !rule.authorization.includes(authorization)
+      ) {
+        return new Response("Unauthorized", {
+          status: 401,
+          headers: {
+            "WWW-Authenticate": 'Basic realm="HLS"',
+          },
+        });
+      }
+    }
+
+    // Build Origin URL while preserving path + query string.
+    const originUrl = new URL(
+      url.pathname + url.search,
+      config.origin,
+    );
+
+    const headers = new Headers(request.headers);
+
+    // Never forward the client's Authorization.
+    headers.delete("Authorization");
+
+    // Worker -> MediaMTX authentication.
+    headers.set(
+      "Authorization",
+      `Bearer ${config.cdn_secret}`,
+    );
+
+    // Use the Origin's Host header.
+    headers.set(
+      "Host",
+      new URL(config.origin).host,
+    );
+
+    const originRequest = new Request(originUrl, {
+      method: request.method,
+      headers,
+      redirect: "follow",
+    });
+
+    const response = await fetch(originRequest);
+
+    const responseHeaders = new Headers(response.headers);
+
+    // Don't expose Origin implementation details.
+    responseHeaders.delete("Server");
+
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: responseHeaders,
+    });
+  },
+};
+
+
+// --------------------------------------------------
+// Rule matching
+// --------------------------------------------------
+
+function findRule(rules, pathname) {
+  let bestRule = null;
+  let bestLength = -1;
+
+  for (const rule of rules) {
+    for (const path of rule.paths) {
+      if (
+        pathname.startsWith(path) &&
+        path.length > bestLength
+      ) {
+        bestRule = rule;
+        bestLength = path.length;
+      }
+    }
+  }
+
+  return bestRule;
+}
+#+end_src
