@@ -1431,6 +1431,90 @@ mp.add_key_binding(
     request_delete
 )
 #+end_src
+******* show-playlist
+:PROPERTIES:
+:CUSTOM_ID: ddb0995e-ff5e-4781-afa3-2dc446fcf9ce
+:END:
+#+begin_src lua :tangle (zr-org-by-tangle-dir "show-playlist.lua")
+local mp = require "mp"
+
+-- 当前项前后各显示多少项
+-- 1 = 最多 3 项
+-- 2 = 最多 5 项
+local playlist_radius = 5
+
+-- OSD 显示时间，单位：秒
+local osd_duration = 2
+
+
+-- URL percent decode
+--
+-- 例如：
+--   %E3%80%90KK%2022%E3%80%91
+-- ->
+--   【KK 22】
+local function url_decode(str)
+    return (str:gsub("%%(%x%x)", function(hex)
+        return string.char(tonumber(hex, 16))
+    end))
+end
+
+
+-- 只对 URL 的显示文本进行 decode。
+-- query 中的 %26 / %3D 等也会被 decode，不过这里只是显示，
+-- 不会拿这个结果重新访问 URL，所以不会影响实际播放。
+local function display_name(filename)
+    return url_decode(filename)
+end
+
+
+local function show_nearby_playlist()
+    local playlist = mp.get_property_native("playlist")
+    local current = mp.get_property_number("playlist-pos", -1)
+
+    if current < 0 or not playlist then
+        return
+    end
+
+    local total = #playlist
+
+    -- 第一行：当前位置 / 总数
+    local lines = {
+        string.format("%d/%d", current + 1, total)
+    }
+
+    local first = math.max(0, current - playlist_radius)
+    local last = math.min(total - 1, current + playlist_radius)
+
+    for pos = first, last do
+        local item = playlist[pos + 1]
+        local filename = item.filename
+
+        -- 当前项目直接使用当前 path
+        if pos == current then
+            filename = mp.get_property("path")
+        end
+
+        filename = display_name(filename)
+
+        local marker = (pos == current) and "▶ " or "  "
+
+        table.insert(
+            lines,
+            string.format("%s%d  %s", marker, pos + 1, filename)
+        )
+    end
+
+    mp.osd_message(
+        table.concat(lines, "\n"),
+        osd_duration
+    )
+end
+
+
+-- 接管 F8
+mp.add_key_binding("F8", "show-nearby-playlist", show_nearby_playlist)
+#+end_src
 *** opts
 :PROPERTIES:
 :tangle-dir: _tangle/script-opts
