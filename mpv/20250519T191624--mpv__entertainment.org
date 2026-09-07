@@ -4,7 +4,8 @@
 #+identifier: 20250519T191624
 * tangle
 #+begin_src elisp
-(let ((tangle-dir zr-org-tangle-default-dir))
+(let ((tangle-dir zr-org-tangle-default-dir)
+      (extra-conf (expand-file-name "_mpv.conf")))
   (mkdir (expand-file-name "scripts" tangle-dir) t)
   (mkdir (expand-file-name "script-opts" tangle-dir) t)
   (mkdir (expand-file-name "_cookies" tangle-dir) t)
@@ -20,12 +21,21 @@
 :END:
 
 *** always
+
+***** include
+:PROPERTIES:
+:CUSTOM_ID: ef28b687-5a9a-4a00-8172-f9eb1026107d
+:END:
+#+header: :tangle (if (file-exists-p extra-conf) (zr-org-by-tangle-dir "mpv.conf") "no")
+#+begin_src conf-unix :var extra-conf=(identity extra-conf)
+include=$extra-conf
+#+end_src
+
 ***** default
 :PROPERTIES:
 :CUSTOM_ID: fcfc81f5-0e48-4f31-bf89-951c30c9fc3a
 :END:
-#+begin_src conf-unix :var extra-conf=(expand-file-name "_mpv.conf")
-include=$extra-conf
+#+begin_src conf-unix
 [detault]
 profile-cond=1
 watch-later-options=volume,window-scale
@@ -36,12 +46,8 @@ force-seekable=yes
 :CUSTOM_ID: 7163a856-ee8c-48f9-8660-986236530488
 :END:
 #+begin_src conf-unix
-vo=gpu-next
 icc-profile-auto
 blend-subtitles=video
-gpu-context=d3d11
-gpu-api=d3d11
-d3d11-adapter='NVIDIA GeForce RTX 3070 Laptop GPU'
 #+end_src
 ***** audio
 :PROPERTIES:
@@ -178,6 +184,12 @@ profile-desc=my high quality
 profile-cond=fullscreen
 profile-restore=copy
 profile=gpu-hq
+
+vo=gpu-next
+gpu-context=d3d11
+gpu-api=d3d11
+d3d11-adapter='NVIDIA GeForce RTX 3070 Laptop GPU'
+
 scale=ewa_lanczos4sharpest
 scale-blur=0.981251
 video-sync=display-resample
@@ -279,7 +291,7 @@ profile=prefetch
 :PROPERTIES:
 :CUSTOM_ID: 231befe2-74cd-454d-9114-e19dc120f1b2
 :END:
-#+begin_src conf-unix :var cookie=(let ((f (expand-file-name "_cookies/rule34video.com"))) (write-region "# Netscape HTTP Cookie File" nil f) f)
+#+begin_src conf-unix :var cookie=(let ((f (expand-file-name "_cookies/rule34video.com" zr-org-tangle-default-dir))) (write-region "# Netscape HTTP Cookie File" nil f) f)
 [rule34video]
 profile-cond=path:find("^https://rule34video.com/")
 ytdl-raw-options-append=cookies=$cookie
