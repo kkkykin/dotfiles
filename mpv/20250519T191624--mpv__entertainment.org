@@ -41,6 +41,25 @@ profile-cond=1
 watch-later-options=volume,window-scale
 force-seekable=yes
 #+end_src
+
+***** log
+:PROPERTIES:
+:CUSTOM_ID: 19ad75c5-1cd3-40c2-88fc-a8646b98539b
+:END:
+https://mpv.io/manual/master/#options-msg-level
+#+begin_src conf-unix
+msg-level=ffmpeg=error,stream=fatal,cplayer=fatal # network-subtitle 404
+#+end_src
+
+******* debug
+:PROPERTIES:
+:CUSTOM_ID: 045c87e9-30f0-4f25-8bbe-359312ff895b
+:END:
+#+header: :var log-file=(zr-org-by-tangle-dir "mpv.log")
+#+begin_src conf-unix :tangle (or "no" (zr-org-by-tangle-dir "mpv.conf"))
+msg-level=all=trace
+log-file=$log-file
+#+end_src
 ***** video
 :PROPERTIES:
 :CUSTOM_ID: 7163a856-ee8c-48f9-8660-986236530488
