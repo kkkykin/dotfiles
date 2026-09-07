@@ -33,6 +33,7 @@
 	name = kkky
 [core]
 	attributesFile = $attr_path
+	symlinks = true
 [init]
 	defaultBranch = main
 [diff "gpg"]
@@ -67,7 +68,6 @@
 [core]
 	filemode = false
 	sshCommand = C:/Windows/System32/OpenSSH/ssh.exe
-	symlinks = true
 	autocrlf = input
 [gc]
 	auto = 256
