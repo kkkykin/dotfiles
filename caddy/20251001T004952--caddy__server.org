@@ -345,7 +345,6 @@ route /browse-url/ {
 #+begin_src caddy :mkdirp t :tangle (zr-org-by-tangle-dir "rsshub.Caddyfile")
 handle_path /rsshub/* {
     reverse_proxy <<rsshub-upstreams()>> https://rss.sakiko.de https://kayin.zeabur.app {
-        header_up Host {upstream_hostport}
         header_up -X-Forwarded-*
         header_up -via
 
@@ -371,28 +370,75 @@ handle_path /rsshub/* {
 handle_path /aria2-jsonrpc {
     rewrite * /jsonrpc
     @json header content-type application/json
-    json_parse @json {
-      # Transform aria2.addUri params whether or not a secret token is present.
-      # URIs can be at params.0 (no token) or params.1 (with token).
-
-      # Add per-server options based on URI patterns.
-      merge_if_match params.0 ^https?://[^/]+\.baidu(?:pcs)?\.com/file/ params.1 {"max-connection-per-server":"2"} when size({json.params}) == 2
-      merge_if_match params.1 ^https?://[^/]+\.baidu(?:pcs)?\.com/file/ params.2 {"max-connection-per-server":"2"} when size({json.params}) == 3
-
-      merge_if_match params.0 ^https://[^/]+\.mypikpak\.com/ params.1 {"max-connection-per-server":"2"} when size({json.params}) == 2
-      merge_if_match params.1 ^https://[^/]+\.mypikpak\.com/ params.2 {"max-connection-per-server":"2"} when size({json.params}) == 3
-
-      merge_if_match params.0 ^https://pixeldrain\.com/ params.1 {"max-connection-per-server":"1"} when size({json.params}) == 2
-      merge_if_match params.1 ^https://pixeldrain\.com/ params.2 {"max-connection-per-server":"1"} when size({json.params}) == 3
-
-      merge_if_match params.0 ^https://[^/]+\.imoutoheaven\.org/d/ params.1 {"max-connection-per-server":"2"} when size({json.params}) == 2
-      merge_if_match params.1 ^https://[^/]+\.imoutoheaven\.org/d/ params.2 {"max-connection-per-server":"2"} when size({json.params}) == 3
-      merge_if_match params.0 ^https://catcat\.cloud/d/ params.1 {"max-connection-per-server":"2"} when size({json.params}) == 2
-      merge_if_match params.1 ^https://catcat\.cloud/d/ params.2 {"max-connection-per-server":"2"} when size({json.params}) == 3
+    json_transform @json {
+        jq <<JQ
+        <<aria2-jq>>
+        JQ
     }
     reverse_proxy http://127.0.0.1:6800
 }
 #+end_src
+
+******* jq
+#+name: aria2-jq
+#+header: :var siteproxy=(let ((zr-net-url-retrieve-by-siteproxy-p t)) (zr-net-siteproxy-url ""))
+#+begin_src jq
+# Match against the original URIs. Later matching rules override earlier options.
+def uri_options:
+  . as $uris
+  | [
+      {
+        pattern: "^https?://[^/]+[.]baidu(?:pcs)?[.]com/file/",
+        options: {"max-connection-per-server": "2", "user-agent": "pan.baidu.com"}
+      },
+      {
+        pattern: "^https://[^/]+[.]mypikpak[.]com/",
+        options: {"max-connection-per-server": "2"}
+      },
+      {
+        pattern: "^https://pixeldrain[.]com/",
+        options: {"max-connection-per-server": "1"}
+      },
+      {
+        pattern: "^https://[^/]+[.]imoutoheaven[.]org/d/",
+        options: {"max-connection-per-server": "2"}
+      },
+      {
+        pattern: "^https://catcat[.]cloud/d/",
+        options: {"max-connection-per-server": "2"}
+      }
+    ]
+  | reduce .[] as $rule ({};
+      if any($uris[]; test($rule.pattern))
+      then . + $rule.options
+      else . end
+    );
+
+def mirror_uris:
+  [
+    .[]
+    | if startswith("https://pixeldrain.com/")
+      then ., ("$siteproxy" + sub("://"; "/"))
+      else . end
+  ];
+
+def rewrite_add_uri:
+  if type != "object" then .
+  elif .method != "aria2.addUri" then .
+  else
+    (if (.params[0] | type) == "string" then 1 else 0 end) as $i
+    | .params[$i] as $uris
+    | ($uris | uri_options) as $options
+    | .params[$i] = ($uris | mirror_uris)
+    | if $options == {} then .
+      else .params[$i + 1] = ((.params[$i + 1] // {}) + $options)
+      end
+  end;
+
+# JSON-RPC batch entries are transformed independently.
+if type == "array" then map(rewrite_add_uri) else rewrite_add_uri end
+#+end_src
+
 * server
 :PROPERTIES:
 :CUSTOM_ID: c2a9e330-9166-40c1-a881-a7a9df33d308
