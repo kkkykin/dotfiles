@@ -366,6 +366,7 @@ handle_path /rsshub/* {
 :PROPERTIES:
 :CUSTOM_ID: c88e06a5-88ea-4ebf-934a-9a9b5be4e002
 :END:
+#+header: :var siteproxy=(let ((zr-net-url-retrieve-by-siteproxy-p t)) (zr-net-siteproxy-url ""))
 #+begin_src caddy :mkdirp t :tangle (zr-org-by-tangle-dir "aria2.Caddyfile")
 handle_path /aria2-jsonrpc {
     rewrite * /jsonrpc
@@ -381,7 +382,6 @@ handle_path /aria2-jsonrpc {
 
 ******* jq
 #+name: aria2-jq
-#+header: :var siteproxy=(let ((zr-net-url-retrieve-by-siteproxy-p t)) (zr-net-siteproxy-url ""))
 #+begin_src jq
 # Match against the original URIs. Later matching rules override earlier options.
 def uri_options:
