@@ -31,10 +31,12 @@
 #+header: :var localpath=(concat local-conf-dir)
 #+header: :var mainpath=(expand-file-name "main" tangle-dir)
 #+header: :var listen=(if (eq 'android system-type) "6680" "80")
+#+header: :var siteproxy=(let ((zr-net-url-retrieve-by-siteproxy-p t)) (zr-net-siteproxy-url ""))
 #+begin_src org :tangle (zr-org-by-tangle-dir "env")
 LISTEN=$listen
 LOCALPATH=$localpath
 MAINPATH=$mainpath
+SITEPROXY=$siteproxy
 #+end_src
 * config
 :PROPERTIES:
@@ -366,7 +368,7 @@ handle_path /rsshub/* {
 :PROPERTIES:
 :CUSTOM_ID: c88e06a5-88ea-4ebf-934a-9a9b5be4e002
 :END:
-#+header: :var siteproxy=(let ((zr-net-url-retrieve-by-siteproxy-p t)) (zr-net-siteproxy-url ""))
+#+header: :var siteproxy="{$SITEPROXY}"
 #+begin_src caddy :mkdirp t :tangle (zr-org-by-tangle-dir "aria2.Caddyfile")
 handle_path /aria2-jsonrpc {
     rewrite * /jsonrpc
