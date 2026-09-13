@@ -1,0 +1,10 @@
+#+title:      vlc
+#+date:       [2026-09-13 Sun 20:57]
+#+filetags:   :entertainment:
+#+identifier: 20260913T205747
+
+* sout
+#+begin_src 
+vlc --sout='#duplicate{dst=display,dst="transcode{vcodec=h264,vb=8000,scale=Auto,acodec=opus,ab=192,channels=2,samplerate=48000,soverlay}:udp{mux=ts,dst=127.0.0.1:1234}"}' --sout-all --sout-keep
+#+end_src
+
