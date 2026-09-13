@@ -1515,6 +1515,517 @@ end
 -- 接管 F8
 mp.add_key_binding("F8", "show-nearby-playlist", show_nearby_playlist)
 #+end_src
+******* clip-ab
+:PROPERTIES:
+:CUSTOM_ID: deccc572-3f76-439f-abb5-960bb869b0e3
+:END:
+#+begin_src lua :tangle (zr-org-by-tangle-dir "clip-ab.lua")
+local mp = require 'mp'
+local utils = require 'mp.utils'
+
+------------------------------------------------------------
+-- 配置
+------------------------------------------------------------
+
+local ffmpeg = "ffmpeg"
+local curl = "curl"
+
+-- 输出文件名后缀
+local output_suffix = "_clip"
+
+-- true 允许覆盖已有文件
+local overwrite = false
+
+-- 视频编码
+local video_codec = "hevc_nvenc"
+local video_preset = "p6"
+
+-- 音频直接复制
+local audio_codec = "copy"
+
+
+------------------------------------------------------------
+-- 工具函数
+------------------------------------------------------------
+
+local function notify(msg, duration)
+    mp.osd_message(msg, duration or 2)
+end
+
+
+local function is_remote_url(path)
+    return path:match("^https?://") ~= nil
+end
+
+
+-- 取得 HTTP headers
+--
+-- mpv:
+--   http-header-fields
+--
+-- 例如：
+--   Authorization: Basic xxxxx
+--
+-- 转成 ffmpeg -headers 所需要的格式。
+local function get_http_headers()
+    local fields = mp.get_property_native("http-header-fields")
+
+    if not fields or type(fields) ~= "table" then
+        return nil
+    end
+
+    local headers = {}
+
+    for _, field in ipairs(fields) do
+        if type(field) == "string" and field ~= "" then
+            table.insert(headers, field)
+        end
+    end
+
+    if #headers == 0 then
+        return nil
+    end
+
+    return table.concat(headers, "\r\n") .. "\r\n"
+end
+
+
+-- 给 curl 上传使用。
+--
+-- 不把这些输入请求相关的 header 带到 PUT：
+--   Range
+--   Host
+--   Content-Length
+--   Transfer-Encoding
+--   Connection
+--
+-- Authorization 等认证 header 会保留。
+local function get_upload_headers()
+    local fields = mp.get_property_native("http-header-fields")
+
+    if not fields or type(fields) ~= "table" then
+        return {}
+    end
+
+    local headers = {}
+
+    for _, field in ipairs(fields) do
+        if type(field) == "string" and field ~= "" then
+            local name = field:match("^%s*([^:%s]+)%s*:")
+
+            if name then
+                local lower = name:lower()
+
+                if lower ~= "range"
+                    and lower ~= "host"
+                    and lower ~= "content-length"
+                    and lower ~= "transfer-encoding"
+                    and lower ~= "connection"
+                then
+                    table.insert(headers, field)
+                end
+            end
+        end
+    end
+
+    return headers
+end
+
+
+-- 从 URL/path 取得文件名
+local function get_filename(path)
+    local clean = path:gsub("[?#].*$", "")
+
+    return clean:match("([^/]+)$") or "output.mp4"
+end
+
+
+local function get_extension(filename)
+    return filename:match("(%.[^%.]+)$") or ".mp4"
+end
+
+
+local function get_stem(filename)
+    local ext = get_extension(filename)
+
+    return filename:sub(1, #filename - #ext), ext
+end
+
+
+-- 本地文件：
+--
+-- /foo/bar/test.mp4
+-- → /foo/bar/test_clip.mp4
+--
+local function make_local_output(input)
+    local dir, filename = utils.split_path(input)
+
+    local stem, ext = get_stem(filename)
+
+    return utils.join_path(
+        dir,
+        stem .. output_suffix .. ext
+    )
+end
+
+
+-- Remote URL：
+--
+-- http://server/dav/foo/test.mp4
+-- → http://server/dav/foo/test_clip.mp4
+--
+-- query / fragment 会被去掉。
+local function make_remote_output(input)
+    local clean = input:gsub("[?#].*$", "")
+
+    local slash = clean:match("^.*()/")
+
+    if not slash then
+        return clean .. output_suffix
+    end
+
+    local dir = clean:sub(1, slash)
+    local filename = clean:sub(slash + 1)
+
+    local stem, ext = get_stem(filename)
+
+    return dir .. stem .. output_suffix .. ext
+end
+
+
+-- 取得系统临时文件。
+--
+-- os.tmpname() 在 Windows / Linux 都可用。
+local function make_temp_file()
+    local path = os.tmpname()
+
+    -- 某些平台 os.tmpname() 可能产生已经存在的空文件。
+    -- ffmpeg 会使用 -y 覆盖它。
+    return path .. ".mp4"
+end
+
+
+local function remove_file(path)
+    if path and path ~= "" then
+        os.remove(path)
+    end
+end
+
+
+------------------------------------------------------------
+-- FFmpeg
+------------------------------------------------------------
+
+local function run_ffmpeg(input, output, a, b, headers, callback)
+    local duration = b - a
+
+    local args = {
+        ffmpeg,
+
+        overwrite and "-y" or "-n",
+
+        -- 输入前 seek
+        "-ss",
+        string.format("%.3f", a),
+    }
+
+    -- HTTP headers
+    if headers then
+        table.insert(args, "-headers")
+        table.insert(args, headers)
+    end
+
+    table.insert(args, "-i")
+    table.insert(args, input)
+
+    -- A → B 的持续时间
+    table.insert(args, "-t")
+    table.insert(args, string.format("%.3f", duration))
+
+    -- 视频重新编码
+    table.insert(args, "-c:v")
+    table.insert(args, video_codec)
+
+    table.insert(args, "-preset")
+    table.insert(args, video_preset)
+
+    -- 音频直接复制
+    table.insert(args, "-c:a")
+    table.insert(args, audio_codec)
+
+    -- MP4：
+    -- 把 moov atom 移到文件开头
+    table.insert(args, "-movflags")
+    table.insert(args, "+faststart")
+
+    -- 输出
+    table.insert(args, output)
+
+    mp.command_native_async({
+        name = "subprocess",
+        args = args,
+        playback_only = false,
+        capture_stdout = true,
+        capture_stderr = true,
+    }, function(success, result, error)
+        if success and result.status == 0 then
+            callback(true, nil)
+            return
+        end
+
+        local err = ""
+
+        if result and result.stderr then
+            err = result.stderr
+        elseif error then
+            err = tostring(error)
+        end
+
+        if #err > 3000 then
+            err = err:sub(#err - 2999)
+        end
+
+        callback(false, err)
+    end)
+end
+
+
+------------------------------------------------------------
+-- WebDAV 上传
+------------------------------------------------------------
+
+local function upload_file(local_file, remote_url, headers, callback)
+    local args = {
+        curl,
+
+        "--fail",
+        "--silent",
+        "--show-error",
+
+        -- WebDAV / HTTP PUT
+        "--upload-file",
+        local_file,
+    }
+
+    -- 继承认证等 header
+    for _, header in ipairs(headers) do
+        table.insert(args, "-H")
+        table.insert(args, header)
+    end
+
+    table.insert(args, remote_url)
+
+    mp.command_native_async({
+        name = "subprocess",
+        args = args,
+        playback_only = false,
+        capture_stdout = true,
+        capture_stderr = true,
+    }, function(success, result, error)
+        if success and result.status == 0 then
+            callback(true, nil)
+            return
+        end
+
+        local err = ""
+
+        if result and result.stderr then
+            err = result.stderr
+        elseif error then
+            err = tostring(error)
+        end
+
+        if #err > 3000 then
+            err = err:sub(#err - 2999)
+        end
+
+        callback(false, err)
+    end)
+end
+
+
+------------------------------------------------------------
+-- 主逻辑
+------------------------------------------------------------
+
+local function clip_ab()
+    local input = mp.get_property("path")
+
+    if not input or input == "" then
+        notify("没有正在播放的视频")
+        return
+    end
+
+    --------------------------------------------------------
+    -- A/B
+    --------------------------------------------------------
+
+    local a = mp.get_property_number("ab-loop-a")
+    local b = mp.get_property_number("ab-loop-b")
+
+    if not a or not b then
+        notify("请先设置 A/B loop 区间")
+        return
+    end
+
+    if b <= a then
+        notify(string.format(
+            "无效的 A/B 区间：%.3f → %.3f",
+            a,
+            b
+        ))
+        return
+    end
+
+    local duration = b - a
+
+    --------------------------------------------------------
+    -- 判断远程 / 本地
+    --------------------------------------------------------
+
+    local remote = is_remote_url(input)
+
+    local output
+
+    if remote then
+        output = make_remote_output(input)
+    else
+        output = make_local_output(input)
+    end
+
+    --------------------------------------------------------
+    -- HTTP headers
+    --------------------------------------------------------
+
+    local ffmpeg_headers
+
+    if remote then
+        ffmpeg_headers = get_http_headers()
+    end
+
+    --------------------------------------------------------
+    -- 本地临时文件
+    --------------------------------------------------------
+
+    local temp_file = make_temp_file()
+
+    notify(string.format(
+        "正在剪辑\n%.3f → %.3f\n\n%s",
+        a,
+        b,
+        remote and "临时文件：" .. temp_file or output
+    ), 4)
+
+    --------------------------------------------------------
+    -- FFmpeg
+    --------------------------------------------------------
+
+    run_ffmpeg(
+        input,
+        temp_file,
+        a,
+        b,
+        ffmpeg_headers,
+        function(success, error_message)
+
+            if not success then
+                remove_file(temp_file)
+
+                notify(
+                    "ffmpeg 剪辑失败：\n" .. error_message,
+                    8
+                )
+
+                return
+            end
+
+            ------------------------------------------------
+            -- 本地文件
+            ------------------------------------------------
+
+            if not remote then
+                -- ffmpeg 已经直接生成临时文件。
+                --
+                -- 这里把临时文件移动到目标位置。
+                local ok, err = os.rename(temp_file, output)
+
+                if not ok then
+                    -- Windows / 某些文件系统上 rename
+                    -- 覆盖已有文件可能失败。
+                    --
+                    -- 如果允许覆盖，尝试先删除。
+                    if overwrite then
+                        os.remove(output)
+                        ok, err = os.rename(temp_file, output)
+                    end
+                end
+
+                if ok then
+                    notify(
+                        "剪辑完成：\n" .. output,
+                        5
+                    )
+                else
+                    remove_file(temp_file)
+
+                    notify(
+                        "无法移动输出文件：\n" .. tostring(err),
+                        8
+                    )
+                end
+
+                return
+            end
+
+            ------------------------------------------------
+            -- Remote：上传 WebDAV
+            ------------------------------------------------
+
+            notify(
+                "剪辑完成，正在上传：\n" .. output,
+                4
+            )
+
+            local upload_headers = get_upload_headers()
+
+            upload_file(
+                temp_file,
+                output,
+                upload_headers,
+                function(upload_success, upload_error)
+
+                    -- 上传完成后，无论成功失败都删除临时文件
+                    remove_file(temp_file)
+
+                    if upload_success then
+                        notify(
+                            "剪辑并上传完成：\n" .. output,
+                            6
+                        )
+                    else
+                        notify(
+                            "WebDAV 上传失败：\n" ..
+                            tostring(upload_error),
+                            8
+                        )
+                    end
+                end
+            )
+        end
+    )
+end
+
+
+------------------------------------------------------------
+-- Key binding
+------------------------------------------------------------
+
+mp.add_key_binding(
+    "ctrl+shift+e",
+    "clip-ab-loop",
+    clip_ab
+)
+#+end_src
 *** opts
 :PROPERTIES:
 :tangle-dir: _tangle/script-opts
