@@ -370,6 +370,7 @@
        (remote-rulesets '("gh/chocolate4u/Iran-sing-box-rules@rule-set/geoip-telegram.srs"
                           "gh/chocolate4u/Iran-sing-box-rules@rule-set/geoip-microsoft.srs"
                           "gh/chocolate4u/Iran-sing-box-rules@rule-set/geoip-cloudflare.srs"
+                          "gh/chocolate4u/Iran-sing-box-rules@rule-set/geoip-google.srs"
                           "gh/SagerNet/sing-geoip@rule-set/geoip-cn.srs"
                           "gh/SagerNet/sing-geosite@rule-set/geosite-cn.srs"
                           "gh/SagerNet/sing-geosite@rule-set/geosite-geolocation-cn.srs"
@@ -518,6 +519,7 @@
                                              "geosite-telegram"
                                              "geoip-telegram"
                                              "geosite-google"
+                                             "geoip-google"
                                              "geosite-talkatone"
                                              "geosite-microsoft"]))
                                ((rule_set . "browse-rules"))])
