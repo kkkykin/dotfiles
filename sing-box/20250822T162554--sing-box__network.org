@@ -135,6 +135,8 @@
                                       (member (alist-get 'type (alist-get 'transport obd))
                                               '("xhttp"
                                                 "raw"))
+                                      (member (alist-get 'fingerprint (alist-get 'utls (alist-get 'tls obd)))
+                                              '("unsafe"))
                                       (and (string= type "tuic")
                                            (not (assoc 'tls obd)))
                                       (assoc 'utls obd)
