@@ -31,7 +31,7 @@
 #+header: :var localpath=(concat local-conf-dir)
 #+header: :var mainpath=(expand-file-name "main" tangle-dir)
 #+header: :var listen=(if (eq 'android system-type) "6680" "80")
-#+header: :var siteproxy=(let ((zr-net-url-retrieve-by-siteproxy-p t)) (zr-net-siteproxy-url ""))
+#+header: :var siteproxy=(let (zr-proxy-http-proxy-mode) (replace-regexp-in-string "/https/.*" "/" (zr-proxy-transform-url "https://lite.duckduckgo.com/")))
 #+begin_src org :tangle (zr-org-by-tangle-dir "env")
 LISTEN=$listen
 LOCALPATH=$localpath

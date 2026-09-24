@@ -44,7 +44,7 @@
 	tool = vimdiff
 [pull]
 	ff = only
-[url "https://xget.$mydomain/gh/"]
+[url "https://hub.$mydomain/https://github.com/"]
 	insteadOf = https://github.com/
 [url "https://xget.$mydomain/gl/"]
 	insteadOf = https://gitlab.com/

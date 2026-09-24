@@ -1597,7 +1597,7 @@ https://github.com/Chocolate4U/Iran-sing-box-rules/tree/rule-set
 
 #+name: gen-proxy-rule-set
 #+begin_src elisp
-(let* ((rules (zr-net-read-proxy-rules))
+(let* ((rules (zr-sops-parse-json "../pac.json"))
        (proxy (gethash "proxy" rules))
        (hosts (gethash "autoproxy_hosts" rules))
        (local-file "_proxy.eld")
