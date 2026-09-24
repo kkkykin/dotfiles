@@ -1,4 +1,5 @@
 pac.json diff=sops
+global.json diff=sops
 sing-box/sing-box.json diff=sops
 tailscale/tailscale.json diff=sops
 koreader/koreader.json diff=sops

@@ -1,0 +1,22 @@
+{
+	"proxy": {
+		"header": "ENC[AES256_GCM,data:v4LONpnayR+dk4EslqMDgQ==,iv:Fg7/iNNXhi1Y6fT69gKkydFiQMECk4oRUzSfGzRC2pg=,tag:3D0nMXnhBq6gJpMYw0j1FA==,type:str]",
+		"key": "ENC[AES256_GCM,data:MPh0tsVWY7YCvlnSfc4jgrH8IX+0TVuwmwsXjA==,iv:QrNqspgPP4W5J9Enq1mwP7ee5oO8GBL4hOsqvyTkeCg=,tag:GGB2Rei2O7MM6PhNEh7iFg==,type:str]"
+	},
+	"mpv-cors": [
+		"ENC[AES256_GCM,data:AJNELIeBuSXTMg==,iv:HgpW3VXYeER33XewASZQi7qW8MdhpeADexY3RvHbeCo=,tag:+KUuNZiUJEauSz7LYvn2sA==,type:str]"
+	],
+	"sops": {
+		"lastmodified": "2026-09-24T09:18:28Z",
+		"mac": "ENC[AES256_GCM,data:uOrC9yngE0bbIS5vKGQ+P9ZXY/OJ8mt4VqrMsJ9r5pHVEYuWvl7sazdGiuVFLPJ7/9L8e1BVs46EMqXkaWBbSUUrYYrJNLui1VXdglwtj7Kv4cgrI8sDP5MksH4Nyw5pOnZVLUlBenoQ3fO2Ie1Q71zcbgkWYaOs82w0iQ2qt/Y=,iv:w98glPoS7W8Z4Xmy1I5GqG4mTIlE6K/YuPuM6qCI4q4=,tag:MsYfSRJANzEPa/3Ds2Lxpw==,type:str]",
+		"pgp": [
+			{
+				"created_at": "2026-09-24T09:18:15Z",
+				"enc": "-----BEGIN PGP MESSAGE-----\r\n\r\nhF4DhteJcpg+xyQSAQdAn6CXg8MGN03RPRZBCDluc89gCdTy5wMMMnLHAIS6mkUw\r\nlB8ZXVs2lG5CopERgy+T1IhiSVcb3Hlu9tLcpFMGqAAI7fbpI1l7a+Wh0wSrx/gD\r\n1GgBCQIQvfRfvzEkGt73tRHWkVbcCksrvezRIV9bky9ifgYVWXDeKar79AxfOhES\r\nf4QcwJMBK5fX3LfI7yBCOSq9Lqx55MgDtwKYSB60iKL5Z7Peqp1Ew8QfW/LFh4Ir\r\nHrX6n7Ropyko5Q==\r\n=Xf4I\r\n-----END PGP MESSAGE-----",
+				"fp": "3933DFAC58D07052EF3B97F24424F4AD801B5547"
+			}
+		],
+		"unencrypted_suffix": "_unencrypted",
+		"version": "3.13.3"
+	}
+}

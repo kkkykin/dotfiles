@@ -10,8 +10,9 @@
                ('android "linux-arm64")
                ('gnu/linux "linux-amd64")))
        (zr-local-pls (zr-sops-parse-json "../global.json"))
-       (caddy-proxy (gethash "caddy-proxy" zr-local-pls))
-       (zr-local-pls (plstore-open "caddy.pls"))
+       (siteproxy (gethash "siteproxy" zr-local-pls))
+       (zr-local-pls (zr-sops-parse-json "caddy.json"))
+       (caddy-proxy (gethash "proxy" zr-local-pls))
        (local-conf-dir (expand-file-name "_local"))
        (tangle-dir (expand-file-name "_tangle/"))
        (url (format "https://github.com/kkkykin/custom-caddy/releases/latest/download/caddy-%s.tar.gz" name)))
@@ -31,7 +32,7 @@
 #+header: :var localpath=(concat local-conf-dir)
 #+header: :var mainpath=(expand-file-name "main" tangle-dir)
 #+header: :var listen=(if (eq 'android system-type) "6680" "80")
-#+header: :var siteproxy=(let (zr-proxy-http-proxy-mode) (replace-regexp-in-string "/https/.*" "/" (zr-proxy-transform-url "https://lite.duckduckgo.com/")))
+#+header: :var siteproxy=(concat siteproxy "/")
 #+begin_src org :tangle (zr-org-by-tangle-dir "env")
 LISTEN=$listen
 LOCALPATH=$localpath
@@ -627,7 +628,7 @@ http://127.0.0.1:9123 {
 *** cors
 #+name: cors-map
 #+begin_src elisp :var cors="mpv-cors"
-(mapconcat (lambda (s) (format "%s 1" s)) (plist-get (cdr (plstore-get zr-local-pls cors)) :cors) "\n")
+(mapconcat (lambda (s) (format "%s 1" s)) (gethash cors zr-local-pls) "\n")
 #+end_src
 
 *** format-matcher

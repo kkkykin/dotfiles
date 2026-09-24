@@ -27,6 +27,7 @@
 #+header: :var proxy=(or (getenv "all_proxy") proxy-server)
 #+header: :var attr_path=(identity attr-path)
 #+header: :var mydomain=(auth-source-pick-first-password :host "mydomain" :user "main")
+#+header: :var siteproxy=(gethash "siteproxy" zr-local-pls)
 #+begin_src conf :tangle (zr-org-by-tangle-dir "gitconfig") :mkdirp t
 [user]
 	email = kkkykin@foxmail.com
@@ -44,16 +45,20 @@
 	tool = vimdiff
 [pull]
 	ff = only
-[url "https://hub.$mydomain/https://github.com/"]
-	insteadOf = https://github.com/
-[url "https://xget.$mydomain/gl/"]
-	insteadOf = https://gitlab.com/
 [filter "lfs"]
 	clean = git-lfs clean -- %f
 	smudge = git-lfs smudge -- %f
 	process = git-lfs filter-process
 	required = true
+[url "https://hub.$mydomain/https://github.com/"]
+	insteadOf = https://github.com/
+[url "https://xget.$mydomain/gl/"]
+	insteadOf = https://gitlab.com/
+[url "$siteproxy/https/gitgud.io/"]
+	insteadOf = https://gitgud.io/
 [credential "https://xget.$mydomain/"]
+	helper = 
+[credential "$siteproxy/"]
 	helper = 
 #+end_src
 
