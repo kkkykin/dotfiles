@@ -45,6 +45,8 @@
 	tool = vimdiff
 [pull]
 	ff = only
+[worktree]
+	useRelativePaths = true
 [filter "lfs"]
 	clean = git-lfs clean -- %f
 	smudge = git-lfs smudge -- %f
