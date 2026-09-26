@@ -5,35 +5,30 @@
 
 * tangle
 #+begin_src elisp
-(let* ((conf (expand-file-name "~/.gitconfig"))
-       (coding-system-for-write 'utf-8-unix)
-       (attr-path (expand-file-name "gitattributes" "_tangle"))
+(let* ((zr-org-tangle-default-dir "~/.config/git/")
+       (attr-path (file-name-concat zr-org-tangle-default-dir "attributes"))
        (zr-local-pls (zr-sops-parse-json "../global.json"))
-       (proxy (gethash "proxy" zr-local-pls))
-       (proxy-server (format "socks5h://%s:%d"
-                             (gethash "host" proxy)
-                             (gethash "port" proxy))))
+       (hermes-config-dir "/var/lib/hermes/home/.config/")
+       (coding-system-for-write 'utf-8-unix))
   (org-babel-tangle)
-  (when (file-exists-p conf)
-    (unless (file-symlink-p conf)
-      (rename-file conf (concat conf ".bak"))))
-  (make-symbolic-link (expand-file-name "_tangle/gitconfig") conf t))
+  (when (file-writable-p hermes-config-dir)
+    (condition-case nil
+        (copy-directory zr-org-tangle-default-dir hermes-config-dir nil t)
+      (file-error nil))))
 #+end_src
 
 * config
 :PROPERTIES:
 :CUSTOM_ID: 92ec3b0a-3362-4cd6-8790-d486db17253a
 :END:
-#+header: :var proxy=(or (getenv "all_proxy") proxy-server)
 #+header: :var attr_path=(identity attr-path)
 #+header: :var mydomain=(auth-source-pick-first-password :host "mydomain" :user "main")
 #+header: :var siteproxy=(gethash "siteproxy" zr-local-pls)
-#+begin_src conf :tangle (zr-org-by-tangle-dir "gitconfig") :mkdirp t
+#+begin_src conf :tangle (zr-org-by-tangle-dir "config") :mkdirp t
 [user]
-	email = kkkykin@foxmail.com
-	name = kkky
+	name = hermes
+	email = hermes@localhost
 [core]
-	attributesFile = $attr_path
 	symlinks = true
 [init]
 	defaultBranch = main
@@ -88,7 +83,7 @@
 :PROPERTIES:
 :CUSTOM_ID: d26fd2dc-00b6-49f8-a7d8-8aeab3882723
 :END:
-#+begin_src conf :tangle (zr-org-by-tangle-dir "gitconfig")
+#+begin_src conf :tangle (zr-org-by-tangle-dir "config")
 <<gen-include()>>
 #+end_src
 
@@ -123,4 +118,14 @@
 :END:
 #+begin_src conf-space :tangle (identity attr-path)
 *.gpg diff=gpg
+#+end_src
+
+* ignore
+:PROPERTIES:
+:CUSTOM_ID: bcc14771-bce3-4385-bc0f-79c6825d75d7
+:END:
+#+begin_src org :tangle (zr-org-by-tangle-dir "ignore")
+,**/.claude/settings.local.json
+,**/.snow/
+,**/.env
 #+end_src
