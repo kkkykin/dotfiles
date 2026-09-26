@@ -465,7 +465,7 @@ show-console-readout=false
 :PROPERTIES:
 :CUSTOM_ID: 109e43d4-f990-4e01-a20c-916a3c6171d2
 :END:
-#+begin_src nix :tangle (expand-file-name "modules/nixos/aria2.nix" nix-dir)
+#+begin_src nix :tangle (expand-file-name "modules/services/aria2.nix" nix-dir)
 {
   config,
   username,
@@ -495,41 +495,27 @@ show-console-readout=false
 ** settings
 #+name: gen-nix-settings
 #+begin_src elisp
-(let* ((secret-file (expand-file-name "~/nix-config/secrets/aria2.json"))
-       (sops (executable-find "sops"))
-       (key "[\"aria2_rpc_secret\"]")
-       (secret (and (file-exists-p secret-file)
-                    (with-temp-buffer
-                      (call-process sops nil t nil
-                                    "decrypt" "--extract" key secret-file)
-                      (buffer-string)))))
-  (with-temp-buffer
-    (insert-file-contents "_tangle/aria2.conf")
-    (goto-char (point-min))
-    (while (zerop (forward-line))
-      (let* ((bol (pos-bol))
-             (eol (pos-eol))
-             (line (buffer-substring bol eol))
-             (secret-flag "rpc-secret=")
-             (regexp (rx bol (+ (not ?=)) ?= (| "true" "false" (+ (| ?. digit))) (* ? ) eol)))
-        (cond
-         ((looking-at-p "#") (delete-region bol eol))
-         ((string-match-p regexp line) (end-of-line) (insert ";"))
-         (t
-          (delete-region bol eol)
-          (if (string-prefix-p secret-flag line)
-              (when-let* ((new-secret (substring line (length secret-flag)))
-                          ((not (equal new-secret secret))))
-                (print secret)
-                (print new-secret)
-                (call-process sops nil 0 nil "set" secret-file
-                              key (json-serialize new-secret)))
-            (insert (replace-regexp-in-string
-                     (rx bol (group (* (not ?=))) ?= (group (* any)) eol)
-                     "\\1=\"\\2\";" line)))))))
-    (goto-char (point-min))
-    (flush-lines "^ *$")
-    (buffer-string)))
+(with-temp-buffer
+  (insert-file-contents "_tangle/aria2.conf")
+  (goto-char (point-min))
+  (while (zerop (forward-line))
+    (let* ((bol (pos-bol))
+           (eol (pos-eol))
+           (line (buffer-substring bol eol))
+           (secret-flag "rpc-secret=")
+           (regexp (rx bol (+ (not ?=)) ?= (| "true" "false" (+ (| ?. digit))) (* ? ) eol)))
+      (cond
+       ((looking-at-p "#") (delete-region bol eol))
+       ((string-match-p regexp line) (end-of-line) (insert ";"))
+       (t
+        (delete-region bol eol)
+        (unless (string-prefix-p secret-flag line)
+          (insert (replace-regexp-in-string
+                   (rx bol (group (* (not ?=))) ?= (group (* any)) eol)
+                   "\\1=\"\\2\";" line)))))))
+  (goto-char (point-min))
+  (flush-lines "^ *$")
+  (buffer-string))
 #+end_src
 * scripts
 :PROPERTIES:
