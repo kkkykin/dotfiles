@@ -25,6 +25,7 @@
       (make-symbolic-link dir link-dir))))
 
 (let ((script-dir (expand-file-name "_tangle/scripts/")))
+  (mkdir script-dir t)
   (dolist (s '("download-stop"
                "download-complete"
                "download-error"

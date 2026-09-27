@@ -10,7 +10,7 @@
 
 * default
 :PROPERTIES:
-:header-args:ahk: :tangle (zr-org-by-tangle-dir "default.ahk")
+:header-args:ahk: :tangle (zr-org-by-tangle-dir "default.ahk") :mkdirp t
 :END:
 
 *** include

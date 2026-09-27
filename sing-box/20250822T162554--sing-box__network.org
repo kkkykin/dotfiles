@@ -94,6 +94,8 @@
       (push f hosts-files)))
 
   (mkdir client-tmp-dir t)
+  (mkdir client-dir t)
+  (mkdir rule-sets-dir t)
   (mkdir sub-dir t)
 
   (mapc
@@ -132,6 +134,8 @@
                                                 "block" "dns"))
                                       (member (alist-get 'method obd)
                                               '("chacha20-poly1305"))
+                                      (member (alist-get 'flow obd)
+                                              '("xtls-rprx-vision-udp443"))
                                       (member (alist-get 'type (alist-get 'transport obd))
                                               '("xhttp"
                                                 "raw"))
@@ -437,6 +441,7 @@
                   (listen_port . 9090)
                   (dashboard
                    . ((enabled . ,(if zr-sys-android-p :false t))
+                      (download_url . ,(zr-proxy-transform-url "https://github.com/SagerNet/sing-box-dashboard/archive/refs/heads/gh-pages.zip"))
                       (http_client . ,this-way-client)
                       (path . ,(expand-file-name "dashboard"
                                                  zr-org-tangle-default-dir)))))])

@@ -5,7 +5,9 @@
 
 * tangle
 #+begin_src elisp
-(let ((conf-dir (expand-file-name "~/.gnupg/")))
+(let ((conf-dir (expand-file-name (pcase system-type
+                                    ('windows-nt (substitute-in-file-name "$userprofile/scoop/persist/gpg/home/"))
+                                    (_ "~/.gnupg/")))))
   (mkdir conf-dir t)
   (dolist (f (org-babel-tangle))
     (chmod f #o600)
@@ -23,7 +25,7 @@
 allow-emacs-pinentry
 allow-loopback-pinentry
 #+end_src
-** Windows
+*** Windows
 :PROPERTIES:
 :header-args:conf+: :tangle (if (eq system-type 'windows-nt) (zr-org-by-tangle-dir "gpg-agent.conf") "no")
 :CUSTOM_ID: ec3f3d0e-1b88-4f8c-9f45-1a2b19c8c0fc
@@ -35,7 +37,7 @@ enable-win32-openssh-support
 # wezterm
 enable-putty-support
 #+end_src
-** Linux
+*** Linux
 :PROPERTIES:
 :header-args:conf+: :tangle (if (eq system-type 'gnu/linux) (zr-org-by-tangle-dir "gpg-agent.conf") "no")
 :END:
@@ -49,7 +51,7 @@ https://incenp.org/notes/2015/gnupg-for-ssh-authentication.html
 :CUSTOM_ID: 015fcee4-6cc6-48f2-a08e-3784588c06e1
 :END:
 
-** conf
+*** conf
 :PROPERTIES:
 :CUSTOM_ID: 02f1ab73-8fc5-4fb4-8ecc-6d616f139c61
 :END:
@@ -65,7 +67,7 @@ Expire-Date: 0
 %commit
 #+end_src
 
-** gen
+*** gen
 #+begin_src sh
 gpg --batch --generate-key gpg-ed25519.conf
 #+end_src

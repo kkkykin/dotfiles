@@ -16,7 +16,6 @@
                     "ProxyCommand nc -X connect -x %s %%h %%p")))
        (sshd-port (plist-get (cdr (plstore-get zr-local-pls "sshd")) :port))
        (zr-local-pls (zr-sops-parse-json "../global.json"))
-       (main-user (gethash "main" (gethash "users" zr-local-pls)))
        (proxy-cmd (if (and proxy proxy-fmt) (format proxy-fmt proxy) "")))
   (org-babel-tangle))
 #+end_src
@@ -90,7 +89,7 @@ ProxyCommand openssl s_client -quiet -connect example.com:443 -servername exampl
 :header-args:sh: :shebang "#/usr/bin/env bash" :var user=(identity main-user)
 :END:
 
-#+begin_src sh :tangle (zr-org-by-tangle-dir "user-auth.sh")
+#+begin_src sh :tangle no
 adduser "$user"
 apt install sudo
 usermod -aG sudo "$user"

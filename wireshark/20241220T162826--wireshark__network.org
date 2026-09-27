@@ -21,6 +21,8 @@
 (let ((lua-dir (pcase system-type
                  ('gnu/linux (expand-file-name "~/.local/lib/wireshark/plugins"))
                  ('windows-nt (expand-file-name "plugins" (getenv "WIRESHARK_DATA_DIR"))))))
+  (unless (file-symlink-p lua-dir)
+    (delete-directory lua-dir t))
   (make-symbolic-link (expand-file-name "_tangle/lua-plugins") lua-dir t))
 
 (org-babel-remove-result-one-or-many '(4))
@@ -370,7 +372,7 @@ tcp_port:add(proxy_port, socks5)
 :PROPERTIES:
 :CUSTOM_ID: ccf22f9f-06b8-49c2-90e8-677e80445854
 :END:
-#+begin_src lua :tangle (zr-org-by-tangle-dir "http_full_timing.lua")
+#+begin_src lua :tangle (zr-org-by-tangle-dir "http_full_timing.lua") :mkdirp t
 -- ** HTTP Full Timing Analyzer **
 -- Measures TOTAL time for each HTTP request including TCP/SSL handshake and file upload
 -- Not support multiple HTTP requests in single TCP stream

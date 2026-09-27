@@ -77,11 +77,11 @@ if errorlevel 1 (
 :CUSTOM_ID: c0ee49e0-fc37-4a12-9412-d54686aaca83
 :END:
 #+name: run_emacs
-#+begin_src bat :var initd=(expand-file-name "../../.emacs.d") profileel=(zr-org-by-tangle-dir "profile.el")
+#+begin_src bat :var initd=(expand-file-name "../../.emacs.d")
 cd %USERPROFILE%
 del "%APPDATA%\.emacs.d\server\server"
 set "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--proxy-server=%local_proxy%"
-start /b emacs.exe --daemon "--init-directory=%initd%" -l "%profileel%" -l "org-protocol"
+start /b emacs.exe --daemon "--init-directory=%initd%" -l "org-protocol"
 #+end_src
 
 #+name: run_rclone

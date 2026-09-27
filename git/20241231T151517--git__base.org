@@ -68,7 +68,7 @@
 :PROPERTIES:
 :CUSTOM_ID: e9b19a3d-9cea-47c3-9301-1a78e25743c0
 :END:
-#+begin_src conf :tangle (if (eq system-type 'windows-nt) (zr-org-by-tangle-dir "gitconfig") "no")
+#+begin_src conf :tangle (if (eq system-type 'windows-nt) (zr-org-by-tangle-dir "config") "no")
 [core]
 	filemode = false
 	sshCommand = C:/Windows/System32/OpenSSH/ssh.exe
