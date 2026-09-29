@@ -1643,16 +1643,21 @@ https://github.com/Chocolate4U/Iran-sing-box-rules/tree/rule-set
 
 #+name: gen-direct-rule-set
 #+begin_src elisp
-(let* ((default `(((domain_suffix
-                    . [".steamcontent.com"
-                       ;; ".steampowered.com"
-                       ".steamstatic.com"
-                       ".steamserver.net"
-                       ".nexus-cdn.com"]))
-                  ((process_name
-                    . ["cfst"
-                       "mcis"
-                       "cloudflared"]))))
+(let* ((own-domains (auth-source-search :host "mydomain"))
+       (own-suffix (mapcar
+                    (lambda (d)
+                      (concat "." (auth-info-password d)))
+                    own-domains))
+       (default-suffix '(".steamcontent.com"
+                         ;; ".steampowered.com"
+                         ".steamstatic.com"
+                         ".steamserver.net"
+                         ".nexus-cdn.com"))
+       (default-rules `(((domain_suffix . ,(vconcat own-suffix default-suffix)))
+                        ((process_name
+                          . ["cfst"
+                             "mcis"
+                             "cloudflared"]))))
        (local-file "_direct.eld")
        (local (and (file-exists-p local-file)
                    (with-temp-buffer
@@ -1660,7 +1665,7 @@ https://github.com/Chocolate4U/Iran-sing-box-rules/tree/rule-set
                      (read (current-buffer))))))
   (json-serialize
    `((version . 3)
-     (rules . ,(vconcat local default)))))
+     (rules . ,(vconcat local default-rules)))))
 #+end_src
 
 *** tls-record-frag
