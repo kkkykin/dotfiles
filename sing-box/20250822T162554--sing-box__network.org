@@ -54,6 +54,7 @@
                                      :test #'string=))
        (cf-4 "104.19.148.8")
        (cf-6 "2606:4700:e:5b:b68a:ec78:f652:5e89")
+       vps-cidr
        server-route-users
        (client-proxy-users '("download"
                              "direct"
@@ -1141,14 +1142,16 @@ SEP defaults to \"/\"."
   (mapc
    (lambda (ip)
      (let* ((addr (gethash "addr" ip))
-            (user (format "%s.%s" name (subst-char-in-string ?: ?_ addr))))
+            (user (format "%s.%s" name (subst-char-in-string ?: ?_ addr)))
+            (type (gethash "type" ip)))
        (push user users)
+       (push (format "%s/%d" addr (if (eq 4 type) 32 128)) vps-cidr)
        (push `((auth_user . ,user)
                (outbound . ,addr))
              route-rules)
        (push `((tag . ,addr)
                (type . "direct")
-               ,(cons (intern (format "inet%d_bind_address" (gethash "type" ip)))
+               ,(cons (intern (format "inet%d_bind_address" type))
                       addr))
              obds)))
    (gethash "ips" attr))
@@ -1654,6 +1657,7 @@ https://github.com/Chocolate4U/Iran-sing-box-rules/tree/rule-set
                          ".steamserver.net"
                          ".nexus-cdn.com"))
        (default-rules `(((domain_suffix . ,(vconcat own-suffix default-suffix)))
+                        ((ip_cidr . ,(vconcat vps-cidr)))
                         ((process_name
                           . ["cfst"
                              "mcis"
